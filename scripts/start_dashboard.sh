@@ -6,10 +6,10 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Verify we found the correct project directory
-if [ ! -f "$PROJECT_ROOT/Cargo.toml" ]; then
-    echo "❌ Error: Could not find Cargo.toml in project root: $PROJECT_ROOT"
-    echo "   Please run this script from the fixed-ratio-trading project directory or its subdirectories"
+# Verify we found the correct project directory by checking for html directory
+if [ ! -d "$PROJECT_ROOT/html" ]; then
+    echo "❌ Error: Could not find html directory in project root: $PROJECT_ROOT"
+    echo "   Please run this script from the frt-dashboard project directory or its subdirectories"
     exit 1
 fi
 
