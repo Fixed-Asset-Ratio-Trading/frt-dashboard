@@ -27,14 +27,14 @@ else
     exit 1
 fi
 
-# Check if dashboard directory exists
-if [ ! -d "$PROJECT_ROOT/dashboard" ]; then
-    echo "❌ Dashboard directory not found at: $PROJECT_ROOT/dashboard"
+# Check if html directory exists
+if [ ! -d "$PROJECT_ROOT/html" ]; then
+    echo "❌ HTML directory not found at: $PROJECT_ROOT/html"
     exit 1
 fi
 
 # Check if dashboard files exist
-if [ ! -f "$PROJECT_ROOT/dashboard/index.html" ] || [ ! -f "$PROJECT_ROOT/dashboard/dashboard.js" ]; then
+if [ ! -f "$PROJECT_ROOT/html/index.html" ] || [ ! -f "$PROJECT_ROOT/html/dashboard.js" ]; then
     echo "❌ Dashboard files not found. Please run the deployment script first."
     exit 1
 fi
@@ -49,7 +49,7 @@ echo ""
 echo "🛑 Press Ctrl+C to stop the server"
 echo ""
 
-cd "$PROJECT_ROOT/dashboard"
+cd "$PROJECT_ROOT/html"
 $PYTHON_CMD -m http.server 3000
 
 echo ""
