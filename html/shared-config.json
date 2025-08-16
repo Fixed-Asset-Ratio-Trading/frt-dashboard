@@ -1,0 +1,29 @@
+{
+  "solana": {
+    "rpcUrl": "http://192.168.2.88:8899",
+    "wsUrl": "ws://192.168.2.88:8900",
+    "commitment": "confirmed",
+    "disableRetryOnRateLimit": true
+  },
+  "program": {
+    "programId": "4aeVqtWhrUh6wpX8acNj2hpWXKEQwxjA3PYb2sHhNyCn",
+    "poolStateSeedPrefix": "pool_state"
+  },
+  "metaplex": {
+    "tokenMetadataProgramId": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+    "candyMachineProgramId": "cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ",
+    "auctionHouseProgramId": "hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk",
+    "lastUpdated": "2025-08-10",
+    "deploymentType": "remote",
+    "remoteRpcUrl": "http://192.168.2.88:8899"
+  },
+  "wallets": {
+    "expectedBackpackWallet": "5GGZiMwU56rYL1L52q7Jz7ELkSN4iYyQqdv418hxPh6t"
+  },
+  "dashboard": {
+    "refreshInterval": 10000
+  },
+  "version": "1.0.0",
+  "lastUpdated": "2025-08-09",
+  "_description": "Centralized configuration for Fixed Ratio Trading project - used by dashboard, scripts, and deployment tools"
+}

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pool Created - Fixed Ratio Trading</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        
+        .header-title {
+            color: #333;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .page-title {
+            color: #10b981;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .success-icon {
+            text-align: center;
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        
+        .pool-details {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #10b981;
+        }
+        
+        .pool-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .detail-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .detail-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .detail-value {
+            font-size: 16px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .detail-value.address {
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+        }
+        
+        .ratio-highlight {
+            background: #f0f9ff;
+            border: 2px solid #3b82f6;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .ratio-text {
+            font-size: 1.5em;
+            color: #3b82f6;
+            font-weight: 700;
+        }
+        
+        .status-section {
+            background: #dcfce7;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .status-text {
+            color: #166534;
+            font-weight: 500;
+            text-align: center;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: 2px solid transparent;
+        }
+        
+        .nav-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .nav-btn.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .nav-btn.secondary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <img src="images/Fixed_Ratio_Trading_Logo.jpeg" alt="Fixed Ratio Trading Logo" class="logo">
+                <div class="header-title">Fixed Ratio Trading</div>
+            </div>
+            <div class="header-center">
+                <h1 class="page-title">Pool Created Successfully!</h1>
+                <p class="subtitle">Your Fixed Ratio Trading Pool is Ready</p>
+            </div>
+        </div>
+        
+        <div id="error-container" style="display: none;">
+            <div class="error-message">
+                <h3>⚠️ No Pool Data Found</h3>
+                <p>Pool details are missing. Redirecting to dashboard...</p>
+            </div>
+        </div>
+        
+        <div id="pool-container">
+            <div class="pool-details">
+                <h2 class="pool-title" id="pool-title">Loading Pool Details...</h2>
+                
+                <div class="ratio-highlight">
+                    <div class="ratio-text" id="ratio-display">1 TOKEN A = 1 TOKEN B</div>
+                </div>
+                
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Pool Address</div>
+                        <div class="detail-value address" id="pool-address">Loading...</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Created By</div>
+                        <div class="detail-value address" id="creator-address">Loading...</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label" id="token-a-label">Base Token</div>
+                        <div class="detail-value" id="token-a-details">Loading...</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label" id="token-b-label">Quote Token</div>
+                        <div class="detail-value" id="token-b-details">Loading...</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Created At</div>
+                        <div class="detail-value" id="created-at">Loading...</div>
+                    </div>
+                    
+                    <div class="detail-item">
+                        <div class="detail-label">Current Liquidity</div>
+                        <div class="detail-value">0 (Empty Pool)</div>
+                    </div>
+                </div>
+                
+                <div class="status-section">
+                    <div class="status-text">
+                        ✅ Pool structure created successfully<br>
+                        💧 Pool is empty and ready for liquidity<br>
+                        🚀 Trading will be enabled once liquidity is added
+                    </div>
+                </div>
+            </div>
+            
+            <div class="nav-buttons">
+                <button class="nav-btn primary" onclick="window.location.href='index.html'">
+                    📊 View Dashboard
+                </button>
+                <button class="nav-btn secondary" onclick="window.location.href='pool-creation.html'">
+                    🏊‍♂️ Create Another Pool
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="utils.js?v=1732061214"></script>
+    <script>
+        // Parse URL parameters and display pool details
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Check if we have pool data
+            const poolAddress = urlParams.get('poolAddress');
+            const tokenASymbol = urlParams.get('tokenASymbol');
+            const tokenBSymbol = urlParams.get('tokenBSymbol');
+            const ratio = urlParams.get('ratio');
+            
+            if (!poolAddress || !tokenASymbol || !tokenBSymbol || !ratio) {
+                // No pool data, show error and redirect
+                document.getElementById('pool-container').style.display = 'none';
+                document.getElementById('error-container').style.display = 'block';
+                
+                // Redirect to dashboard after 3 seconds
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 3000);
+                return;
+            }
+            
+            // Populate pool details
+            const tokenAName = urlParams.get('tokenAName') || tokenASymbol;
+            const tokenBName = urlParams.get('tokenBName') || tokenBSymbol;
+            const creator = urlParams.get('creator') || 'Unknown';
+            const createdAt = urlParams.get('createdAt');
+            
+            // Use corrected display utilities for user-friendly token ordering
+            const display = window.TokenDisplayUtils.getCorrectTokenDisplay(
+                tokenASymbol, 
+                tokenBSymbol, 
+                parseFloat(ratio), 
+                1, 
+                6, // tokenAPrecision 
+                6  // tokenBPrecision
+            );
+            
+            // Update UI elements with proper ordering
+            document.getElementById('pool-title').textContent = `${display.displayPair} Pool`;
+            document.getElementById('ratio-display').textContent = display.rateText;
+            document.getElementById('pool-address').textContent = poolAddress;
+            document.getElementById('creator-address').textContent = creator.slice(0, 20) + '...';
+            // Update token details with display ordering
+            const baseTokenName = display.baseToken === tokenASymbol ? tokenAName : tokenBName;
+            const quoteTokenName = display.quoteToken === tokenASymbol ? tokenAName : tokenBName;
+            
+            // Update labels and details
+            document.getElementById('token-a-label').textContent = `${display.baseToken} (Base)`;
+            document.getElementById('token-b-label').textContent = `${display.quoteToken} (Quote)`;
+            document.getElementById('token-a-details').innerHTML = `<strong>${display.baseToken}</strong><br>${baseTokenName}`;
+            document.getElementById('token-b-details').innerHTML = `<strong>${display.quoteToken}</strong><br>${quoteTokenName}`;
+            
+            if (createdAt) {
+                const date = new Date(createdAt);
+                document.getElementById('created-at').textContent = date.toLocaleString();
+            } else {
+                document.getElementById('created-at').textContent = 'Just now';
+            }
+            
+            console.log('✅ Pool success page loaded with details:', {
+                poolAddress,
+                tokenASymbol,
+                tokenBSymbol,
+                ratio,
+                creator,
+                createdAt,
+                correctedDisplay: display
+            });
+            
+            console.log('🔧 POOL SUCCESS PAGE DISPLAY:', {
+                displayPair: display.displayPair,
+                rateText: display.rateText,
+                baseToken: display.baseToken,
+                quoteToken: display.quoteToken
+            });
+        });
+    </script>
+</body>
+</html> 

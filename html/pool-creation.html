@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Pool - Fixed Ratio Trading</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        
+        .header-title {
+            color: #333;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .page-title {
+            color: #333;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .nav-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-btn.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .nav-btn.secondary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .wallet-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .wallet-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .wallet-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .wallet-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .wallet-details h3 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .wallet-address {
+            color: #666;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .connect-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .connect-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .tokens-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .tokens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .token-card {
+            background: #f8f9fa;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .token-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        
+        .token-card.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .token-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .token-symbol {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .token-balance {
+            font-size: 14px;
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        .token-name {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .token-mint {
+            color: #999;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        
+        .selected-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .pool-creation-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #10b981;
+        }
+        
+        .pool-setup {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .token-selection {
+            background: #f8f9fa;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .token-selection.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .token-selection.empty {
+            border-style: dashed;
+            cursor: pointer;
+        }
+        
+        .token-selection.empty:hover {
+            border-color: #667eea;
+            background: #f9fafb;
+        }
+        
+        .selected-token-symbol {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .selected-token-name {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .selected-token-balance {
+            color: #10b981;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .empty-selection {
+            color: #999;
+            font-size: 16px;
+        }
+        
+        .swap-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .swap-button:hover {
+            background: #5a67d8;
+            transform: rotate(180deg);
+        }
+        
+        .swap-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .ratio-section {
+            background: #f0f9ff;
+            border: 2px solid #3b82f6;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .ratio-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .ratio-token {
+            color: #3b82f6;
+        }
+        
+        .ratio-equals {
+            color: #666;
+        }
+        
+        .ratio-input-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .ratio-input {
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+            width: 120px;
+        }
+        
+        .ratio-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .ratio-input.invalid {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+            color: #dc2626;
+        }
+        
+        .ratio-input.invalid:focus {
+            border-color: #dc2626;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+        
+        .validation-error {
+            color: #dc2626;
+            font-size: 12px;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+        
+        .ratio-label {
+            color: #666;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .pool-summary-section {
+            margin-bottom: 30px;
+        }
+        
+        .create-pool-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .create-pool-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .create-pool-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .status-message.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .status-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .status-message.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error-display {
+            margin-top: 20px;
+            background: #fee2e2;
+            border: 2px solid #fecaca;
+            border-radius: 12px;
+            padding: 20px;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        .error-content {
+            color: #991b1b;
+        }
+        
+        .error-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .error-icon {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+        
+        .error-title {
+            font-weight: 700;
+            font-size: 16px;
+            flex-grow: 1;
+        }
+        
+        .error-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .copy-btn {
+            background: #991b1b;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .copy-btn:hover {
+            background: #7f1d1d;
+        }
+        
+        .countdown {
+            background: #7f1d1d;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            min-width: 25px;
+            text-align: center;
+        }
+        
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            word-break: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .pool-setup {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .swap-button {
+                transform: rotate(90deg);
+            }
+            
+            .tokens-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <img src="images/Fixed_Ratio_Trading_Logo.jpeg" alt="Fixed Ratio Trading Logo" class="logo">
+                <div class="header-title">Fixed Ratio Trading</div>
+            </div>
+            <div class="header-center">
+                <h1 class="page-title">Create Pool</h1>
+                <p class="subtitle">Create Empty Trading Pools with Custom Exchange Ratios</p>
+            </div>
+            <div class="nav-buttons">
+                <button class="nav-btn secondary" onclick="window.location.href='index.html'">
+                    ← Back to Dashboard
+                </button>
+                <button class="nav-btn secondary" onclick="window.location.href='token-creation.html'">
+                    🪙 Create Tokens
+                </button>
+            </div>
+        </div>
+        
+        <div id="status-container"></div>
+        
+        <!-- Wallet Connection Section -->
+        <div class="wallet-section">
+            <h2 style="color: #333; margin-bottom: 20px;">🎒 Backpack Wallet Connection</h2>
+            <div class="wallet-status">
+                <div class="wallet-info" id="wallet-info" style="display: none;">
+                    <div class="wallet-avatar" id="wallet-avatar">🎒</div>
+                    <div class="wallet-details">
+                        <h3>Backpack Wallet Connected</h3>
+                        <div class="wallet-address" id="wallet-address">Not connected</div>
+                    </div>
+                </div>
+                <div class="wallet-info" id="wallet-disconnected">
+                    <div class="wallet-avatar">❌</div>
+                    <div class="wallet-details">
+                        <h3>Wallet Not Connected</h3>
+                        <div class="wallet-address">Please connect your Backpack wallet</div>
+                    </div>
+                </div>
+                        <button class="connect-btn" id="connect-wallet-btn" onclick="connectWallet()">
+          Connect Backpack Wallet
+        </button>
+            </div>
+        </div>
+        
+        <!-- Token Selection Section -->
+        <div class="tokens-section">
+            <h2 style="color: #333; margin-bottom: 10px;">🪙 Your Tokens</h2>
+            <p style="color: #666; margin-bottom: 20px;">Select two tokens from your wallet to create a trading pool</p>
+            
+            <div id="tokens-loading" class="loading">
+                <h3>🔍 Loading your tokens...</h3>
+                <p>Please connect your wallet to see your token balances</p>
+            </div>
+            
+            <div id="tokens-container" class="tokens-grid" style="display: none;">
+                <!-- Tokens will be populated here -->
+            </div>
+        </div>
+        
+        <!-- Pool Creation Section -->
+        <div class="pool-creation-section">
+            <h2 style="color: #333; margin-bottom: 25px;">⚖️ Configure Pool</h2>
+            
+            <!-- Token Pair Selection -->
+            <div class="pool-setup">
+                <div class="token-selection empty" id="token-a-selection" onclick="showTokenHelp('A')">
+                    <div class="empty-selection">Select Token A</div>
+                </div>
+                
+                <button class="swap-button" id="swap-tokens-btn" onclick="swapTokens()" disabled>
+                    ⇄
+                </button>
+                
+                <div class="token-selection empty" id="token-b-selection" onclick="showTokenHelp('B')">
+                    <div class="empty-selection">Select Token B</div>
+                </div>
+            </div>
+            
+            <!-- Ratio Configuration -->
+            <div class="ratio-section" style="display: none;" id="ratio-section">
+                <h3 style="color: #333; margin-bottom: 20px;">📊 Set Exchange Rate</h3>
+                
+                <div class="ratio-display" id="ratio-display">
+                    <span>1 <span class="ratio-token" id="ratio-token-a">TOKEN A</span></span>
+                    <span class="ratio-equals">=</span>
+                    <span id="ratio-value">1</span>
+                    <span class="ratio-token" id="ratio-token-b">TOKEN B</span>
+                </div>
+                
+                <div class="ratio-input-section">
+                    <div>
+                        <input type="number" class="ratio-input" id="ratio-input" 
+                               value="1" min="1" step="1" onchange="updateRatioDisplay()" oninput="updateRatioDisplay()">
+                        <div class="ratio-label">Amount of <span id="ratio-input-label">Token B</span></div>
+                    </div>
+                </div>
+                
+                <p style="color: #666; font-size: 14px; text-align: center;">
+                    Users can trade 1 unit of the first token for this amount of the second token
+                </p>
+            </div>
+            
+            <!-- Pool Summary -->
+            <div class="pool-summary-section" style="display: none;" id="pool-summary-section">
+                <h3 style="color: #333; margin-bottom: 20px;">📋 Pool Summary</h3>
+                <div style="background: #f8f9fa; border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <div style="color: #666; font-size: 14px; margin-bottom: 5px;">Pool Pair</div>
+                            <div style="font-size: 18px; font-weight: 600; color: #333;" id="summary-pair">TOKEN A / TOKEN B</div>
+                        </div>
+                        <div>
+                            <div style="color: #666; font-size: 14px; margin-bottom: 5px;">Exchange Rate</div>
+                            <div style="font-size: 18px; font-weight: 600; color: #333;" id="summary-rate">1:1</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                        <div style="color: #666; font-size: 14px; margin-bottom: 5px;">Initial State</div>
+                        <div style="color: #999; font-size: 14px;">Pool will be created with no liquidity. Add liquidity later to enable trading.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="create-pool-btn" id="create-pool-btn" onclick="createPool()" disabled>
+                🏊‍♂️ Create Pool
+            </button>
+            
+            <!-- Error Display Section -->
+            <div id="error-display" class="error-display" style="display: none;">
+                <div class="error-content">
+                    <div class="error-header">
+                        <span class="error-icon">❌</span>
+                        <span class="error-title">Pool Creation Failed</span>
+                        <div class="error-actions">
+                            <button class="copy-btn" id="copy-error-btn" onclick="copyErrorMessage()">📋 Copy</button>
+                            <span class="countdown" id="error-countdown">30</span>
+                        </div>
+                    </div>
+                    <div class="error-message" id="error-message-text">
+                        Error details will appear here...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts - Using local libraries -->
+    <script src="libs/solana-web3.min.js"></script>
+    <script src="libs/spl-token.min.js"></script>
+    <script src="config.js"></script>
+    <script src="utils.js?v=1732061214"></script>
+    <script>
+        // Simple library detection
+        function checkLibraries() {
+            console.log('🔍 Checking loaded libraries...');
+            
+            if (!window.solanaWeb3) {
+                console.error('❌ Solana Web3 not loaded');
+                return false;
+            }
+            
+            // Check for SPL Token library
+            let splTokenLib = null;
+            const possibleNames = ['splToken', 'SPLToken', 'SplToken'];
+            
+            for (const name of possibleNames) {
+                if (window[name]) {
+                    splTokenLib = window[name];
+                    console.log(`✅ Found SPL Token library as window.${name}`);
+                    break;
+                }
+            }
+            
+            if (!splTokenLib && window.solanaWeb3) {
+                for (const name of possibleNames) {
+                    if (window.solanaWeb3[name]) {
+                        splTokenLib = window.solanaWeb3[name];
+                        console.log(`✅ Found SPL Token library as solanaWeb3.${name}`);
+                        break;
+                    }
+                }
+            }
+            
+            if (splTokenLib) {
+                window.splToken = splTokenLib;
+                window.SPL_TOKEN_LOADED = true;
+                console.log('✅ Both libraries ready!');
+                return true;
+            } else {
+                console.error('❌ SPL Token library not found');
+                window.SPL_TOKEN_LOADED = false;
+                return false;
+            }
+        }
+        
+        // Check libraries after page load
+        window.addEventListener('load', () => {
+            setTimeout(checkLibraries, 100);
+        });
+    </script>
+    <script src="pool-creation.js?v=1753358180"></script>
+</body>
+</html> 

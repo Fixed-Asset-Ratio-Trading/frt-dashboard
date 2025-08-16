@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Images Preview - Fixed Ratio Trading</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .nav-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .nav-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .image-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            border: 3px solid #f0f0f0;
+            transition: all 0.3s ease;
+        }
+        
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+        
+        .token-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 20px;
+            border: 4px solid #e0e0e0;
+            transition: border-color 0.3s ease;
+        }
+        
+        .image-card:hover .token-image {
+            border-color: #667eea;
+        }
+        
+        .token-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .token-symbol {
+            font-size: 1.2em;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .token-description {
+            color: #666;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+        
+        .image-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖼️ Token Images Preview</h1>
+            <p style="color: #666; font-size: 1.2em; margin-bottom: 20px;">Preview of all token images that will display in Backpack wallet</p>
+            <button class="nav-btn" onclick="window.location.href='token-creation.html'">
+                ← Back to Token Creation
+            </button>
+        </div>
+        
+        <div class="images-grid">
+            <!-- Token Sample (TS) -->
+            <div class="image-card">
+                <img src="images/TS Token image.png" alt="Token Sample" class="token-image">
+                <div class="token-name">Token Sample</div>
+                <div class="token-symbol">TS</div>
+                <div class="token-description">
+                    Standard sample token with 4 decimals and 10,000 supply. Perfect for testing basic token operations and trading.
+                </div>
+                <div class="image-info">
+                    📁 Filename: TS Token image.png<br>
+                    🎨 Format: PNG (1024x1024)
+                </div>
+            </div>
+            
+            <!-- Micro Sample Token (MST) -->
+            <div class="image-card">
+                <img src="images/MTS Token image.png" alt="Micro Sample Token" class="token-image">
+                <div class="token-name">Micro Sample Token</div>
+                <div class="token-symbol">MST</div>
+                <div class="token-description">
+                    Micro-denomination token with 0 decimals and 100,000,000 supply. Exchange rate: 10,000 MST = 1 TS.
+                </div>
+                <div class="image-info">
+                    📁 Filename: MTS Token image.png<br>
+                    🎨 Format: PNG (1024x1024)
+                </div>
+            </div>
+            
+            <!-- Large Sample Token (LTS) -->
+            <div class="image-card">
+                <img src="images/LTS Token image.png" alt="Large Sample Token" class="token-image">
+                <div class="token-name">Large Sample Token</div>
+                <div class="token-symbol">LTS</div>
+                <div class="token-description">
+                    Large-denomination token with 9 decimals and 1,000 supply. Exchange rate: 1 LTS = 10 TS.
+                </div>
+                <div class="image-info">
+                    📁 Filename: LTS Token image.png<br>
+                    🎨 Format: PNG (1024x1024)
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 40px; padding: 20px; background: #e8f4fd; border-radius: 12px; border-left: 4px solid #3b82f6;">
+            <h3 style="color: #1e40af; margin-bottom: 15px;">📝 How It Works</h3>
+            <ul style="color: #374151; line-height: 1.6;">
+                <li><strong>Automatic Image Assignment:</strong> When you create tokens with symbols TS, MST, or LTS, the system automatically assigns the corresponding image</li>
+                <li><strong>Metadata Integration:</strong> Images are embedded in token metadata using the Metaplex Token Metadata program</li>
+                <li><strong>Wallet Display:</strong> Backpack wallet will automatically display these images when showing your tokens</li>
+                <li><strong>Custom Tokens:</strong> Custom tokens without predefined images will still have proper metadata, just without an image</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html> 
