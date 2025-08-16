@@ -1,10 +1,10 @@
 // Centralized Configuration for Fixed Ratio Trading Dashboard
-// This file loads configuration from the centralized shared-config.json file
+// This file loads configuration from the centralized config.json file
 
 // Load configuration from centralized config file
-async function loadSharedConfig() {
+async function loadConfig() {
     try {
-        const response = await fetch('./shared-config.json');
+        const response = await fetch('./config.json');
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -42,10 +42,10 @@ async function loadSharedConfig() {
             upgradeAuthorityRequired: true
         };
         
-        console.log('✅ Shared configuration loaded:', sharedConfig.solana.rpcUrl);
+        console.log('✅ Configuration loaded:', sharedConfig.solana.rpcUrl);
         return true;
     } catch (error) {
-        console.error('❌ Failed to load shared configuration:', error);
+        console.error('❌ Failed to load configuration:', error);
         
         // Fallback to hardcoded values
         window.TRADING_CONFIG = {
@@ -74,7 +74,7 @@ async function loadSharedConfig() {
 
 // Initialize configuration asynchronously
 async function initializeConfig() {
-    await loadSharedConfig();
+    await loadConfig();
     
     // Legacy alias for backward compatibility
     window.CONFIG = window.TRADING_CONFIG;

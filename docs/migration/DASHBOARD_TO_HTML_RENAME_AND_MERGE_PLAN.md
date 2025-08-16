@@ -39,7 +39,7 @@ Owner: Migration task
 - pool-success.html
 - README-Configuration.md
 - README-UPGRADE.md
-- shared-config.json
+- config.json
 - swap.html
 - swap.js
 - test-basis-points.html
@@ -80,11 +80,11 @@ All references to `dashboard/` must be updated to `html/`. Confirmed locations:
 
 
 - scripts/remote_build_and_deploy.sh
-  - Output only to `/Users/davinci/code/fixed-ratio-trading/shared-config.json` (no move)
+  - Output only to `/Users/davinci/code/fixed-ratio-trading/config.json` (no move)
   - The UI at destination will use `/Users/davinci/code/frt-dashboard/html/config.json` (manually edited)
 
 - scripts/remote_server_only/metaplex/manage_metaplex.sh
-  - Should use `/Users/davinci/code/fixed-ratio-trading/shared-config.json` directly (no move)
+  - Should use `/Users/davinci/code/fixed-ratio-trading/config.json` directly (no move)
 
 - scripts/remote_server_only/metaplex/README.md
   - Update documentation to reflect the new config handling and html/ paths (file remains in place)
@@ -149,8 +149,8 @@ git mv dashboard html
 
 2) Update paths in scripts:
 - `scripts/start_dashboard.sh`: replace `dashboard/` → `html/` (dest: `/Users/davinci/code/frt-dashboard/scripts/start_dashboard.sh`)
-- `scripts/remote_build_and_deploy.sh`: ensure it outputs only to `/Users/davinci/code/fixed-ratio-trading/shared-config.json` (no copy/move into UI)
-- `scripts/remote_server_only/metaplex/manage_metaplex.sh`: ensure it reads `/Users/davinci/code/fixed-ratio-trading/shared-config.json` (no move)
+- `scripts/remote_build_and_deploy.sh`: ensure it outputs only to `/Users/davinci/code/fixed-ratio-trading/config.json` (no copy/move into UI)
+- `scripts/remote_server_only/metaplex/manage_metaplex.sh`: ensure it reads `/Users/davinci/code/fixed-ratio-trading/config.json` (no move)
 
 3) Update docs references (non-interactive sed examples, macOS):
 ```
@@ -168,7 +168,7 @@ LC_ALL=C find docs -type f -name "*.md" -print0 | xargs -0 sed -i '' 's#dashboar
 ## Validation Checklist
 - [ ] Build/serve the UI using `scripts/start_dashboard.sh` (now serving `html/`)
 - [ ] Verify `html/index.html` loads and consoles show no 404s for libs/assets
-- [ ] Confirm `html/shared-config.json` is read/written by deployment scripts
+- [ ] Confirm `html/config.json` is read/written by deployment scripts
 - [ ] Grep for remaining `dashboard/` references and review intentional ones only
 ```
 rg -n "dashboard/" | cat

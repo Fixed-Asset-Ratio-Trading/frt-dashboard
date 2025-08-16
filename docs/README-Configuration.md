@@ -43,28 +43,58 @@ Use the separate CLI application for all owner-level operations. The dashboard w
 
 All Fixed Ratio Trading dashboard JavaScript files now use a centralized configuration system for easy maintenance.
 
-### Configuration File
+### Configuration Files
 
-**Location**: `dashboard/config.js`
+**Main Config**: `html/config.json`  
+**JS Loader**: `html/config.js`
 
-This file contains all shared configuration values:
+The system uses a JSON configuration file (`config.json`) that is loaded by the JavaScript loader (`config.js`). This makes it easier to update configuration across environments.
 
-```javascript
-window.TRADING_CONFIG = {
-    rpcUrl: 'https://vmdevbox1.dcs1.cc',
-    programId: '4aeVqtWhrUh6wpX8acNj2hpWXKEQwxjA3PYb2sHhNyCn',
-    commitment: 'confirmed',
-    refreshInterval: 10000,
-    poolStateSeedPrefix: 'pool_state',
-    expectedWallet: '5GGZiMwU56rYL1L52q7Jz7ELkSN4iYyQqdv418hxPh6t',
-    version: '1.0.0',
-    lastUpdated: '2024-01-15'
-};
+#### Example config.json
+
+```json
+{
+  "solana": {
+    "rpcUrl": "http://192.168.2.88:8899",
+    "wsUrl": "ws://192.168.2.88:8900",
+    "commitment": "confirmed",
+    "disableRetryOnRateLimit": true
+  },
+  "program": {
+    "programId": "4aeVqtWhrUh6wpX8acNj2hpWXKEQwxjA3PYb2sHhNyCn",
+    "poolStateSeedPrefix": "pool_state"
+  },
+  "metaplex": {
+    "tokenMetadataProgramId": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+    "candyMachineProgramId": "cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ",
+    "auctionHouseProgramId": "hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk",
+    "lastUpdated": "2025-08-16",
+    "deploymentType": "remote"
+  },
+  "wallets": {
+    "expectedBackpackWallet": "5GGZiMwU56rYL1L52q7Jz7ELkSN4iYyQqdv418hxPh6t"
+  },
+  "dashboard": {
+    "refreshInterval": 10000
+  },
+  "version": "1.0.0",
+  "lastUpdated": "2025-08-16"
+}
 ```
+
+### Program IDs
+
+The Fixed Ratio Trading program is deployed on multiple Solana networks with the following Program IDs:
+
+| Network | Program ID |
+|---------|------------|
+| **LocalNet** | `4aeVqtWhrUh6wpX8acNj2hpWXKEQwxjA3PYb2sHhNyCn` |
+| **DevNet** | `9iqh69RqeG3RRrFBNZVoE77TMRvYboFUtC2sykaFVzB7` |
+| **MainNet** | `quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD` |
 
 ### Usage in JavaScript Files
 
-All JavaScript files now reference the global `CONFIG` object:
+All JavaScript files reference the global `CONFIG` or `TRADING_CONFIG` object:
 
 ```javascript
 // Initialize Solana connection
@@ -74,57 +104,70 @@ connection = new solanaWeb3.Connection(CONFIG.rpcUrl, CONFIG.commitment);
 const programId = new solanaWeb3.PublicKey(CONFIG.programId);
 ```
 
+### Loading Process
+
+1. The `config.js` file loads settings from `config.json`
+2. It then creates the global `TRADING_CONFIG` object
+3. For backward compatibility, it also creates an alias: `window.CONFIG = window.TRADING_CONFIG`
+
 ### Files Using Centralized Configuration
 
 - ✅ `dashboard.js` - Main dashboard
 - ✅ `pool-creation.js` - Pool creation interface  
 - ✅ `liquidity.js` - Liquidity management
+- ✅ `swap.js` - Token swapping interface
 - ✅ `token-creation.js` - Token creation interface
+- ✅ `data-service.js` - Data services and API handling
 
 ### HTML Files Updated
 
-All HTML files now include `config.js` before their respective JavaScript files:
+All HTML files include `config.js` before their respective JavaScript files:
 
 - ✅ `index.html`
 - ✅ `pool-creation.html`
 - ✅ `liquidity.html`
+- ✅ `swap.html`
 - ✅ `token-creation.html`
 
 ## Changing Configuration
 
 ### To Change RPC Endpoint
 
-Edit only `dashboard/config.js`:
+Edit only `html/config.json`:
 
-```javascript
-window.TRADING_CONFIG = {
-    rpcUrl: 'https://your-new-endpoint.com',  // ← Change this line only
-    // ... rest of config unchanged
-};
+```json
+{
+  "solana": {
+    "rpcUrl": "https://your-new-endpoint.com",  // ← Change this line only
+    "wsUrl": "ws://your-new-endpoint.com", 
+    "commitment": "confirmed",
+    "disableRetryOnRateLimit": true
+  },
+  // ... rest of config unchanged
+}
 ```
 
 ### To Change Program ID
 
-Edit only `dashboard/config.js`:
+Edit only `html/config.json` and use the appropriate Program ID for your target network:
 
-```javascript
-window.TRADING_CONFIG = {
-    programId: 'YourNewProgramIdHere',  // ← Change this line only
-    // ... rest of config unchanged
-};
+```json
+{
+  "program": {
+    "programId": "YourNewProgramIdHere",  // ← Change this line only
+    "poolStateSeedPrefix": "pool_state"
+  },
+  // ... rest of config unchanged
+}
 ```
 
-### To Change Both
+### Network-Specific Program IDs
 
-Edit only `dashboard/config.js`:
+When deploying to different networks, use the corresponding Program ID:
 
-```javascript
-window.TRADING_CONFIG = {
-    rpcUrl: 'https://your-new-endpoint.com',
-    programId: 'YourNewProgramIdHere',
-    // ... rest of config unchanged
-};
-```
+- **LocalNet**: `4aeVqtWhrUh6wpX8acNj2hpWXKEQwxjA3PYb2sHhNyCn`
+- **DevNet**: `9iqh69RqeG3RRrFBNZVoE77TMRvYboFUtC2sykaFVzB7`
+- **MainNet**: `quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD`
 
 ## Benefits
 
