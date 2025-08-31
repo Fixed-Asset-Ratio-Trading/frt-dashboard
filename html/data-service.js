@@ -421,10 +421,41 @@ class TradingDataService {
                 offset += 8;
                 return val;
             };
-            const pause_reason_code = readU8();
+            const readPubkey = () => {
+                const slice = bytes.slice(offset, offset + 32);
+                offset += 32;
+                return new solanaWeb3.PublicKey(slice).toString();
+            };
+
+            // v0.16.x+ SystemState structure (83 bytes):
+            // is_paused: bool (1)
+            // pause_timestamp: i64 (8)
+            // pause_reason_code: u8 (1)
+            // admin_authority: Pubkey (32)
+            // pending_admin_authority: Option<Pubkey> (1 + 32 if Some)
+            // admin_change_timestamp: i64 (8)
+
             const is_paused = readBool();
             const pause_timestamp = readI64();
-            return { pause_reason_code, is_paused, pause_timestamp };
+            const pause_reason_code = readU8();
+            const admin_authority = readPubkey();
+
+            let pending_admin_authority = null;
+            const hasPending = readU8(); // 0 = None, 1 = Some
+            if (hasPending === 1) {
+                pending_admin_authority = readPubkey();
+            }
+
+            const admin_change_timestamp = readI64();
+
+            return {
+                is_paused,
+                pause_timestamp,
+                pause_reason_code,
+                admin_authority,
+                pending_admin_authority,
+                admin_change_timestamp
+            };
         } catch (e) {
             console.warn('⚠️ Failed to parse SystemState:', e?.message);
             return null;

@@ -528,7 +528,7 @@ async function scanForPools() {
             const poolPromises = programAccounts.map(async (account) => {
                 try {
                     // Filter out accounts that are too small to be pools
-                    // Pool states should be 300+ bytes, Treasury ~120 bytes, SystemState ~10 bytes
+                    // Pool states should be 300+ bytes, Treasury ~120 bytes, SystemState ~83 bytes
                     if (account.account.data.length < 300) {
                         console.log(`⏭️ Skipping account ${account.pubkey.toString()} (${account.account.data.length} bytes) - too small for pool state`);
                         return null;
@@ -1348,6 +1348,9 @@ function generateSystemStateFields() {
             <div class="state-field"><strong>pause_timestamp:</strong><br><code>${systemState.pause_timestamp || 'N/A'}${systemState.pause_timestamp ? ` (${new Date(systemState.pause_timestamp * 1000).toLocaleString()})` : ''}</code></div>
             <div class="state-field"><strong>pause_reason_code:</strong><br><code>${systemState.pause_reason_code || 'N/A'}</code></div>
             <div class="state-field"><strong>pause_reason_decoded:</strong><br><code>${pauseReasonDecoded}</code></div>
+            <div class="state-field"><strong>admin_authority:</strong><br><code>${systemState.admin_authority || 'N/A'}</code></div>
+            <div class="state-field"><strong>pending_admin_authority:</strong><br><code>${systemState.pending_admin_authority || 'None'}</code></div>
+            <div class="state-field"><strong>admin_change_timestamp:</strong><br><code>${systemState.admin_change_timestamp || 'N/A'}${systemState.admin_change_timestamp ? ` (${new Date(systemState.admin_change_timestamp * 1000).toLocaleString()})` : ''}</code></div>
         </div>
     `;
 }
