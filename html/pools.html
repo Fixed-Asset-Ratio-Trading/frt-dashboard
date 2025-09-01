@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixed Ratio Trading - Pools</title>
+    <!-- Simple favicon to prevent 404 errors -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏊‍♂️</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        
+        .header-title {
+            color: #333;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .page-title {
+            color: #333;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .nav-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: 2px solid transparent;
+        }
+        
+        .nav-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .nav-btn.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .nav-btn.secondary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .back-btn {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .back-btn:hover {
+            background: #4b5563;
+        }
+        
+        .pools-section {
+            margin-top: 30px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #333;
+        }
+        
+        .refresh-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .refresh-btn:hover {
+            background: #2563eb;
+        }
+        
+        .refresh-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        /* Pool listbox styles */
+        .pool-listbox {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        
+        .pool-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        
+        .pool-item:last-child { 
+            border-bottom: none; 
+        }
+        
+        .pool-item:hover { 
+            background: #f8fafc; 
+        }
+        
+        .pool-item.selected { 
+            background: #eef2ff; 
+        }
+        
+        .pool-item .pair {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-right: 12px;
+        }
+        
+        .pool-item .ratio {
+            font-size: 13px;
+            color: #6b7280;
+            white-space: nowrap;
+        }
+        
+        .pool-action-bar {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .pool-action-bar .action-btn {
+            background: #9ca3af;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: not-allowed;
+            transition: all 0.2s ease;
+        }
+        
+        .pool-action-bar .action-btn.active {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            cursor: pointer;
+        }
+        
+        .pool-action-bar .action-btn.active.swap {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .last-updated {
+            color: #6b7280;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .pool-action-bar {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <img src="images/Fixed_Ratio_Trading_Logo.jpeg" alt="Fixed Ratio Trading Logo" class="logo">
+                <div class="header-title">Fixed Ratio Trading</div>
+            </div>
+            <div class="header-center">
+                <h1 class="page-title">Pools</h1>
+                <p class="subtitle">Manage and interact with Fixed Ratio Trading pools</p>
+            </div>
+            <div class="nav-buttons">
+                <a href="index.html" class="back-btn">← Back to Dashboard</a>
+
+                <button class="nav-btn primary" onclick="window.location.href='pool-creation.html'">
+                    🏊‍♂️ Create Pool
+                </button>
+            </div>
+        </div>
+        
+        <div id="error-container"></div>
+        
+        <div class="pools-section">
+            <div class="section-header">
+                <h2 class="section-title">🏊‍♂️ Available Pools</h2>
+                <button class="refresh-btn" onclick="refreshPools()">🔄 Refresh</button>
+            </div>
+
+            <div id="pools-container">
+                <div class="loading">
+                    <h3>🔍 Loading pools...</h3>
+                    <p>Fetching Fixed Ratio Trading pools from the blockchain</p>
+                </div>
+            </div>
+            
+            <div class="pool-action-bar">
+                <button id="pool-liquidity-btn" class="action-btn" onclick="goLiquiditySelected()">Add Liquidity</button>
+                <button id="pool-swap-btn" class="action-btn swap" onclick="goSwapSelected()">Swap Tokens</button>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Fixed Ratio Trading Pools | Local Solana Testnet</p>
+            <p class="last-updated">Last updated: <span id="last-updated">Never</span></p>
+        </div>
+    </div>
+
+    <script src="libs/solana-web3.min.js"></script>
+    <script src="config.js"></script>
+    <script src="data-service.js"></script>
+    <script src="utils.js"></script>
+    <script src="pools.js"></script>
+</body>
+</html>
