@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixed Ratio Trading - Admin Dashboard</title>
+    <!-- Simple favicon to prevent 404 errors -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        
+        .header-title {
+            color: #333;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .page-title {
+            color: #333;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .wallet-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .wallet-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .wallet-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .wallet-address {
+            font-family: 'Courier New', monospace;
+            background: #e5e7eb;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .wallet-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .admin-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .admin-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid;
+            transition: transform 0.3s ease;
+        }
+        
+        .admin-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .admin-card.system { border-left-color: #3b82f6; }
+        .admin-card.pool { border-left-color: #10b981; }
+        .admin-card.treasury { border-left-color: #f59e0b; }
+        
+        .admin-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .admin-card p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .admin-card .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .navigation {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .status-message.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .status-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .status-message.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .admin-sections {
+                grid-template-columns: 1fr;
+            }
+            
+            .wallet-info {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .wallet-actions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <img src="images/Fixed_Ratio_Trading_Logo.jpeg" alt="Fixed Ratio Trading Logo" class="logo">
+                <div class="header-title">Fixed Ratio Trading</div>
+            </div>
+            <div class="header-center">
+                <h1 class="page-title">Admin Dashboard</h1>
+                <p class="subtitle">Administrative Functions & System Management</p>
+            </div>
+            <div class="navigation">
+                <a href="index.html" class="btn btn-secondary">
+                    🏠 Main Dashboard
+                </a>
+            </div>
+        </div>
+        
+        <div id="status-container"></div>
+        
+        <!-- Wallet Connection Section -->
+        <div class="wallet-section">
+            <h3 style="margin-bottom: 15px; color: #333;">🔗 Wallet Connection</h3>
+            <div class="wallet-info">
+                <div class="wallet-status">
+                    <span id="wallet-status-indicator" style="font-size: 20px;">❌</span>
+                    <div>
+                        <div id="wallet-status-text" style="font-weight: 600; color: #666;">Not Connected</div>
+                        <div id="wallet-address-display" class="wallet-address" style="display: none;"></div>
+                    </div>
+                </div>
+                <div class="wallet-actions">
+                    <button id="connect-wallet-btn" class="btn btn-primary" onclick="connectWallet()">
+                        🔗 Connect Wallet
+                    </button>
+                    <button id="disconnect-wallet-btn" class="btn btn-danger" onclick="disconnectWallet()" style="display: none;">
+                        🚫 Disconnect
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Admin Sections -->
+        <div class="admin-sections">
+            <!-- System Administration -->
+            <div class="admin-card system">
+                <h3>⚙️ System Administration</h3>
+                <p>Core system-level controls including emergency pause/unpause and admin authority management.</p>
+                <a href="admin-system.html" class="btn btn-primary">
+                    🔧 System Controls
+                </a>
+            </div>
+            
+            <!-- Pool Administration -->
+            <div class="admin-card pool">
+                <h3>🏊‍♂️ Pool Administration</h3>
+                <p>Manage individual pool operations including pause/unpause, fee updates, and owner-only settings.</p>
+                <a href="admin-pool.html" class="btn btn-primary">
+                    🏊‍♂️ Pool Management
+                </a>
+            </div>
+            
+            <!-- Treasury Administration -->
+            <div class="admin-card treasury">
+                <h3>💰 Treasury Administration</h3>
+                <p>Handle treasury operations, fee consolidation, and withdrawal management with monitoring tools.</p>
+                <a href="admin-treasury.html" class="btn btn-primary">
+                    💰 Treasury Management
+                </a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Fixed Ratio Trading Admin Dashboard | Local Solana Testnet</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 10px;">
+                ⚠️ Admin functions require proper authority and should be used with caution
+            </p>
+        </div>
+    </div>
+
+    <script src="libs/solana-web3.min.js"></script>
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script src="admin-utils.js"></script>
+    <script>
+        // Global state
+        let wallet = null;
+        let connection = null;
+        
+        // Initialize admin dashboard
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🔧 Admin Dashboard initializing...');
+            await initializeAdminDashboard();
+        });
+        
+        /**
+         * Initialize the admin dashboard
+         */
+        async function initializeAdminDashboard() {
+            try {
+                // Wait for configuration
+                let configAttempts = 0;
+                while (!window.TRADING_CONFIG && configAttempts < 30) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    configAttempts++;
+                }
+                
+                if (!window.TRADING_CONFIG) {
+                    throw new Error('Configuration failed to load');
+                }
+                
+                window.CONFIG = window.TRADING_CONFIG;
+                console.log('✅ Configuration ready:', window.CONFIG.rpcUrl);
+                
+                // Initialize Solana connection
+                connection = new solanaWeb3.Connection(window.CONFIG.rpcUrl, {
+                    commitment: 'confirmed',
+                    disableRetryOnRateLimit: true
+                });
+                
+                // Check for existing wallet connection
+                await checkExistingWalletConnection();
+                
+                console.log('✅ Admin dashboard initialized successfully');
+            } catch (error) {
+                console.error('❌ Failed to initialize admin dashboard:', error);
+                showStatus('error', 'Failed to initialize admin dashboard: ' + error.message);
+            }
+        }
+        
+        /**
+         * Check for existing wallet connection
+         */
+        async function checkExistingWalletConnection() {
+            try {
+                // Check for any available wallet
+                const walletProvider = getAvailableWalletProvider();
+                if (walletProvider) {
+                    const response = await walletProvider.connect({ onlyIfTrusted: true });
+                    if (response.publicKey) {
+                        wallet = response.publicKey;
+                        updateWalletUI();
+                        showStatus('success', '✅ Wallet connected automatically');
+                    }
+                }
+            } catch (error) {
+                // No existing connection, that's fine
+                console.log('ℹ️ No existing wallet connection found');
+            }
+        }
+        
+        /**
+         * Get available wallet provider
+         */
+        function getAvailableWalletProvider() {
+            // Check for Phantom
+            if (window.solana && window.solana.isPhantom) {
+                return window.solana;
+            }
+            
+            // Check for Backpack
+            if (window.backpack) {
+                return window.backpack;
+            }
+            
+            // Check for Solflare
+            if (window.solflare) {
+                return window.solflare;
+            }
+            
+            // Check for Sollet
+            if (window.sollet) {
+                return window.sollet;
+            }
+            
+            // Check for Slope
+            if (window.Slope) {
+                return window.Slope;
+            }
+            
+            // Check for generic solana provider
+            if (window.solana) {
+                return window.solana;
+            }
+            
+            return null;
+        }
+        
+        /**
+         * Get wallet provider name
+         */
+        function getWalletProviderName(provider) {
+            if (provider && provider.isPhantom) return 'Phantom';
+            if (provider === window.backpack) return 'Backpack';
+            if (provider === window.solflare) return 'Solflare';
+            if (provider === window.sollet) return 'Sollet';
+            if (provider === window.Slope) return 'Slope';
+            return 'Unknown';
+        }
+        
+        /**
+         * Connect wallet
+         */
+        async function connectWallet() {
+            try {
+                const walletProvider = getAvailableWalletProvider();
+                
+                if (!walletProvider) {
+                    const availableWallets = [];
+                    if (window.solana) availableWallets.push('Phantom');
+                    if (window.backpack) availableWallets.push('Backpack');
+                    if (window.solflare) availableWallets.push('Solflare');
+                    if (window.sollet) availableWallets.push('Sollet');
+                    if (window.Slope) availableWallets.push('Slope');
+                    
+                    if (availableWallets.length === 0) {
+                        throw new Error('No Solana wallet found. Please install Phantom, Backpack, Solflare, Sollet, or Slope wallet.');
+                    } else {
+                        throw new Error(`No wallet provider available. Detected: ${availableWallets.join(', ')}. Please ensure your wallet is properly installed and unlocked.`);
+                    }
+                }
+                
+                const providerName = getWalletProviderName(walletProvider);
+                console.log(`🔗 Connecting to ${providerName} wallet...`);
+                
+                const response = await walletProvider.connect();
+                wallet = response.publicKey;
+                updateWalletUI();
+                showStatus('success', `✅ ${providerName} wallet connected successfully`);
+                
+                // Store connection in sessionStorage for other admin pages
+                sessionStorage.setItem('adminWalletConnected', 'true');
+                sessionStorage.setItem('adminWalletAddress', wallet.toString());
+                sessionStorage.setItem('adminWalletProvider', providerName);
+                
+            } catch (error) {
+                console.error('❌ Failed to connect wallet:', error);
+                showStatus('error', 'Failed to connect wallet: ' + error.message);
+            }
+        }
+        
+        /**
+         * Disconnect wallet
+         */
+        async function disconnectWallet() {
+            try {
+                const walletProvider = getAvailableWalletProvider();
+                if (walletProvider && walletProvider.disconnect) {
+                    await walletProvider.disconnect();
+                }
+                
+                wallet = null;
+                updateWalletUI();
+                showStatus('info', 'Wallet disconnected');
+                
+                // Clear session storage
+                sessionStorage.removeItem('adminWalletConnected');
+                sessionStorage.removeItem('adminWalletAddress');
+                sessionStorage.removeItem('adminWalletProvider');
+                
+            } catch (error) {
+                console.error('❌ Failed to disconnect wallet:', error);
+                showStatus('error', 'Failed to disconnect wallet: ' + error.message);
+            }
+        }
+        
+        /**
+         * Update wallet UI
+         */
+        function updateWalletUI() {
+            const statusIndicator = document.getElementById('wallet-status-indicator');
+            const statusText = document.getElementById('wallet-status-text');
+            const addressDisplay = document.getElementById('wallet-address-display');
+            const connectBtn = document.getElementById('connect-wallet-btn');
+            const disconnectBtn = document.getElementById('disconnect-wallet-btn');
+            
+            if (wallet) {
+                const walletProvider = sessionStorage.getItem('adminWalletProvider') || 'Unknown';
+                statusIndicator.textContent = '✅';
+                statusText.textContent = `Connected (${walletProvider})`;
+                addressDisplay.textContent = wallet.toString();
+                addressDisplay.style.display = 'block';
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-flex';
+            } else {
+                statusIndicator.textContent = '❌';
+                statusText.textContent = 'Not Connected';
+                addressDisplay.style.display = 'none';
+                connectBtn.style.display = 'inline-flex';
+                disconnectBtn.style.display = 'none';
+            }
+        }
+        
+        /**
+         * Show status message
+         */
+        function showStatus(type, message) {
+            const container = document.getElementById('status-container');
+            const className = type === 'success' ? 'status-message success' : 
+                             type === 'info' ? 'status-message info' : 'status-message error';
+            container.innerHTML = `<div class="${className}">${message}</div>`;
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    container.innerHTML = '';
+                }, 5000);
+            }
+        }
+        
+        // Export functions for global access
+        window.connectWallet = connectWallet;
+        window.disconnectWallet = disconnectWallet;
+        window.showStatus = showStatus;
+    </script>
+</body>
+</html>

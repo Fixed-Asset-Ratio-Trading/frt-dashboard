@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixed Ratio Trading - Pool Administration</title>
+    <!-- Simple favicon to prevent 404 errors -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏊‍♂️</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        
+        .header-title {
+            color: #333;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .page-title {
+            color: #333;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .navigation {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .admin-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #10b981;
+        }
+        
+        .admin-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .admin-section p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group .help-text {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .form-row-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .status-message.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .status-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .status-message.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .status-message.warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        
+        .pool-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .pool-info h4 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 6px;
+        }
+        
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .info-label {
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .info-value {
+            font-weight: 600;
+            color: #333;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .form-row,
+            .form-row-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <img src="images/Fixed_Ratio_Trading_Logo.jpeg" alt="Fixed Ratio Trading Logo" class="logo">
+                <div class="header-title">Fixed Ratio Trading</div>
+            </div>
+            <div class="header-center">
+                <h1 class="page-title">Pool Administration</h1>
+                <p class="subtitle">Individual Pool Management & Controls</p>
+            </div>
+            <div class="navigation">
+                <a href="admin.html" class="btn btn-secondary">
+                    🔧 Admin Dashboard
+                </a>
+                <a href="index.html" class="btn btn-secondary">
+                    🏠 Main Dashboard
+                </a>
+            </div>
+        </div>
+        
+        <div id="status-container"></div>
+        
+        <!-- Pool Selection Section -->
+        <div class="admin-section">
+            <h3>🎯 Pool Selection</h3>
+            <p>Select a pool to manage its settings and operations.</p>
+            
+            <div class="form-group">
+                <label for="pool-id">Pool ID (Pool State PDA Address)</label>
+                <input type="text" id="pool-id" placeholder="Enter pool state PDA address">
+                <div class="help-text">Enter the pool state PDA address to manage pool settings</div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="loadPoolInfo()">
+                🔍 Load Pool Information
+            </button>
+        </div>
+        
+        <!-- Pool Information Section -->
+        <div id="pool-info-section" class="admin-section" style="display: none;">
+            <h3>📊 Pool Information</h3>
+            <div id="pool-info-content" class="pool-info">
+                <!-- Pool information will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Pool Pause/Unpause Section -->
+        <div class="admin-section">
+            <h3>⏸️ Pool Pause/Unpause</h3>
+            <p>Pause or resume operations for the selected pool.</p>
+            
+            <div class="form-row">
+                <div>
+                    <button id="pool-pause-btn" class="btn btn-danger" onclick="executePoolPause()" style="width: 100%;" disabled>
+                        ⏸️ Pause Pool
+                    </button>
+                    <div class="help-text">Stops all operations for this pool</div>
+                </div>
+                <div>
+                    <button id="pool-unpause-btn" class="btn btn-success" onclick="executePoolUnpause()" style="width: 100%;" disabled>
+                        ▶️ Unpause Pool
+                    </button>
+                    <div class="help-text">Resumes all operations for this pool</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Fee Management Section -->
+        <div class="admin-section">
+            <h3>💰 Fee Management</h3>
+            <p>Update pool fee rates and trading parameters.</p>
+            
+            <div class="form-group">
+                <label for="new-fee-rate">New Fee Rate (Basis Points)</label>
+                <input type="number" id="new-fee-rate" min="0" max="50" placeholder="0-50 basis points">
+                <div class="help-text">Fee rate in basis points (0-50). 0 = 0%, 50 = 0.5%</div>
+            </div>
+            
+            <button id="update-fees-btn" class="btn btn-primary" onclick="executePoolUpdateFees()" disabled>
+                💰 Update Pool Fees
+            </button>
+        </div>
+        
+        <!-- Owner-Only Settings Section -->
+        <div class="admin-section">
+            <h3>🔒 Owner-Only Settings</h3>
+            <p>Control who can execute swaps in this pool.</p>
+            
+            <div class="form-row">
+                <div>
+                    <button id="enable-owner-only-btn" class="btn btn-warning" onclick="executeSwapSetOwnerOnly(true)" style="width: 100%;" disabled>
+                        🔒 Enable Owner-Only
+                    </button>
+                    <div class="help-text">Restrict swaps to pool owner only</div>
+                </div>
+                <div>
+                    <button id="disable-owner-only-btn" class="btn btn-success" onclick="executeSwapSetOwnerOnly(false)" style="width: 100%;" disabled>
+                        🔓 Disable Owner-Only
+                    </button>
+                    <div class="help-text">Allow public swaps</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Fixed Ratio Trading Pool Administration | Local Solana Testnet</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 10px;">
+                ⚠️ Pool operations require admin authority and affect user trading
+            </p>
+        </div>
+    </div>
+
+    <script src="libs/solana-web3.min.js"></script>
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script src="admin-utils.js"></script>
+    <script>
+        // Global state
+        let currentPoolId = null;
+        let poolInfo = null;
+        
+        // Initialize pool admin page
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🏊‍♂️ Pool Administration page initializing...');
+            await initializePoolAdmin();
+        });
+        
+        /**
+         * Initialize pool administration page
+         */
+        async function initializePoolAdmin() {
+            try {
+                // Initialize admin utilities
+                await window.AdminUtils.initializeAdminUtils();
+                
+                // Check wallet connection
+                const isConnected = sessionStorage.getItem('adminWalletConnected') === 'true';
+                const walletProvider = sessionStorage.getItem('adminWalletProvider');
+                if (!isConnected) {
+                    showStatus('warning', '⚠️ Wallet not connected. Please connect your wallet first.');
+                    return;
+                }
+                
+                console.log(`✅ Using ${walletProvider || 'Unknown'} wallet for pool administration`);
+                
+                console.log('✅ Pool administration page initialized');
+            } catch (error) {
+                console.error('❌ Failed to initialize pool admin:', error);
+                showStatus('error', 'Failed to initialize pool administration: ' + error.message);
+            }
+        }
+        
+        /**
+         * Load pool information
+         */
+        async function loadPoolInfo() {
+            try {
+                const poolId = document.getElementById('pool-id').value.trim();
+                
+                if (!poolId) {
+                    showStatus('error', 'Please enter a pool ID');
+                    return;
+                }
+                
+                if (!window.AdminUtils.validateSolanaAddress(poolId)) {
+                    showStatus('error', 'Invalid pool ID format');
+                    return;
+                }
+                
+                showStatus('info', '🔍 Loading pool information...');
+                
+                // For now, we'll simulate pool info loading
+                // In a real implementation, this would fetch from the blockchain
+                const mockPoolInfo = {
+                    address: poolId,
+                    tokenA: 'TS Token',
+                    tokenB: 'MST Token',
+                    ratio: '1:10000',
+                    isPaused: false,
+                    feeRate: 0,
+                    ownerOnly: false,
+                    liquidity: '1000 TS / 10000000 MST'
+                };
+                
+                poolInfo = mockPoolInfo;
+                currentPoolId = poolId;
+                
+                displayPoolInfo();
+                enablePoolControls();
+                
+                showStatus('success', '✅ Pool information loaded successfully');
+                
+            } catch (error) {
+                console.error('❌ Failed to load pool info:', error);
+                showStatus('error', 'Failed to load pool information: ' + error.message);
+            }
+        }
+        
+        /**
+         * Display pool information
+         */
+        function displayPoolInfo() {
+            if (!poolInfo) return;
+            
+            const content = `
+                <h4>Pool Details</h4>
+                <div class="info-item">
+                    <span class="info-label">Pool Address</span>
+                    <span class="info-value">${poolInfo.address}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Token Pair</span>
+                    <span class="info-value">${poolInfo.tokenA} / ${poolInfo.tokenB}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Exchange Ratio</span>
+                    <span class="info-value">${poolInfo.ratio}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Pool Status</span>
+                    <span class="info-value">${poolInfo.isPaused ? '⏸️ Paused' : '✅ Active'}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Fee Rate</span>
+                    <span class="info-value">${poolInfo.feeRate} basis points</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Owner-Only Swaps</span>
+                    <span class="info-value">${poolInfo.ownerOnly ? '🔒 Enabled' : '🔓 Disabled'}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Liquidity</span>
+                    <span class="info-value">${poolInfo.liquidity}</span>
+                </div>
+            `;
+            
+            document.getElementById('pool-info-content').innerHTML = content;
+            document.getElementById('pool-info-section').style.display = 'block';
+        }
+        
+        /**
+         * Enable pool control buttons
+         */
+        function enablePoolControls() {
+            document.getElementById('pool-pause-btn').disabled = false;
+            document.getElementById('pool-unpause-btn').disabled = false;
+            document.getElementById('update-fees-btn').disabled = false;
+            document.getElementById('enable-owner-only-btn').disabled = false;
+            document.getElementById('disable-owner-only-btn').disabled = false;
+        }
+        
+        /**
+         * Execute pool pause
+         */
+        async function executePoolPause() {
+            try {
+                if (!currentPoolId) {
+                    showStatus('error', 'Please select a pool first');
+                    return;
+                }
+                
+                if (!confirm(`Are you sure you want to pause this pool?\n\nPool: ${currentPoolId}\n\nThis will stop all operations for this specific pool.`)) {
+                    return;
+                }
+                
+                const pauseBtn = document.getElementById('pool-pause-btn');
+                pauseBtn.disabled = true;
+                pauseBtn.textContent = '⏳ Pausing Pool...';
+                
+                showStatus('info', '⏸️ Executing pool pause...');
+                
+                const signature = await window.AdminUtils.executePoolPause(currentPoolId);
+                
+                showStatus('success', `✅ Pool paused successfully! Transaction: ${signature.slice(0, 8)}...`);
+                
+                // Refresh pool info
+                setTimeout(() => loadPoolInfo(), 2000);
+                
+            } catch (error) {
+                console.error('❌ Pool pause failed:', error);
+                showStatus('error', 'Pool pause failed: ' + error.message);
+            } finally {
+                const pauseBtn = document.getElementById('pool-pause-btn');
+                pauseBtn.disabled = false;
+                pauseBtn.textContent = '⏸️ Pause Pool';
+            }
+        }
+        
+        /**
+         * Execute pool unpause
+         */
+        async function executePoolUnpause() {
+            try {
+                if (!currentPoolId) {
+                    showStatus('error', 'Please select a pool first');
+                    return;
+                }
+                
+                if (!confirm(`Are you sure you want to unpause this pool?\n\nPool: ${currentPoolId}\n\nThis will resume all operations for this specific pool.`)) {
+                    return;
+                }
+                
+                const unpauseBtn = document.getElementById('pool-unpause-btn');
+                unpauseBtn.disabled = true;
+                unpauseBtn.textContent = '⏳ Unpausing Pool...';
+                
+                showStatus('info', '▶️ Executing pool unpause...');
+                
+                const signature = await window.AdminUtils.executePoolUnpause(currentPoolId);
+                
+                showStatus('success', `✅ Pool unpaused successfully! Transaction: ${signature.slice(0, 8)}...`);
+                
+                // Refresh pool info
+                setTimeout(() => loadPoolInfo(), 2000);
+                
+            } catch (error) {
+                console.error('❌ Pool unpause failed:', error);
+                showStatus('error', 'Pool unpause failed: ' + error.message);
+            } finally {
+                const unpauseBtn = document.getElementById('pool-unpause-btn');
+                unpauseBtn.disabled = false;
+                unpauseBtn.textContent = '▶️ Unpause Pool';
+            }
+        }
+        
+        /**
+         * Execute pool fee update
+         */
+        async function executePoolUpdateFees() {
+            try {
+                if (!currentPoolId) {
+                    showStatus('error', 'Please select a pool first');
+                    return;
+                }
+                
+                const newFeeRate = parseInt(document.getElementById('new-fee-rate').value);
+                
+                if (isNaN(newFeeRate) || newFeeRate < 0 || newFeeRate > 50) {
+                    showStatus('error', 'Fee rate must be between 0 and 50 basis points');
+                    return;
+                }
+                
+                if (!confirm(`Are you sure you want to update the pool fee rate?\n\nPool: ${currentPoolId}\nNew Fee Rate: ${newFeeRate} basis points (${(newFeeRate / 100).toFixed(2)}%)`)) {
+                    return;
+                }
+                
+                const updateBtn = document.getElementById('update-fees-btn');
+                updateBtn.disabled = true;
+                updateBtn.textContent = '⏳ Updating Fees...';
+                
+                showStatus('info', '💰 Executing pool fee update...');
+                
+                const signature = await window.AdminUtils.executePoolUpdateFees(currentPoolId, newFeeRate);
+                
+                showStatus('success', `✅ Pool fees updated successfully! Transaction: ${signature.slice(0, 8)}...`);
+                
+                // Clear form
+                document.getElementById('new-fee-rate').value = '';
+                
+                // Refresh pool info
+                setTimeout(() => loadPoolInfo(), 2000);
+                
+            } catch (error) {
+                console.error('❌ Pool fee update failed:', error);
+                showStatus('error', 'Pool fee update failed: ' + error.message);
+            } finally {
+                const updateBtn = document.getElementById('update-fees-btn');
+                updateBtn.disabled = false;
+                updateBtn.textContent = '💰 Update Pool Fees';
+            }
+        }
+        
+        /**
+         * Execute swap owner-only setting
+         */
+        async function executeSwapSetOwnerOnly(ownerOnly) {
+            try {
+                if (!currentPoolId) {
+                    showStatus('error', 'Please select a pool first');
+                    return;
+                }
+                
+                const action = ownerOnly ? 'enable' : 'disable';
+                const setting = ownerOnly ? 'Owner-Only' : 'Public';
+                
+                if (!confirm(`Are you sure you want to ${action} owner-only swaps?\n\nPool: ${currentPoolId}\nSetting: ${setting} swaps`)) {
+                    return;
+                }
+                
+                const enableBtn = document.getElementById('enable-owner-only-btn');
+                const disableBtn = document.getElementById('disable-owner-only-btn');
+                
+                if (ownerOnly) {
+                    enableBtn.disabled = true;
+                    enableBtn.textContent = '⏳ Enabling...';
+                } else {
+                    disableBtn.disabled = true;
+                    disableBtn.textContent = '⏳ Disabling...';
+                }
+                
+                showStatus('info', `🔒 ${ownerOnly ? 'Enabling' : 'Disabling'} owner-only swaps...`);
+                
+                const signature = await window.AdminUtils.executeSwapSetOwnerOnly(currentPoolId, ownerOnly);
+                
+                showStatus('success', `✅ Owner-only setting updated successfully! Transaction: ${signature.slice(0, 8)}...`);
+                
+                // Refresh pool info
+                setTimeout(() => loadPoolInfo(), 2000);
+                
+            } catch (error) {
+                console.error('❌ Owner-only setting failed:', error);
+                showStatus('error', 'Owner-only setting failed: ' + error.message);
+            } finally {
+                const enableBtn = document.getElementById('enable-owner-only-btn');
+                const disableBtn = document.getElementById('disable-owner-only-btn');
+                
+                enableBtn.disabled = false;
+                enableBtn.textContent = '🔒 Enable Owner-Only';
+                disableBtn.disabled = false;
+                disableBtn.textContent = '🔓 Disable Owner-Only';
+            }
+        }
+        
+        /**
+         * Show status message
+         */
+        function showStatus(type, message) {
+            const container = document.getElementById('status-container');
+            const className = type === 'success' ? 'status-message success' : 
+                             type === 'info' ? 'status-message info' : 
+                             type === 'warning' ? 'status-message warning' : 'status-message error';
+            container.innerHTML = `<div class="${className}">${message}</div>`;
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    container.innerHTML = '';
+                }, 5000);
+            }
+        }
+        
+        // Export functions for global access
+        window.loadPoolInfo = loadPoolInfo;
+        window.executePoolPause = executePoolPause;
+        window.executePoolUnpause = executePoolUnpause;
+        window.executePoolUpdateFees = executePoolUpdateFees;
+        window.executeSwapSetOwnerOnly = executeSwapSetOwnerOnly;
+        window.showStatus = showStatus;
+    </script>
+</body>
+</html>
