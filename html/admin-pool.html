@@ -564,7 +564,22 @@
                             isPaused: realPoolData.flagsDecoded?.liquidity_paused || realPoolData.flagsDecoded?.swaps_paused || false,
                             feeRate: realPoolData.swapContractFee || 0,
                             ownerOnly: realPoolData.flagsDecoded?.withdrawal_protection || false,
-                            liquidity: `${realPoolData.tokenALiquidity || 0} ${realPoolData.tokenASymbol || 'Token A'} / ${realPoolData.tokenBLiquidity || 0} ${realPoolData.tokenBSymbol || 'Token B'}`
+                            liquidity: `${realPoolData.tokenALiquidity || 0} ${realPoolData.tokenASymbol || 'Token A'} / ${realPoolData.tokenBLiquidity || 0} ${realPoolData.tokenBSymbol || 'Token B'}`,
+                            // Fee tracking information
+                            collectedLiquidityFees: realPoolData.collectedLiquidityFees || 0,
+                            collectedSwapContractFees: realPoolData.collectedSwapContractFees || 0,
+                            totalSolFeesCollected: realPoolData.totalSolFeesCollected || 0,
+                            // Consolidation management
+                            lastConsolidationTimestamp: realPoolData.lastConsolidationTimestamp || 0,
+                            totalConsolidations: realPoolData.totalConsolidations || 0,
+                            totalFeesConsolidated: realPoolData.totalFeesConsolidated || 0,
+                            // Pool limits
+                            maxSwapAmount: realPoolData.maxSwapAmount || 0,
+                            minSwapAmount: realPoolData.minSwapAmount || 0,
+                            maxDepositAmount: realPoolData.maxDepositAmount || 0,
+                            minDepositAmount: realPoolData.minDepositAmount || 0,
+                            maxWithdrawalAmount: realPoolData.maxWithdrawalAmount || 0,
+                            minWithdrawalAmount: realPoolData.minWithdrawalAmount || 0
                         };
                         
                         currentPoolId = poolId;
@@ -628,6 +643,24 @@
         function displayPoolInfo() {
             if (!poolInfo) return;
             
+            // Helper function to format SOL amounts
+            const formatSolAmount = (lamports) => {
+                if (lamports === 0) return '0 SOL';
+                return `${(lamports / 1e9).toFixed(9)} SOL`;
+            };
+            
+            // Helper function to format timestamp
+            const formatTimestamp = (timestamp) => {
+                if (timestamp === 0) return 'Never';
+                return new Date(timestamp * 1000).toLocaleString();
+            };
+            
+            // Helper function to format amounts with commas
+            const formatAmount = (amount) => {
+                if (amount === 0) return '0';
+                return amount.toLocaleString();
+            };
+            
             const content = `
                 <h4>Pool Details</h4>
                 <div class="info-item">
@@ -657,6 +690,60 @@
                 <div class="info-item">
                     <span class="info-label">Liquidity</span>
                     <span class="info-value">${poolInfo.liquidity}</span>
+                </div>
+                
+                <h4 style="margin-top: 20px; margin-bottom: 15px;">💰 Fee Tracking</h4>
+                <div class="info-item">
+                    <span class="info-label">Collected Liquidity Fees</span>
+                    <span class="info-value">${formatSolAmount(poolInfo.collectedLiquidityFees)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Collected Swap Contract Fees</span>
+                    <span class="info-value">${formatSolAmount(poolInfo.collectedSwapContractFees)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Total SOL Fees Collected</span>
+                    <span class="info-value">${formatSolAmount(poolInfo.totalSolFeesCollected)}</span>
+                </div>
+                
+                <h4 style="margin-top: 20px; margin-bottom: 15px;">🔄 Consolidation Management</h4>
+                <div class="info-item">
+                    <span class="info-label">Last Consolidation</span>
+                    <span class="info-value">${formatTimestamp(poolInfo.lastConsolidationTimestamp)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Total Consolidations</span>
+                    <span class="info-value">${formatAmount(poolInfo.totalConsolidations)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Total Fees Consolidated</span>
+                    <span class="info-value">${formatSolAmount(poolInfo.totalFeesConsolidated)}</span>
+                </div>
+                
+                <h4 style="margin-top: 20px; margin-bottom: 15px;">⚖️ Pool Limits</h4>
+                <div class="info-item">
+                    <span class="info-label">Max Swap Amount</span>
+                    <span class="info-value">${poolInfo.maxSwapAmount === 0 ? 'No Limit' : formatAmount(poolInfo.maxSwapAmount)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Min Swap Amount</span>
+                    <span class="info-value">${formatAmount(poolInfo.minSwapAmount)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Max Deposit Amount</span>
+                    <span class="info-value">${poolInfo.maxDepositAmount === 0 ? 'No Limit' : formatAmount(poolInfo.maxDepositAmount)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Min Deposit Amount</span>
+                    <span class="info-value">${formatAmount(poolInfo.minDepositAmount)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Max Withdrawal Amount</span>
+                    <span class="info-value">${poolInfo.maxWithdrawalAmount === 0 ? 'No Limit' : formatAmount(poolInfo.maxWithdrawalAmount)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Min Withdrawal Amount</span>
+                    <span class="info-value">${formatAmount(poolInfo.minWithdrawalAmount)}</span>
                 </div>
             `;
             
