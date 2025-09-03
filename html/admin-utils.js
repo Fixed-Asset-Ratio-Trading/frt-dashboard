@@ -191,7 +191,31 @@ async function createAndSendTransaction(instructions, signers = []) {
             throw new Error('No wallet provider available');
         }
         
-        const signedTransaction = await walletProvider.signTransaction(transaction);
+        console.log('🔍 Wallet provider:', walletProvider);
+        console.log('🔍 Transaction fee payer:', transaction.feePayer.toString());
+        console.log('🔍 Transaction instructions:', transaction.instructions.length);
+        
+        // Try to sign with the specific wallet method
+        let signedTransaction;
+        try {
+            // Force refresh the page to clear any caching issues
+            console.log('🔍 About to sign transaction with wallet provider:', walletProvider);
+            console.log('🔍 Transaction fee payer:', transaction.feePayer.toString());
+            console.log('🔍 Transaction signers:', transaction.signatures.map(sig => sig.publicKey?.toString()));
+            
+            // Use the wallet's signTransaction method
+            signedTransaction = await walletProvider.signTransaction(transaction);
+            
+            console.log('✅ Transaction signed successfully');
+        } catch (signError) {
+            console.error('❌ Signing error:', signError);
+            console.error('❌ Signing error details:', {
+                message: signError.message,
+                stack: signError.stack,
+                name: signError.name
+            });
+            throw new Error(`Transaction signing failed: ${signError.message}`);
+        }
         
         // Send transaction
         const signature = await adminConnection.sendRawTransaction(signedTransaction.serialize());
@@ -528,24 +552,70 @@ async function executeAdminChange(newAdminAddress) {
             throw new Error('Invalid Solana address format');
         }
         
+        // Check if trying to change to the same admin (this cancels pending changes)
+        if (newAdminAddress === adminWallet.toString()) {
+            console.log('🔄 Cancelling pending admin change by setting same admin address');
+            // This is allowed - it cancels any pending admin change
+        }
+        
         console.log('👤 Executing admin change to:', newAdminAddress);
+        console.log('🔍 Current admin wallet:', adminWallet.toString());
+        console.log('🔍 New admin address:', newAdminAddress);
+        
+        // Verify that the connected wallet matches the admin wallet
+        const walletProvider = getWalletProvider();
+        if (walletProvider && walletProvider.publicKey) {
+            const connectedAddress = walletProvider.publicKey.toString();
+            console.log('🔍 Connected wallet address:', connectedAddress);
+            console.log('🔍 Admin wallet address:', adminWallet.toString());
+            console.log('🔍 Addresses match:', connectedAddress === adminWallet.toString());
+            
+            if (connectedAddress !== adminWallet.toString()) {
+                throw new Error(`Connected wallet (${connectedAddress}) does not match admin wallet (${adminWallet.toString()})`);
+            }
+        }
         
         const systemStatePDA = getSystemStatePDA();
+        const programDataAccount = await getProgramDataAccount();
         const newAdminPubkey = new solanaWeb3.PublicKey(newAdminAddress);
+        
+        console.log('🔍 System State PDA:', systemStatePDA.toString());
+        console.log('🔍 Program Data Account:', programDataAccount.toString());
         
         // Create instruction data: discriminator (1 byte) + new_admin (32 bytes)
         const instructionData = new Uint8Array(33);
-        instructionData[0] = 3; // Discriminator for process_admin_change
+        instructionData[0] = 24; // Discriminator for process_admin_change
         instructionData.set(newAdminPubkey.toBytes(), 1); // New admin address
+        
+        console.log('🔍 Instruction data:', Array.from(instructionData));
         
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
                 { pubkey: adminWallet, isSigner: true, isWritable: true },
-                { pubkey: systemStatePDA, isSigner: false, isWritable: true }
+                { pubkey: systemStatePDA, isSigner: false, isWritable: true },
+                { pubkey: programDataAccount, isSigner: false, isWritable: false }
             ],
             programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
             data: instructionData,
         });
+        
+        console.log('🔍 Instruction keys:', instruction.keys.map(k => ({
+            pubkey: k.pubkey.toString(),
+            isSigner: k.isSigner,
+            isWritable: k.isWritable
+        })));
+        
+        // Try a different approach - create transaction manually
+        console.log('🔍 Creating transaction manually...');
+        
+        const { blockhash } = await adminConnection.getLatestBlockhash();
+        const transaction = new solanaWeb3.Transaction();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = adminWallet;
+        transaction.add(instruction);
+        
+        console.log('🔍 Transaction created, fee payer:', transaction.feePayer.toString());
+        console.log('🔍 Transaction instructions:', transaction.instructions.length);
         
         const signature = await createAndSendTransaction([instruction]);
         console.log('✅ Admin change executed successfully:', signature);

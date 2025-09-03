@@ -427,6 +427,7 @@
 
     <script src="libs/solana-web3.min.js"></script>
     <script src="config.js"></script>
+    <script src="data-service.js"></script>
     <script src="utils.js"></script>
     <script src="admin-utils.js"></script>
     <script>
@@ -438,7 +439,43 @@
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('🏊‍♂️ Pool Administration page initializing...');
             await initializePoolAdmin();
+            
+            // Check for pool ID in URL parameters
+            await handleUrlPoolId();
         });
+        
+        /**
+         * Handle pool ID from URL parameters
+         */
+        async function handleUrlPoolId() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const poolId = urlParams.get('pool');
+                
+                if (poolId) {
+                    console.log('🔍 Pool ID found in URL:', poolId);
+                    
+                    // Populate the pool ID text box
+                    const poolIdInput = document.getElementById('pool-id');
+                    if (poolIdInput) {
+                        poolIdInput.value = poolId;
+                    }
+                    
+                    // Validate the pool ID format
+                    if (!window.AdminUtils.validateSolanaAddress(poolId)) {
+                        showStatus('error', 'Invalid pool ID format in URL');
+                        return;
+                    }
+                    
+                    // Automatically load pool information
+                    showStatus('info', '🔍 Loading pool information from URL...');
+                    await loadPoolInfoFromId(poolId);
+                }
+            } catch (error) {
+                console.error('❌ Error handling URL pool ID:', error);
+                showStatus('error', 'Failed to process pool ID from URL: ' + error.message);
+            }
+        }
         
         /**
          * Initialize pool administration page
@@ -466,6 +503,95 @@
         }
         
         /**
+         * Load pool information from a specific pool ID
+         */
+        async function loadPoolInfoFromId(poolId) {
+            try {
+                if (!poolId) {
+                    showStatus('error', 'No pool ID provided');
+                    return;
+                }
+                
+                if (!window.AdminUtils.validateSolanaAddress(poolId)) {
+                    showStatus('error', 'Invalid pool ID format');
+                    return;
+                }
+                
+                showStatus('info', '🔍 Loading pool information...');
+                
+                // Try to fetch real pool data from blockchain
+                try {
+                    // Initialize data service if needed
+                    if (!window.TradingDataService || !window.TradingDataService.connection) {
+                        // We need to initialize the data service
+                        if (window.TRADING_CONFIG) {
+                            const connection = new solanaWeb3.Connection(window.TRADING_CONFIG.rpcUrl, {
+                                commitment: 'confirmed'
+                            });
+                            await window.TradingDataService.initialize(window.TRADING_CONFIG, connection);
+                        }
+                    }
+                    
+                    // Try to get real pool data
+                    const realPoolData = await window.TradingDataService.getPool(poolId, 'rpc');
+                    
+                    if (realPoolData) {
+                        // Use centralized display functions for consistent ratio calculation
+                        let displayInfo = null;
+                        try {
+                            if (window.TokenDisplayUtils && realPoolData.ratioADecimal !== undefined && realPoolData.ratioBDecimal !== undefined) {
+                                console.log('🔍 Pool data for ratio calculation:', {
+                                    ratioANumerator: realPoolData.ratioANumerator,
+                                    ratioBDenominator: realPoolData.ratioBDenominator,
+                                    ratioADecimal: realPoolData.ratioADecimal,
+                                    ratioBDecimal: realPoolData.ratioBDecimal,
+                                    tokenASymbol: realPoolData.tokenASymbol,
+                                    tokenBSymbol: realPoolData.tokenBSymbol
+                                });
+                                displayInfo = window.TokenDisplayUtils.getCentralizedDisplayInfo(realPoolData);
+                                console.log('🔍 Calculated display info:', displayInfo);
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ Error getting centralized display info:', e);
+                        }
+                        
+                        // Convert real pool data to our format using proper ratio calculation
+                        poolInfo = {
+                            address: poolId,
+                            tokenA: realPoolData.tokenASymbol || 'Unknown Token A',
+                            tokenB: realPoolData.tokenBSymbol || 'Unknown Token B',
+                            ratio: displayInfo ? displayInfo.ratioDisplay : `${realPoolData.ratioADecimal || 1}:${realPoolData.ratioBDecimal || 1}`,
+                            isPaused: realPoolData.flagsDecoded?.liquidity_paused || realPoolData.flagsDecoded?.swaps_paused || false,
+                            feeRate: realPoolData.swapContractFee || 0,
+                            ownerOnly: realPoolData.flagsDecoded?.withdrawal_protection || false,
+                            liquidity: `${realPoolData.tokenALiquidity || 0} ${realPoolData.tokenASymbol || 'Token A'} / ${realPoolData.tokenBLiquidity || 0} ${realPoolData.tokenBSymbol || 'Token B'}`
+                        };
+                        
+                        currentPoolId = poolId;
+                        displayPoolInfo();
+                        enablePoolControls();
+                        showStatus('success', '✅ Pool information loaded successfully');
+                        return;
+                    }
+                } catch (blockchainError) {
+                    console.warn('⚠️ Could not fetch real pool data:', blockchainError);
+                    // Fall through to mock data for development
+                }
+                
+                // If we get here, the pool was not found or there was an error
+                // Still populate the text box but show error
+                showStatus('error', 'Pool not found. Please verify the pool ID is correct.');
+                
+                // Set current pool ID for potential retry
+                currentPoolId = poolId;
+                
+            } catch (error) {
+                console.error('❌ Failed to load pool info:', error);
+                showStatus('error', 'Failed to load pool information: ' + error.message);
+            }
+        }
+        
+        /**
          * Load pool information
          */
         async function loadPoolInfo() {
@@ -477,33 +603,18 @@
                     return;
                 }
                 
+                // Validate format before updating URL
                 if (!window.AdminUtils.validateSolanaAddress(poolId)) {
                     showStatus('error', 'Invalid pool ID format');
                     return;
                 }
                 
-                showStatus('info', '🔍 Loading pool information...');
+                // Update the URL so it can be bookmarked/shared
+                const newUrl = `${window.location.pathname}?pool=${encodeURIComponent(poolId)}`;
+                window.history.replaceState({}, '', newUrl);
                 
-                // For now, we'll simulate pool info loading
-                // In a real implementation, this would fetch from the blockchain
-                const mockPoolInfo = {
-                    address: poolId,
-                    tokenA: 'TS Token',
-                    tokenB: 'MST Token',
-                    ratio: '1:10000',
-                    isPaused: false,
-                    feeRate: 0,
-                    ownerOnly: false,
-                    liquidity: '1000 TS / 10000000 MST'
-                };
-                
-                poolInfo = mockPoolInfo;
-                currentPoolId = poolId;
-                
-                displayPoolInfo();
-                enablePoolControls();
-                
-                showStatus('success', '✅ Pool information loaded successfully');
+                // Use the centralized pool loading function
+                await loadPoolInfoFromId(poolId);
                 
             } catch (error) {
                 console.error('❌ Failed to load pool info:', error);

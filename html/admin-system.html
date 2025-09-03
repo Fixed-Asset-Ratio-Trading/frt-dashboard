@@ -342,6 +342,10 @@
                     <span class="status-label">Admin Last Updated</span>
                     <span class="status-value" id="last-updated">Never</span>
                 </div>
+                <div class="status-item" id="admin-change-countdown-item" style="display: none;">
+                    <span class="status-label">Admin Change Countdown</span>
+                    <span class="status-value" id="admin-change-countdown">-</span>
+                </div>
             </div>
             <button class="btn btn-primary" onclick="refreshSystemStatus()">
                 🔄 Refresh Status
@@ -442,6 +446,9 @@
                 // Load initial system status
                 await refreshSystemStatus();
                 
+                // Start countdown timer
+                startCountdownTimer();
+                
                 console.log('✅ System administration page initialized');
             } catch (error) {
                 console.error('❌ Failed to initialize system admin:', error);
@@ -475,7 +482,9 @@
                     pauseTimestamp: pauseStatus.timestamp,
                     adminAuthority: pauseStatus.adminAuthority || 'Unknown',
                     pendingAdmin: pauseStatus.pendingAdminAuthority || 'None',
-                    lastUpdated: pauseStatus.adminChangeTimestamp || 'N/A'
+                    lastUpdated: pauseStatus.adminChangeTimestamp || 'N/A',
+                    adminChangeTimestamp: pauseStatus.adminChangeTimestamp,
+                    pendingAdminAuthority: pauseStatus.pendingAdminAuthority
                 };
                 
                 systemState = realSystemState;
@@ -544,6 +553,78 @@
             }
             
             document.getElementById('last-updated').textContent = systemState.lastUpdated;
+            
+            // Update admin change countdown
+            updateAdminChangeCountdown();
+        }
+        
+        /**
+         * Update admin change countdown
+         */
+        function updateAdminChangeCountdown() {
+            const countdownItem = document.getElementById('admin-change-countdown-item');
+            const countdownElement = document.getElementById('admin-change-countdown');
+            
+            if (!systemState || !systemState.pendingAdminAuthority || systemState.pendingAdminAuthority === 'None') {
+                countdownItem.style.display = 'none';
+                return;
+            }
+            
+            if (!systemState.adminChangeTimestamp || systemState.adminChangeTimestamp === 'N/A') {
+                countdownItem.style.display = 'none';
+                return;
+            }
+            
+            // Parse the timestamp (assuming it's in format like "12/19/2024, 2:30:15 PM")
+            const adminChangeDate = new Date(systemState.adminChangeTimestamp);
+            if (isNaN(adminChangeDate.getTime())) {
+                countdownItem.style.display = 'none';
+                return;
+            }
+            
+            // Calculate 72 hours from admin change timestamp
+            const timelockEndTime = new Date(adminChangeDate.getTime() + (72 * 60 * 60 * 1000));
+            const now = new Date();
+            const remainingTime = timelockEndTime.getTime() - now.getTime();
+            
+            if (remainingTime <= 0) {
+                countdownElement.textContent = 'Ready for completion';
+                countdownElement.className = 'status-value online';
+                countdownItem.style.display = 'flex';
+            } else {
+                // Format remaining time
+                const days = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((remainingTime % (1000 * 60)) / 1000);
+                
+                let countdownText = '';
+                if (days > 0) {
+                    countdownText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+                } else if (hours > 0) {
+                    countdownText = `${hours}h ${minutes}m ${seconds}s`;
+                } else if (minutes > 0) {
+                    countdownText = `${minutes}m ${seconds}s`;
+                } else {
+                    countdownText = `${seconds}s`;
+                }
+                
+                countdownElement.textContent = countdownText;
+                countdownElement.className = 'status-value offline';
+                countdownItem.style.display = 'flex';
+            }
+        }
+        
+        /**
+         * Start countdown timer
+         */
+        function startCountdownTimer() {
+            // Update countdown every second
+            setInterval(() => {
+                if (systemState) {
+                    updateAdminChangeCountdown();
+                }
+            }, 1000);
         }
         
         /**
@@ -646,7 +727,7 @@
                 // Clear form
                 document.getElementById('new-admin-address').value = '';
                 
-                // Refresh status
+                // Refresh status to show updated countdown
                 setTimeout(() => refreshSystemStatus(), 2000);
                 
             } catch (error) {

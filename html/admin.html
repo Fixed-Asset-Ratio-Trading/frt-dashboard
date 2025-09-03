@@ -326,7 +326,20 @@
             <div class="admin-card pool">
                 <h3>🏊‍♂️ Pool Administration</h3>
                 <p>Manage individual pool operations including pause/unpause, fee updates, and owner-only settings.</p>
-                <a href="admin-pool.html" class="btn btn-primary">
+                
+                <!-- Pool ID Input Section -->
+                <div style="margin-bottom: 15px;">
+                    <input type="text" id="pool-id-input" placeholder="Enter Pool ID (e.g., C515Prm8hFj1ob7DiLJWxe1cygrX6wPDyathYNmoS28L)" 
+                           style="width: 100%; padding: 8px 12px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 14px; margin-bottom: 10px;">
+                    <button onclick="loadPoolInformation()" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">
+                        🔍 Load Pool Information
+                    </button>
+                    <button onclick="testPoolNavigation()" class="btn btn-secondary" style="width: 100%; margin-bottom: 10px;">
+                        🧪 Test with Sample Pool ID
+                    </button>
+                </div>
+                
+                <a href="admin-pool.html" class="btn btn-secondary">
                     🏊‍♂️ Pool Management
                 </a>
             </div>
@@ -579,10 +592,54 @@
             }
         }
         
+        /**
+         * Test pool navigation with a sample pool ID
+         */
+        function testPoolNavigation() {
+            const samplePoolId = 'C515Prm8hFj1ob7DiLJWxe1cygrX6wPDyathYNmoS28L';
+            document.getElementById('pool-id-input').value = samplePoolId;
+            console.log('🧪 Test button clicked, using sample pool ID:', samplePoolId);
+            loadPoolInformation();
+        }
+        
+        /**
+         * Load pool information by navigating to admin-pool.html with pool ID
+         */
+        function loadPoolInformation() {
+            try {
+                const poolId = document.getElementById('pool-id-input').value.trim();
+                console.log('🔍 Load Pool Information clicked, pool ID:', poolId);
+                
+                if (!poolId) {
+                    showStatus('error', 'Please enter a pool ID');
+                    return;
+                }
+                
+                // Basic validation for Solana address format
+                if (poolId.length < 32 || poolId.length > 44) {
+                    showStatus('error', 'Invalid pool ID format. Pool ID should be a valid Solana address.');
+                    return;
+                }
+                
+                // Create the URL with pool ID
+                const targetUrl = `admin-pool.html?pool=${encodeURIComponent(poolId)}`;
+                console.log('🔍 Navigating to:', targetUrl);
+                
+                // Navigate to admin-pool.html with pool ID in URL
+                window.location.href = targetUrl;
+                
+            } catch (error) {
+                console.error('❌ Failed to load pool information:', error);
+                showStatus('error', 'Failed to load pool information: ' + error.message);
+            }
+        }
+        
         // Export functions for global access
         window.connectWallet = connectWallet;
         window.disconnectWallet = disconnectWallet;
         window.showStatus = showStatus;
+        window.loadPoolInformation = loadPoolInformation;
+        window.testPoolNavigation = testPoolNavigation;
     </script>
 </body>
 </html>
