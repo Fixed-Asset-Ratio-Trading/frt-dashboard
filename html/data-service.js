@@ -295,7 +295,8 @@ class TradingDataService {
                 liquidity_paused: (flags & 2) !== 0,
                 swaps_paused: (flags & 4) !== 0,
                 withdrawal_protection: (flags & 8) !== 0,
-                single_lp_token_mode: (flags & 16) !== 0
+                single_lp_token_mode: (flags & 16) !== 0,
+                swap_owner_only: (flags & 32) !== 0
             };
             
             return {

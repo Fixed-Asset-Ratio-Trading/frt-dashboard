@@ -154,7 +154,7 @@ function getPoolStatePDA(tokenAMint, tokenBMint, ratioA, ratioB) {
     
     const [poolStatePDA] = solanaWeb3.PublicKey.findProgramAddressSync(
         [
-            new TextEncoder().encode("pool_state_v2"),
+            new TextEncoder().encode("pool_state"),
             mints[0].toBuffer(),
             mints[1].toBuffer(),
             ratioABytes,
@@ -632,6 +632,44 @@ async function executeAdminChange(newAdminAddress) {
  */
 
 /**
+ * Validate pool state account
+ */
+async function validatePoolStateAccount(poolId) {
+    try {
+        console.log('🔍 DEBUG: validatePoolStateAccount called with:', poolId);
+        if (!validateSolanaAddress(poolId)) {
+            throw new Error('Invalid pool ID format');
+        }
+        
+        const poolStatePDA = new solanaWeb3.PublicKey(poolId);
+        console.log('🔍 Validating pool state account:', poolId);
+        
+        const poolAccountInfo = await adminConnection.getAccountInfo(poolStatePDA);
+        
+        if (!poolAccountInfo) {
+            throw new Error(`Pool state account does not exist: ${poolId}`);
+        }
+        
+        if (!poolAccountInfo.owner.equals(new solanaWeb3.PublicKey(window.CONFIG.programId))) {
+            throw new Error(`Pool state account is not owned by our program. Owner: ${poolAccountInfo.owner.toString()}, Expected: ${window.CONFIG.programId}`);
+        }
+        
+        console.log('✅ Pool state account validation passed');
+        console.log('🔍 Account size:', poolAccountInfo.data.length, 'bytes');
+        console.log('🔍 Account owner:', poolAccountInfo.owner.toString());
+        
+        return {
+            accountInfo: poolAccountInfo,
+            poolStatePDA: poolStatePDA
+        };
+        
+    } catch (error) {
+        console.error('❌ Pool state account validation failed:', error);
+        throw error;
+    }
+}
+
+/**
  * Execute pool pause
  */
 async function executePoolPause(poolId) {
@@ -645,22 +683,49 @@ async function executePoolPause(poolId) {
         }
         
         console.log('⏸️ Executing pool pause for:', poolId);
+        console.log('🔍 DEBUG: Starting pool pause with validation...');
         
         const systemStatePDA = getSystemStatePDA();
-        const poolStatePDA = new solanaWeb3.PublicKey(poolId);
+        console.log('🔍 DEBUG: System state PDA:', systemStatePDA.toString());
         
-        // Create instruction data: discriminator (1 byte)
-        const instructionData = new Uint8Array([4]); // Discriminator for process_pool_pause
+        // Validate system state PDA
+        console.log('🔍 DEBUG: Validating system state PDA...');
+        const systemAccountInfo = await adminConnection.getAccountInfo(systemStatePDA);
+        if (!systemAccountInfo) {
+            throw new Error(`System state account does not exist: ${systemStatePDA.toString()}`);
+        }
+        console.log('🔍 DEBUG: System state account exists, size:', systemAccountInfo.data.length, 'bytes');
+        
+        // Validate that the pool state account exists and is owned by our program
+        console.log('🔍 DEBUG: About to validate pool state account...');
+        const { poolStatePDA } = await validatePoolStateAccount(poolId);
+        console.log('🔍 DEBUG: Pool state PDA validated:', poolStatePDA.toString());
+        
+        // Create instruction data: discriminator (1 byte) + pause_flags (1 byte)
+        // According to source code: PausePool { pause_flags: u8 }
+        const pauseFlags = 3; // PAUSE_FLAG_ALL - pause all operations
+        const instructionData = new Uint8Array([19, pauseFlags]); // Discriminator 19 + pause flags
+        console.log('🔍 DEBUG: Instruction data:', Array.from(instructionData));
+        console.log('🔍 DEBUG: Using discriminator 19 for PausePool with pause_flags:', pauseFlags);
+        
+        // Use the correct account structure from source code: Pool State PDA is writable
+        const programDataAccount = await getProgramDataAccount();
         
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
-                { pubkey: adminWallet, isSigner: true, isWritable: true },
-                { pubkey: systemStatePDA, isSigner: false, isWritable: false },
-                { pubkey: poolStatePDA, isSigner: false, isWritable: true }
+                { pubkey: adminWallet, isSigner: true, isWritable: true },           // [0] Admin Authority Signer
+                { pubkey: systemStatePDA, isSigner: false, isWritable: true },      // [1] System State PDA (writable per API)
+                { pubkey: poolStatePDA, isSigner: false, isWritable: true },        // [2] Pool State PDA (WRITABLE - updated by program)
+                { pubkey: programDataAccount, isSigner: false, isWritable: false }  // [3] Program Data Account
             ],
             programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
             data: instructionData,
         });
+        
+        console.log('🔍 Pool pause instruction created with accounts:');
+        console.log('  - Admin wallet (signer):', adminWallet.toString());
+        console.log('  - System state PDA:', systemStatePDA.toString());
+        console.log('  - Pool state PDA:', poolStatePDA.toString());
         
         const signature = await createAndSendTransaction([instruction]);
         console.log('✅ Pool pause executed successfully:', signature);
@@ -668,6 +733,18 @@ async function executePoolPause(poolId) {
         
     } catch (error) {
         console.error('❌ Pool pause failed:', error);
+        
+        // Provide more helpful error messages
+        if (error.message.includes('Pool state account does not exist')) {
+            throw new Error(`Pool not found: ${poolId}. Please verify this is a valid pool state PDA address.`);
+        } else if (error.message.includes('not owned by our program')) {
+            throw new Error(`Invalid pool account: ${poolId}. This account is not owned by the Fixed Ratio Trading program.`);
+        } else if (error.message.includes('Failed to serialize or deserialize account data')) {
+            throw new Error(`Account data corruption: ${poolId}. The pool state account data is invalid or corrupted.`);
+        } else if (error.message.includes('Unauthorized')) {
+            throw new Error('Pool pause requires Admin Authority. Your wallet does not have the required permissions.');
+        }
+        
         throw error;
     }
 }
@@ -688,20 +765,35 @@ async function executePoolUnpause(poolId) {
         console.log('▶️ Executing pool unpause for:', poolId);
         
         const systemStatePDA = getSystemStatePDA();
-        const poolStatePDA = new solanaWeb3.PublicKey(poolId);
         
-        // Create instruction data: discriminator (1 byte)
-        const instructionData = new Uint8Array([5]); // Discriminator for process_pool_unpause
+        // Validate that the pool state account exists and is owned by our program
+        const { poolStatePDA } = await validatePoolStateAccount(poolId);
+        
+        // Create instruction data: discriminator (1 byte) + unpause_flags (1 byte)
+        // According to source code: UnpausePool { unpause_flags: u8 }
+        const unpauseFlags = 3; // PAUSE_FLAG_ALL - unpause all operations
+        const instructionData = new Uint8Array([20, unpauseFlags]); // Discriminator 20 + unpause flags
+        console.log('🔍 DEBUG: Instruction data:', Array.from(instructionData));
+        console.log('🔍 DEBUG: Using discriminator 20 for UnpausePool with unpause_flags:', unpauseFlags);
+        
+        // Use the correct account structure from source code: Pool State PDA is writable
+        const programDataAccount = await getProgramDataAccount();
         
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
-                { pubkey: adminWallet, isSigner: true, isWritable: true },
-                { pubkey: systemStatePDA, isSigner: false, isWritable: false },
-                { pubkey: poolStatePDA, isSigner: false, isWritable: true }
+                { pubkey: adminWallet, isSigner: true, isWritable: true },           // [0] Admin Authority Signer
+                { pubkey: systemStatePDA, isSigner: false, isWritable: true },      // [1] System State PDA (writable per API)
+                { pubkey: poolStatePDA, isSigner: false, isWritable: true },        // [2] Pool State PDA (WRITABLE - updated by program)
+                { pubkey: programDataAccount, isSigner: false, isWritable: false }  // [3] Program Data Account
             ],
             programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
             data: instructionData,
         });
+        
+        console.log('🔍 Pool unpause instruction created with accounts:');
+        console.log('  - Admin wallet (signer):', adminWallet.toString());
+        console.log('  - System state PDA:', systemStatePDA.toString());
+        console.log('  - Pool state PDA:', poolStatePDA.toString());
         
         const signature = await createAndSendTransaction([instruction]);
         console.log('✅ Pool unpause executed successfully:', signature);
@@ -709,6 +801,18 @@ async function executePoolUnpause(poolId) {
         
     } catch (error) {
         console.error('❌ Pool unpause failed:', error);
+        
+        // Provide more helpful error messages
+        if (error.message.includes('Pool state account does not exist')) {
+            throw new Error(`Pool not found: ${poolId}. Please verify this is a valid pool state PDA address.`);
+        } else if (error.message.includes('not owned by our program')) {
+            throw new Error(`Invalid pool account: ${poolId}. This account is not owned by the Fixed Ratio Trading program.`);
+        } else if (error.message.includes('Failed to serialize or deserialize account data')) {
+            throw new Error(`Account data corruption: ${poolId}. The pool state account data is invalid or corrupted.`);
+        } else if (error.message.includes('Unauthorized')) {
+            throw new Error('Pool unpause requires Admin Authority. Your wallet does not have the required permissions.');
+        }
+        
         throw error;
     }
 }
@@ -716,7 +820,7 @@ async function executePoolUnpause(poolId) {
 /**
  * Execute pool fee update
  */
-async function executePoolUpdateFees(poolId, newFeeRate) {
+async function executePoolUpdateFees(poolId, updateFlags = 3, liquidityFeeLamports = null, swapFeeLamports = null) {
     try {
         if (!adminWallet) {
             throw new Error('Wallet not connected');
@@ -726,23 +830,40 @@ async function executePoolUpdateFees(poolId, newFeeRate) {
             throw new Error('Invalid pool ID format');
         }
         
-        if (typeof newFeeRate !== 'number' || newFeeRate < 0 || newFeeRate > 50) {
-            throw new Error('Fee rate must be between 0 and 50 basis points');
+        // Validate flags and fee values
+        if (typeof updateFlags !== 'number' || updateFlags < 1 || updateFlags > 3) {
+            throw new Error('Invalid fee update flags. Use 1(liquidity), 2(swap), or 3(both).');
+        }
+        if ((updateFlags & 1) && (typeof liquidityFeeLamports !== 'number' || liquidityFeeLamports < 0)) {
+            throw new Error('Invalid liquidity fee (lamports)');
+        }
+        if ((updateFlags & 2) && (typeof swapFeeLamports !== 'number' || swapFeeLamports < 0)) {
+            throw new Error('Invalid swap fee (lamports)');
         }
         
-        console.log('💰 Executing pool fee update for:', poolId, 'to', newFeeRate, 'basis points');
+        console.log('💰 Executing pool fee update for:', poolId, 'flags:', updateFlags, 'liquidityFeeLamports:', liquidityFeeLamports, 'swapFeeLamports:', swapFeeLamports);
         
         const systemStatePDA = getSystemStatePDA();
         const poolStatePDA = new solanaWeb3.PublicKey(poolId);
         
-        // Create instruction data: discriminator (1 byte) + fee_rate (1 byte)
-        const instructionData = new Uint8Array([6, newFeeRate]);
+        // Create instruction data per API: discriminator (22) + flags (u8) + liquidity_fee (u64) + swap_fee (u64)
+        const instructionData = new Uint8Array(1 + 1 + 8 + 8);
+        instructionData[0] = 22; // UpdatePoolFees
+        instructionData[1] = updateFlags & 0x03; // flags
+        const view = new DataView(instructionData.buffer);
+        // liquidity fee (u64 little-endian) at byte offset 2
+        const liquidity = BigInt((updateFlags & 1) ? liquidityFeeLamports : 0);
+        view.setBigUint64(2, liquidity, true);
+        // swap fee (u64 little-endian) at byte offset 10
+        const swap = BigInt((updateFlags & 2) ? swapFeeLamports : 0);
+        view.setBigUint64(10, swap, true);
         
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
                 { pubkey: adminWallet, isSigner: true, isWritable: true },
                 { pubkey: systemStatePDA, isSigner: false, isWritable: false },
-                { pubkey: poolStatePDA, isSigner: false, isWritable: true }
+                { pubkey: poolStatePDA, isSigner: false, isWritable: true },
+                { pubkey: await getProgramDataAccount(), isSigner: false, isWritable: false }
             ],
             programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
             data: instructionData,
@@ -761,7 +882,7 @@ async function executePoolUpdateFees(poolId, newFeeRate) {
 /**
  * Execute swap set owner only
  */
-async function executeSwapSetOwnerOnly(poolId, ownerOnly = true) {
+async function executeSwapSetOwnerOnly(poolId, ownerOnly = true, designatedOwner = null) {
     try {
         if (!adminWallet) {
             throw new Error('Wallet not connected');
@@ -771,19 +892,54 @@ async function executeSwapSetOwnerOnly(poolId, ownerOnly = true) {
             throw new Error('Invalid pool ID format');
         }
         
-        console.log('🔒 Executing swap set owner only for:', poolId, 'to', ownerOnly);
+        // If enabling owner-only mode, designated owner is required
+        if (ownerOnly && !designatedOwner) {
+            throw new Error('Designated owner address is required when enabling owner-only mode');
+        }
+        
+        // If designated owner is provided, validate it
+        if (designatedOwner && !validateSolanaAddress(designatedOwner)) {
+            throw new Error('Invalid designated owner address format');
+        }
+        
+        console.log('🔒 Executing swap set owner only for:', poolId, 'to', ownerOnly, 'with designated owner:', designatedOwner);
+
+        // Preflight: ensure system is initialized
+        const isInitialized = await checkSystemInitialized();
+        if (!isInitialized) {
+            throw new Error('System not initialized. Please initialize the program first.');
+        }
         
         const systemStatePDA = getSystemStatePDA();
-        const poolStatePDA = new solanaWeb3.PublicKey(poolId);
+        // Validate that the pool state account exists and is owned by our program
+        const { poolStatePDA, accountInfo: poolAccountInfo } = await validatePoolStateAccount(poolId);
+
+        // v0.16.x+ tolerates size variations; do not hard-fail on legacy sizes
         
-        // Create instruction data: discriminator (1 byte) + owner_only (1 byte)
-        const instructionData = new Uint8Array([7, ownerOnly ? 1 : 0]);
+        // Create instruction data per API (discriminator 21)
+        // Layout: [21, enable_restriction:u8, designated_owner:Pubkey]
+        const instructionData = new Uint8Array(34); // 1 + 1 + 32
+        instructionData[0] = 21; // SetSwapOwnerOnly
+        
+        // Borsh serialization for SetSwapOwnerOnly struct
+        instructionData[1] = ownerOnly ? 1 : 0; // enable_restriction (bool)
+        
+        if (designatedOwner) {
+            // Add designated owner address (32 bytes)
+            const designatedOwnerBytes = new solanaWeb3.PublicKey(designatedOwner).toBuffer();
+            instructionData.set(designatedOwnerBytes, 2);
+        } else {
+            // For disable, we can use a zero address or the current admin wallet
+            const zeroAddress = new solanaWeb3.PublicKey('11111111111111111111111111111111').toBuffer();
+            instructionData.set(zeroAddress, 2);
+        }
         
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
                 { pubkey: adminWallet, isSigner: true, isWritable: true },
                 { pubkey: systemStatePDA, isSigner: false, isWritable: false },
-                { pubkey: poolStatePDA, isSigner: false, isWritable: true }
+                { pubkey: poolStatePDA, isSigner: false, isWritable: true },
+                { pubkey: await getProgramDataAccount(), isSigner: false, isWritable: false }
             ],
             programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
             data: instructionData,
@@ -812,8 +968,8 @@ async function getTreasuryInfo() {
         
         const mainTreasuryPDA = getMainTreasuryPDA();
         
-        // Create instruction data: discriminator (1 byte)
-        const instructionData = new Uint8Array([8]); // Discriminator for process_treasury_get_info
+        // Create instruction data: discriminator (1 byte) - GetTreasuryInfo = 16
+        const instructionData = new Uint8Array([16]);
         
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
@@ -882,14 +1038,14 @@ async function executeTreasuryWithdrawFees(amount = null) {
         if (amount !== null) {
             // Create 9-byte array: 1 byte discriminator + 8 bytes amount
             instructionData = new Uint8Array(9);
-            instructionData[0] = 9; // Discriminator for process_treasury_withdraw_fees
+            instructionData[0] = 15; // WithdrawTreasuryFees
             
             // Convert amount to little-endian bytes
             const amountView = new DataView(instructionData.buffer, 1);
             amountView.setBigUint64(0, BigInt(amount), true); // little-endian
         } else {
             // Just discriminator for maximum amount
-            instructionData = new Uint8Array([9]);
+            instructionData = new Uint8Array([15]);
         }
         
         const instruction = new solanaWeb3.TransactionInstruction({
@@ -929,8 +1085,8 @@ async function executeConsolidatePoolFees(poolId) {
         const mainTreasuryPDA = getMainTreasuryPDA();
         const poolStatePDA = new solanaWeb3.PublicKey(poolId);
         
-        // Create instruction data: discriminator (1 byte)
-        const instructionData = new Uint8Array([10]); // Discriminator for process_consolidate_pool_fees
+        // Create instruction data: discriminator (1 byte) ConsolidatePoolFees = 17
+        const instructionData = new Uint8Array([17]);
         
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
@@ -989,6 +1145,43 @@ async function discoverAllPools() {
     }
 }
 
+/**
+ * Get pool information for debugging
+ */
+async function getPoolDebugInfo(poolId) {
+    try {
+        console.log('🔍 Getting debug info for pool:', poolId);
+        
+        const poolStatePDA = new solanaWeb3.PublicKey(poolId);
+        const accountInfo = await adminConnection.getAccountInfo(poolStatePDA);
+        
+        if (!accountInfo) {
+            return {
+                exists: false,
+                error: 'Account does not exist'
+            };
+        }
+        
+        return {
+            exists: true,
+            address: poolId,
+            owner: accountInfo.owner.toString(),
+            isOwnedByProgram: accountInfo.owner.equals(new solanaWeb3.PublicKey(window.CONFIG.programId)),
+            dataLength: accountInfo.data.length,
+            executable: accountInfo.executable,
+            rentEpoch: accountInfo.rentEpoch,
+            lamports: accountInfo.lamports
+        };
+        
+    } catch (error) {
+        console.error('❌ Failed to get pool debug info:', error);
+        return {
+            exists: false,
+            error: error.message
+        };
+    }
+}
+
 // Export functions for global access
 if (typeof window !== 'undefined') {
     window.AdminUtils = {
@@ -1004,6 +1197,7 @@ if (typeof window !== 'undefined') {
         executeSystemUnpause,
         executeAdminChange,
         // Pool functions
+        validatePoolStateAccount,
         executePoolPause,
         executePoolUnpause,
         executePoolUpdateFees,
@@ -1013,6 +1207,7 @@ if (typeof window !== 'undefined') {
         executeTreasuryWithdrawFees,
         executeConsolidatePoolFees,
         discoverAllPools,
+        getPoolDebugInfo,
         // Status functions
         checkSystemPauseStatus,
         checkSystemInitialized

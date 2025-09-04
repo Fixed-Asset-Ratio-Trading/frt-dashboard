@@ -346,9 +346,13 @@
                 <div class="help-text">Enter the pool state PDA address to manage pool settings</div>
             </div>
             
-            <button class="btn btn-primary" onclick="loadPoolInfo()">
-                🔍 Load Pool Information
-            </button>
+            <div class="form-row">
+                <div>
+                    <button class="btn btn-primary" onclick="loadPoolInfo()">
+                        🔍 Load Pool Information
+                    </button>
+                </div>
+            </div>
         </div>
         
         <!-- Pool Information Section -->
@@ -383,12 +387,30 @@
         <!-- Fee Management Section -->
         <div class="admin-section">
             <h3>💰 Fee Management</h3>
-            <p>Update pool fee rates and trading parameters.</p>
+            <p>View and update pool liquidity and swap fee rates (basis points).</p>
             
-            <div class="form-group">
-                <label for="new-fee-rate">New Fee Rate (Basis Points)</label>
-                <input type="number" id="new-fee-rate" min="0" max="50" placeholder="0-50 basis points">
-                <div class="help-text">Fee rate in basis points (0-50). 0 = 0%, 50 = 0.5%</div>
+            <div class="pool-info" style="margin-bottom: 15px;">
+                <div class="info-item">
+                    <span class="info-label">Current Liquidity Fee</span>
+                    <span class="info-value" id="current-liquidity-fee">—</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Current Swap Fee</span>
+                    <span class="info-value" id="current-swap-fee">—</span>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="new-liquidity-fee">New Liquidity Fee (SOL)</label>
+                    <input type="text" id="new-liquidity-fee" placeholder="e.g. 0.0013">
+                    <div class="help-text">Enter SOL amount (e.g., 0.0013). Leave blank to keep current.</div>
+                </div>
+                <div class="form-group">
+                    <label for="new-swap-fee">New Swap Fee (SOL)</label>
+                    <input type="text" id="new-swap-fee" placeholder="e.g. 0.000125">
+                    <div class="help-text">Enter SOL amount (e.g., 0.000125). Leave blank to keep current.</div>
+                </div>
             </div>
             
             <button id="update-fees-btn" class="btn btn-primary" onclick="executePoolUpdateFees()" disabled>
@@ -401,12 +423,18 @@
             <h3>🔒 Owner-Only Settings</h3>
             <p>Control who can execute swaps in this pool.</p>
             
+            <div class="form-group">
+                <label for="designated-owner">Designated Owner Address</label>
+                <input type="text" id="designated-owner" placeholder="Enter designated owner address">
+                <div class="help-text">Address that will be allowed to execute swaps when owner-only mode is enabled</div>
+            </div>
+            
             <div class="form-row">
                 <div>
                     <button id="enable-owner-only-btn" class="btn btn-warning" onclick="executeSwapSetOwnerOnly(true)" style="width: 100%;" disabled>
                         🔒 Enable Owner-Only
                     </button>
-                    <div class="help-text">Restrict swaps to pool owner only</div>
+                    <div class="help-text">Restrict swaps to designated owner only</div>
                 </div>
                 <div>
                     <button id="disable-owner-only-btn" class="btn btn-success" onclick="executeSwapSetOwnerOnly(false)" style="width: 100%;" disabled>
@@ -429,7 +457,7 @@
     <script src="config.js"></script>
     <script src="data-service.js"></script>
     <script src="utils.js"></script>
-    <script src="admin-utils.js"></script>
+    <script src="admin-utils.js?v=6"></script>
     <script>
         // Global state
         let currentPoolId = null;
@@ -563,7 +591,8 @@
                             ratio: displayInfo ? displayInfo.ratioDisplay : `${realPoolData.ratioADecimal || 1}:${realPoolData.ratioBDecimal || 1}`,
                             isPaused: realPoolData.flagsDecoded?.liquidity_paused || realPoolData.flagsDecoded?.swaps_paused || false,
                             feeRate: realPoolData.swapContractFee || 0,
-                            ownerOnly: realPoolData.flagsDecoded?.withdrawal_protection || false,
+                            ownerOnly: realPoolData.flagsDecoded?.swap_owner_only || false,
+                            owner: realPoolData.owner || 'Unknown',
                             liquidity: `${realPoolData.tokenALiquidity || 0} ${realPoolData.tokenASymbol || 'Token A'} / ${realPoolData.tokenBLiquidity || 0} ${realPoolData.tokenBSymbol || 'Token B'}`,
                             // Fee tracking information
                             collectedLiquidityFees: realPoolData.collectedLiquidityFees || 0,
@@ -645,7 +674,7 @@
             
             // Helper function to format SOL amounts
             const formatSolAmount = (lamports) => {
-                if (lamports === 0) return '0 SOL';
+                if (!Number.isFinite(lamports) || lamports === 0) return '0 SOL';
                 return `${(lamports / 1e9).toFixed(9)} SOL`;
             };
             
@@ -680,12 +709,20 @@
                     <span class="info-value">${poolInfo.isPaused ? '⏸️ Paused' : '✅ Active'}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Fee Rate</span>
-                    <span class="info-value">${poolInfo.feeRate} basis points</span>
+                    <span class="info-label">Liquidity Fee</span>
+                    <span class="info-value">${formatSolAmount(poolInfo.contractLiquidityFee ?? 0)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Swap Fee</span>
+                    <span class="info-value">${formatSolAmount(poolInfo.swapContractFee ?? 0)}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Owner-Only Swaps</span>
                     <span class="info-value">${poolInfo.ownerOnly ? '🔒 Enabled' : '🔓 Disabled'}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Pool Owner</span>
+                    <span class="info-value">${poolInfo.owner || 'Unknown'}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Liquidity</span>
@@ -749,6 +786,18 @@
             
             document.getElementById('pool-info-content').innerHTML = content;
             document.getElementById('pool-info-section').style.display = 'block';
+            
+            // Populate the designated owner input with current pool owner
+            const designatedOwnerInput = document.getElementById('designated-owner');
+            if (designatedOwnerInput && poolInfo.owner && poolInfo.owner !== 'Unknown') {
+                designatedOwnerInput.value = poolInfo.owner;
+            }
+
+            // Update current fees display
+            const curLiq = document.getElementById('current-liquidity-fee');
+            const curSwap = document.getElementById('current-swap-fee');
+            if (curLiq) curLiq.textContent = formatSolAmount(poolInfo.contractLiquidityFee ?? 0);
+            if (curSwap) curSwap.textContent = formatSolAmount(poolInfo.swapContractFee ?? 0);
         }
         
         /**
@@ -846,14 +895,42 @@
                     return;
                 }
                 
-                const newFeeRate = parseInt(document.getElementById('new-fee-rate').value);
-                
-                if (isNaN(newFeeRate) || newFeeRate < 0 || newFeeRate > 50) {
-                    showStatus('error', 'Fee rate must be between 0 and 50 basis points');
+                const liqInput = document.getElementById('new-liquidity-fee');
+                const swapInput = document.getElementById('new-swap-fee');
+                // Parse SOL inputs → lamports (u64)
+                const parseSolToLamports = (str) => {
+                    const v = String(str).trim();
+                    if (v === '') return null;
+                    const num = Number(v);
+                    if (!Number.isFinite(num) || num < 0) return NaN;
+                    return Math.round(num * 1e9);
+                };
+
+                const liqVal = liqInput ? parseSolToLamports(liqInput.value) : null;
+                const swapVal = swapInput ? parseSolToLamports(swapInput.value) : null;
+
+                if (liqVal === null && swapVal === null) {
+                    showStatus('error', 'Enter at least one fee to update');
                     return;
                 }
+
+                if (liqVal !== null && (!Number.isInteger(liqVal) || liqVal < 0)) {
+                    showStatus('error', 'Invalid liquidity fee (SOL)');
+                    return;
+                }
+                if (swapVal !== null && (!Number.isInteger(swapVal) || swapVal < 0)) {
+                    showStatus('error', 'Invalid swap fee (SOL)');
+                    return;
+                }
+
+                let flags = 0;
+                if (liqVal !== null) flags |= 1; // liquidity
+                if (swapVal !== null) flags |= 2; // swap
                 
-                if (!confirm(`Are you sure you want to update the pool fee rate?\n\nPool: ${currentPoolId}\nNew Fee Rate: ${newFeeRate} basis points (${(newFeeRate / 100).toFixed(2)}%)`)) {
+                const confirmMsg = `Are you sure you want to update fees?\n\nPool: ${currentPoolId}` +
+                    (liqVal !== null ? `\nNew Liquidity Fee: ${formatSolAmount(liqVal)}` : '') +
+                    (swapVal !== null ? `\nNew Swap Fee: ${formatSolAmount(swapVal)}` : '');
+                if (!confirm(confirmMsg)) {
                     return;
                 }
                 
@@ -863,12 +940,13 @@
                 
                 showStatus('info', '💰 Executing pool fee update...');
                 
-                const signature = await window.AdminUtils.executePoolUpdateFees(currentPoolId, newFeeRate);
+                const signature = await window.AdminUtils.executePoolUpdateFees(currentPoolId, flags, liqVal, swapVal);
                 
                 showStatus('success', `✅ Pool fees updated successfully! Transaction: ${signature.slice(0, 8)}...`);
                 
                 // Clear form
-                document.getElementById('new-fee-rate').value = '';
+                if (liqInput) liqInput.value = '';
+                if (swapInput) swapInput.value = '';
                 
                 // Refresh pool info
                 setTimeout(() => loadPoolInfo(), 2000);
@@ -893,10 +971,21 @@
                     return;
                 }
                 
+                // Get designated owner address
+                const designatedOwnerInput = document.getElementById('designated-owner');
+                const designatedOwner = designatedOwnerInput ? designatedOwnerInput.value.trim() : null;
+                
+                // Validate designated owner if enabling
+                if (ownerOnly && (!designatedOwner || !window.AdminUtils.validateSolanaAddress(designatedOwner))) {
+                    showStatus('error', 'Please enter a valid designated owner address');
+                    return;
+                }
+                
                 const action = ownerOnly ? 'enable' : 'disable';
                 const setting = ownerOnly ? 'Owner-Only' : 'Public';
+                const ownerInfo = ownerOnly ? `\nDesignated Owner: ${designatedOwner}` : '';
                 
-                if (!confirm(`Are you sure you want to ${action} owner-only swaps?\n\nPool: ${currentPoolId}\nSetting: ${setting} swaps`)) {
+                if (!confirm(`Are you sure you want to ${action} owner-only swaps?\n\nPool: ${currentPoolId}\nSetting: ${setting} swaps${ownerInfo}`)) {
                     return;
                 }
                 
@@ -913,7 +1002,7 @@
                 
                 showStatus('info', `🔒 ${ownerOnly ? 'Enabling' : 'Disabling'} owner-only swaps...`);
                 
-                const signature = await window.AdminUtils.executeSwapSetOwnerOnly(currentPoolId, ownerOnly);
+                const signature = await window.AdminUtils.executeSwapSetOwnerOnly(currentPoolId, ownerOnly, designatedOwner);
                 
                 showStatus('success', `✅ Owner-only setting updated successfully! Transaction: ${signature.slice(0, 8)}...`);
                 
@@ -952,13 +1041,289 @@
             }
         }
         
+        /**
+         * Debug pool address information
+         */
+        async function debugPoolInfo() {
+            try {
+                const poolId = document.getElementById('pool-id').value.trim();
+                
+                if (!poolId) {
+                    showStatus('error', 'Please enter a pool ID');
+                    return;
+                }
+                
+                if (!window.AdminUtils.validateSolanaAddress(poolId)) {
+                    showStatus('error', 'Invalid pool ID format');
+                    return;
+                }
+                
+                showStatus('info', '🔧 Getting debug information...');
+                
+                const debugInfo = await window.AdminUtils.getPoolDebugInfo(poolId);
+                
+                if (!debugInfo.exists) {
+                    showStatus('error', `Pool account does not exist: ${debugInfo.error}`);
+                    return;
+                }
+                
+                const message = `
+                    <strong>Pool Debug Information:</strong><br>
+                    Address: ${debugInfo.address}<br>
+                    Owner: ${debugInfo.owner}<br>
+                    Owned by Program: ${debugInfo.isOwnedByProgram ? '✅ Yes' : '❌ No'}<br>
+                    Data Length: ${debugInfo.dataLength} bytes<br>
+                    Executable: ${debugInfo.executable ? 'Yes' : 'No'}<br>
+                    Lamports: ${debugInfo.lamports}<br>
+                    Rent Epoch: ${debugInfo.rentEpoch}
+                `;
+                
+                showStatus('info', message);
+                
+                if (!debugInfo.isOwnedByProgram) {
+                    showStatus('warning', '⚠️ This account is not owned by the Fixed Ratio Trading program. It may not be a valid pool state account.');
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to debug pool info:', error);
+                showStatus('error', 'Failed to debug pool information: ' + error.message);
+            }
+        }
+
+        /**
+         * Test function to verify validation is working
+         */
+        async function testValidation() {
+            try {
+                console.log('🧪 Testing validation function...');
+                const testPoolId = 'C515Prm8hFj1ob7DiLJWxe1cygrX6wPDyathYNmoS28L';
+                const result = await window.AdminUtils.validatePoolStateAccount(testPoolId);
+                console.log('✅ Validation test passed:', result);
+                return result;
+            } catch (error) {
+                console.error('❌ Validation test failed:', error);
+                return error;
+            }
+        }
+
+        /**
+         * Test different discriminator values for pool pause
+         */
+        async function testDiscriminators() {
+            try {
+                console.log('🧪 Testing different discriminator values...');
+                const testPoolId = 'C515Prm8hFj1ob7DiLJWxe1cygrX6wPDyathYNmoS28L';
+                
+                // Test discriminators 0-25 to find the correct ones
+                for (let discriminator = 0; discriminator <= 25; discriminator++) {
+                    try {
+                        console.log(`🔍 Testing discriminator ${discriminator}...`);
+                        
+                        // Create a test instruction with this discriminator
+                        const systemStatePDA = window.AdminUtils.getSystemStatePDA();
+                        const poolStatePDA = new solanaWeb3.PublicKey(testPoolId);
+                        const instructionData = new Uint8Array([discriminator]);
+                        
+                        const instruction = new solanaWeb3.TransactionInstruction({
+                            keys: [
+                                { pubkey: window.AdminUtils.adminWallet || new solanaWeb3.PublicKey('6ytvYbjegFnBWLk9FsEoy1nwKwnTKcX5MxgX7PeGDHp2'), isSigner: true, isWritable: true },
+                                { pubkey: systemStatePDA, isSigner: false, isWritable: false },
+                                { pubkey: poolStatePDA, isSigner: false, isWritable: true }, // WRITABLE for pool pause/unpause
+                                { pubkey: await window.AdminUtils.getProgramDataAccount(), isSigner: false, isWritable: false }
+                            ],
+                            programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
+                            data: instructionData,
+                        });
+                        
+                        // Try to simulate the transaction
+                        const { blockhash } = await window.AdminUtils.adminConnection.getLatestBlockhash();
+                        const transaction = new solanaWeb3.Transaction();
+                        transaction.recentBlockhash = blockhash;
+                        transaction.feePayer = window.AdminUtils.adminWallet || new solanaWeb3.PublicKey('6ytvYbjegFnBWLk9FsEoy1nwKwnTKcX5MxgX7PeGDHp2');
+                        transaction.add(instruction);
+                        
+                        const result = await window.AdminUtils.adminConnection.simulateTransaction(transaction);
+                        
+                        if (result.value.err) {
+                            console.log(`❌ Discriminator ${discriminator} failed:`, result.value.err);
+                        } else {
+                            console.log(`✅ Discriminator ${discriminator} succeeded!`);
+                            return discriminator;
+                        }
+                    } catch (error) {
+                        console.log(`❌ Discriminator ${discriminator} error:`, error.message);
+                    }
+                }
+                
+                console.log('❌ No working discriminator found');
+                return null;
+                
+            } catch (error) {
+                console.error('❌ Discriminator test failed:', error);
+                return error;
+            }
+        }
+
+        /**
+         * Test the GetVersion instruction to verify contract is working
+         */
+        async function testGetVersion() {
+            try {
+                console.log('🧪 Testing GetVersion instruction...');
+                
+                // Create GetVersion instruction (discriminator 14)
+                const instruction = new solanaWeb3.TransactionInstruction({
+                    keys: [],
+                    programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
+                    data: Buffer.from([14]) // GetVersion discriminator
+                });
+                
+                const { blockhash } = await window.AdminUtils.adminConnection.getLatestBlockhash();
+                const transaction = new solanaWeb3.Transaction();
+                transaction.recentBlockhash = blockhash;
+                transaction.feePayer = window.AdminUtils.adminWallet;
+                transaction.add(instruction);
+                
+                const result = await window.AdminUtils.adminConnection.simulateTransaction(transaction);
+                
+                if (result.value.err) {
+                    console.log('❌ GetVersion instruction failed:', result.value.err);
+                    return { success: false, error: result.value.err };
+                } else {
+                    console.log('✅ GetVersion instruction succeeded!');
+                    if (result.value.logs) {
+                        console.log('Program logs:');
+                        result.value.logs.forEach((log, i) => console.log(`  [${i}] ${log}`));
+                        
+                        // Look for version
+                        const versionLog = result.value.logs.find(log => log.includes("Contract Version:"));
+                        if (versionLog) {
+                            const version = versionLog.match(/Contract Version:\s*([0-9.]+)/)?.[1];
+                            console.log(`🎉 Contract version: ${version}`);
+                            return { success: true, version: version, logs: result.value.logs };
+                        }
+                    }
+                    return { success: true, logs: result.value.logs };
+                }
+                
+            } catch (error) {
+                console.error('❌ GetVersion test failed:', error);
+                return { success: false, error: error };
+            }
+        }
+
+        /**
+         * Comprehensive test to understand the contract capabilities
+         */
+        async function runComprehensiveTest() {
+            try {
+                console.log('🧪 Running comprehensive contract test...');
+                
+                // Step 1: Test GetVersion
+                console.log('\n📋 Step 1: Testing GetVersion instruction...');
+                const versionResult = await testGetVersion();
+                if (!versionResult.success) {
+                    console.log('❌ GetVersion failed - contract may not be working');
+                    return { success: false, step: 'GetVersion', error: versionResult.error };
+                }
+                
+                // Step 2: Test pool pause with discriminator 19
+                console.log('\n⏸️ Step 2: Testing pool pause (discriminator 19)...');
+                const pauseResult = await testPoolPauseImplementation();
+                if (pauseResult.implemented) {
+                    console.log('✅ Pool pause instruction is implemented!');
+                } else {
+                    console.log('❌ Pool pause instruction is NOT implemented');
+                }
+                
+                // Step 3: Test a range of discriminators
+                console.log('\n🔍 Step 3: Testing discriminators 0-25...');
+                const discriminatorResult = await testDiscriminators();
+                
+                return {
+                    success: true,
+                    version: versionResult.version,
+                    pauseImplemented: pauseResult.implemented,
+                    discriminatorResult: discriminatorResult
+                };
+                
+            } catch (error) {
+                console.error('❌ Comprehensive test failed:', error);
+                return { success: false, error: error };
+            }
+        }
+
+        /**
+         * Test if pool pause/unpause instructions are implemented
+         */
+        async function testPoolPauseImplementation() {
+            try {
+                console.log('🧪 Testing if pool pause/unpause instructions are implemented...');
+                const testPoolId = 'C515Prm8hFj1ob7DiLJWxe1cygrX6wPDyathYNmoS28L';
+                
+                // Test the exact instruction structure we're using
+                const systemStatePDA = window.AdminUtils.getSystemStatePDA();
+                const poolStatePDA = new solanaWeb3.PublicKey(testPoolId);
+                const programDataAccount = await window.AdminUtils.getProgramDataAccount();
+                
+                // Test discriminator 19 (pool pause)
+                console.log('🔍 Testing pool pause instruction (discriminator 19)...');
+                const pauseInstructionData = new Uint8Array([19, 3]); // discriminator 19 + pause_flags (PAUSE_FLAG_ALL)
+                
+                const pauseInstruction = new solanaWeb3.TransactionInstruction({
+                    keys: [
+                        { pubkey: window.AdminUtils.adminWallet, isSigner: true, isWritable: true },
+                        { pubkey: systemStatePDA, isSigner: false, isWritable: false },
+                        { pubkey: poolStatePDA, isSigner: false, isWritable: true }, // WRITABLE - updated by program
+                        { pubkey: programDataAccount, isSigner: false, isWritable: false }
+                    ],
+                    programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
+                    data: pauseInstructionData,
+                });
+                
+                const { blockhash } = await window.AdminUtils.adminConnection.getLatestBlockhash();
+                const transaction = new solanaWeb3.Transaction();
+                transaction.recentBlockhash = blockhash;
+                transaction.feePayer = window.AdminUtils.adminWallet;
+                transaction.add(pauseInstruction);
+                
+                const result = await window.AdminUtils.adminConnection.simulateTransaction(transaction);
+                
+                if (result.value.err) {
+                    console.log('❌ Pool pause instruction failed:', result.value.err);
+                    
+                    // Check if it's an "InvalidInstruction" error
+                    if (result.value.err.toString().includes('InvalidInstruction') || 
+                        result.value.err.toString().includes('Unknown')) {
+                        console.log('🚨 Pool pause instruction (discriminator 19) is NOT IMPLEMENTED in this version of the smart contract');
+                        return { implemented: false, error: result.value.err };
+                    }
+                } else {
+                    console.log('✅ Pool pause instruction succeeded!');
+                    return { implemented: true, result: result.value };
+                }
+                
+                return { implemented: false, error: result.value.err };
+                
+            } catch (error) {
+                console.error('❌ Pool pause implementation test failed:', error);
+                return { implemented: false, error: error };
+            }
+        }
+
         // Export functions for global access
         window.loadPoolInfo = loadPoolInfo;
+        window.debugPoolInfo = debugPoolInfo;
         window.executePoolPause = executePoolPause;
         window.executePoolUnpause = executePoolUnpause;
         window.executePoolUpdateFees = executePoolUpdateFees;
         window.executeSwapSetOwnerOnly = executeSwapSetOwnerOnly;
         window.showStatus = showStatus;
+        window.testValidation = testValidation;
+        window.testDiscriminators = testDiscriminators;
+        window.testPoolPauseImplementation = testPoolPauseImplementation;
+        window.testGetVersion = testGetVersion;
+        window.runComprehensiveTest = runComprehensiveTest;
     </script>
 </body>
 </html>
