@@ -229,11 +229,224 @@ async function createAndSendTransaction(instructions, signers = []) {
         if (confirmation.value.err) {
             throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
         }
-        
+
+        // Attempt to fetch and print program logs for debugging
+        try {
+            let tx = await adminConnection.getTransaction(signature, {
+                commitment: 'confirmed',
+                maxSupportedTransactionVersion: 0
+            });
+            if (!tx || !tx.meta) {
+                tx = await adminConnection.getTransaction(signature, {
+                    commitment: 'finalized',
+                    maxSupportedTransactionVersion: 0
+                });
+            }
+            if (tx) {
+                const logs = tx.meta?.logMessages || [];
+                const err = tx.meta?.err || null;
+                console.groupCollapsed(`🪵 Program logs for ${signature}`);
+                if (err) console.warn('Transaction error meta:', err);
+                if (logs && logs.length) {
+                    logs.forEach((line) => console.log(line));
+                } else {
+                    console.log('(no logMessages in getTransaction response)');
+                    // Fallback: try block-level fetch and match by signature
+                    try {
+                        if (typeof tx.slot === 'number') {
+                            const block = await adminConnection.getBlock(tx.slot, {
+                                maxSupportedTransactionVersion: 0,
+                                commitment: 'finalized'
+                            });
+                            const found = block?.transactions?.find(t => (t.transaction.signatures || []).includes(signature));
+                            const blockLogs = found?.meta?.logMessages || [];
+                            if (blockLogs.length) {
+                                console.groupCollapsed('🪵 Block logs fallback');
+                                blockLogs.forEach((line) => console.log(line));
+                                console.groupEnd();
+                            }
+                        }
+                    } catch (_) {}
+                }
+                // Optional: show pre/post SOL balances
+                const pre = tx.meta?.preBalances || [];
+                const post = tx.meta?.postBalances || [];
+                const keys = (tx.transaction?.message?.getAccountKeys?.().staticAccountKeys)
+                    || tx.transaction?.message?.accountKeys
+                    || [];
+                if (pre.length && post.length && keys.length) {
+                    console.groupCollapsed('💰 SOL balance changes (lamports)');
+                    for (let i = 0; i < Math.min(pre.length, post.length, keys.length); i++) {
+                        const delta = (post[i] - pre[i]);
+                        if (delta !== 0) {
+                            console.log(`${keys[i].toString?.() || keys[i]}: ${pre[i]} → ${post[i]} (Δ ${delta})`);
+                        }
+                    }
+                    console.groupEnd();
+                }
+                console.groupEnd();
+            }
+        } catch (logErr) {
+            console.warn('⚠️ Unable to fetch transaction logs:', logErr?.message || logErr);
+        }
+
         return signature;
     } catch (error) {
         console.error('❌ Transaction failed:', error);
         throw error;
+    }
+}
+
+/**
+ * Fetch and print logs for a given transaction signature
+ */
+async function fetchTransactionLogs(signature) {
+    try {
+        let tx = await adminConnection.getTransaction(signature, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0
+        });
+        if (!tx) {
+            tx = await adminConnection.getTransaction(signature, {
+                commitment: 'finalized',
+                maxSupportedTransactionVersion: 0
+            });
+        }
+        if (!tx) {
+            console.warn('No transaction found for signature:', signature);
+            return null;
+        }
+        let logs = tx.meta?.logMessages || [];
+        console.groupCollapsed(`🪵 Program logs for ${signature}`);
+        if (logs.length) {
+            logs.forEach((line) => console.log(line));
+        } else {
+            console.log('(no logMessages in getTransaction response)');
+            // Fallback: block-level logs
+            try {
+                if (typeof tx.slot === 'number') {
+                    const block = await adminConnection.getBlock(tx.slot, {
+                        maxSupportedTransactionVersion: 0,
+                        commitment: 'finalized'
+                    });
+                    const found = block?.transactions?.find(t => (t.transaction.signatures || []).includes(signature));
+                    logs = found?.meta?.logMessages || [];
+                    if (logs.length) logs.forEach((line) => console.log(line));
+                }
+            } catch (e) {
+                console.warn('Block fallback failed:', e?.message || e);
+            }
+        }
+        console.groupEnd();
+        return logs;
+    } catch (e) {
+        console.error('❌ Failed to fetch transaction logs:', e);
+        throw e;
+    }
+}
+
+/**
+ * Subscribe to real-time program logs (enable once per session)
+ */
+let _programLogsSubscriptionId = null;
+async function enableProgramLogs() {
+    try {
+        if (_programLogsSubscriptionId !== null) {
+            console.log('🪵 Program logs already enabled');
+            return _programLogsSubscriptionId;
+        }
+        const programId = new solanaWeb3.PublicKey(window.CONFIG.programId);
+        _programLogsSubscriptionId = adminConnection.onLogs(programId, (log) => {
+            console.groupCollapsed(`🪵 [onLogs] ${log.signature || ''}`);
+            (log.logs || []).forEach((l) => console.log(l));
+            console.groupEnd();
+        }, 'confirmed');
+        console.log('✅ Program logs subscription enabled:', _programLogsSubscriptionId);
+        return _programLogsSubscriptionId;
+    } catch (e) {
+        console.error('❌ Failed to enable program logs subscription:', e);
+        return null;
+    }
+}
+
+async function disableProgramLogs() {
+    try {
+        if (_programLogsSubscriptionId !== null) {
+            await adminConnection.removeOnLogsListener(_programLogsSubscriptionId);
+            console.log('🪵 Program logs subscription removed');
+            _programLogsSubscriptionId = null;
+        }
+    } catch (e) {
+        console.error('❌ Failed to disable program logs subscription:', e);
+    }
+}
+
+/**
+ * Simulate a single-pool consolidation to get logs without executing
+ */
+async function simulateConsolidatePoolFees(poolId) {
+    const systemStatePDA = getSystemStatePDA();
+    const mainTreasuryPDA = getMainTreasuryPDA();
+    const programDataAccount = await getProgramDataAccount();
+    const poolStatePDA = new solanaWeb3.PublicKey(poolId);
+
+    const instructionData = new Uint8Array(2);
+    instructionData[0] = 17;
+    instructionData[1] = 1;
+
+    const ix = new solanaWeb3.TransactionInstruction({
+        keys: [
+            { pubkey: adminWallet || solanaWeb3.Keypair.generate().publicKey, isSigner: true, isWritable: false },
+            { pubkey: systemStatePDA, isSigner: false, isWritable: false },
+            { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
+            { pubkey: programDataAccount, isSigner: false, isWritable: false },
+            { pubkey: poolStatePDA, isSigner: false, isWritable: true },
+        ],
+        programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
+        data: instructionData,
+    });
+
+    const tx = new solanaWeb3.Transaction().add(ix);
+    const { blockhash } = await adminConnection.getLatestBlockhash();
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = adminWallet || solanaWeb3.Keypair.generate().publicKey;
+
+    const sim = await adminConnection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true });
+    const logs = sim.value?.logs || [];
+    console.groupCollapsed('🧪 Simulated Consolidation Logs');
+    logs.forEach((l) => console.log(l));
+    console.groupEnd();
+    return logs;
+}
+
+/**
+ * Top up a pool PDA with lamports to satisfy rent-exempt + pending fee requirements
+ * Workaround for consolidation fee consistency failures when available > rent is slightly below pending fees
+ */
+async function topUpPoolLamports(poolId, lamports) {
+    try {
+        if (!adminWallet) {
+            throw new Error('Wallet not connected');
+        }
+        if (!validateSolanaAddress(poolId)) {
+            throw new Error('Invalid pool ID format');
+        }
+        if (typeof lamports !== 'number' || lamports <= 0) {
+            throw new Error('Lamports must be a positive number');
+        }
+
+        const toPubkey = new solanaWeb3.PublicKey(poolId);
+        const ix = solanaWeb3.SystemProgram.transfer({
+            fromPubkey: adminWallet,
+            toPubkey,
+            lamports
+        });
+        const signature = await createAndSendTransaction([ix]);
+        console.log('✅ Pool top-up successful:', signature);
+        return signature;
+    } catch (e) {
+        console.error('❌ Pool top-up failed:', e);
+        throw e;
     }
 }
 
@@ -1031,32 +1244,52 @@ async function executeTreasuryWithdrawFees(amount = null) {
         console.log('💰 Executing treasury fee withdrawal');
         
         const mainTreasuryPDA = getMainTreasuryPDA();
-        
-        // Create instruction data: discriminator (1 byte) + amount (8 bytes, optional)
-        let instructionData;
-        
+        const systemStatePDA = getSystemStatePDA();
+        const programDataAccount = await getProgramDataAccount();
+
+        // Convert SOL amount (UI input) to lamports (u64). 0 = withdraw all available
+        let amountLamports = 0n;
         if (amount !== null) {
-            // Create 9-byte array: 1 byte discriminator + 8 bytes amount
-            instructionData = new Uint8Array(9);
-            instructionData[0] = 15; // WithdrawTreasuryFees
-            
-            // Convert amount to little-endian bytes
-            const amountView = new DataView(instructionData.buffer, 1);
-            amountView.setBigUint64(0, BigInt(amount), true); // little-endian
-        } else {
-            // Just discriminator for maximum amount
-            instructionData = new Uint8Array([15]);
+            const lamports = Math.round(Number(amount) * 1_000_000_000);
+            if (!Number.isFinite(lamports) || lamports < 0) {
+                throw new Error('Invalid withdrawal amount');
+            }
+            amountLamports = BigInt(lamports);
         }
-        
+
+        // Build instruction data: [15, amount:u64(le)]
+        const instructionData = new Uint8Array(9);
+        instructionData[0] = 15; // WithdrawTreasuryFees discriminator (per dashboard integration)
+        new DataView(instructionData.buffer, 1).setBigUint64(0, amountLamports, true);
+
+        // Resolve Rent Sysvar
+        let rentSysvar = solanaWeb3.SYSVAR_RENT_PUBKEY;
+        if (!rentSysvar) {
+            rentSysvar = new solanaWeb3.PublicKey('SysvarRent111111111111111111111111111111111');
+        }
+
+        // Destination = admin wallet by default
+        const destinationAccount = adminWallet;
+
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
-                { pubkey: adminWallet, isSigner: true, isWritable: true },
-                { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true }
+                // [0] Admin authority signer (read-only signer is typical; writable not required)
+                { pubkey: adminWallet, isSigner: true, isWritable: false },
+                // [1] Main Treasury PDA (writable)
+                { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
+                // [2] Rent Sysvar (read-only)
+                { pubkey: rentSysvar, isSigner: false, isWritable: false },
+                // [3] Destination account (writable)
+                { pubkey: destinationAccount, isSigner: false, isWritable: true },
+                // [4] System State PDA (read-only)
+                { pubkey: systemStatePDA, isSigner: false, isWritable: false },
+                // [5] Program Data Account (read-only)
+                { pubkey: programDataAccount, isSigner: false, isWritable: false },
             ],
             programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
             data: instructionData,
         });
-        
+
         const signature = await createAndSendTransaction([instruction]);
         console.log('✅ Treasury fee withdrawal executed successfully:', signature);
         return signature;
@@ -1082,22 +1315,33 @@ async function executeConsolidatePoolFees(poolId) {
         
         console.log('🔄 Executing pool fee consolidation for:', poolId);
         
+        const systemStatePDA = getSystemStatePDA();
         const mainTreasuryPDA = getMainTreasuryPDA();
+        const programDataAccount = await getProgramDataAccount();
         const poolStatePDA = new solanaWeb3.PublicKey(poolId);
-        
-        // Create instruction data: discriminator (1 byte) ConsolidatePoolFees = 17
-        const instructionData = new Uint8Array([17]);
-        
+
+        // Instruction data: [17, pool_count:u8] – single pool consolidation
+        const instructionData = new Uint8Array(2);
+        instructionData[0] = 17; // ConsolidatePoolFees discriminator (per dashboard integration)
+        instructionData[1] = 1;  // pool_count = 1
+
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
-                { pubkey: adminWallet, isSigner: true, isWritable: true },
+                // [0] Admin authority signer (read-only signer)
+                { pubkey: adminWallet, isSigner: true, isWritable: false },
+                // [1] System State PDA (read-only)
+                { pubkey: systemStatePDA, isSigner: false, isWritable: false },
+                // [2] Main Treasury PDA (writable)
                 { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
-                { pubkey: poolStatePDA, isSigner: false, isWritable: true }
+                // [3] Program Data Account (read-only)
+                { pubkey: programDataAccount, isSigner: false, isWritable: false },
+                // [4] Pool State PDA (writable)
+                { pubkey: poolStatePDA, isSigner: false, isWritable: true },
             ],
             programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
             data: instructionData,
         });
-        
+
         const signature = await createAndSendTransaction([instruction]);
         console.log('✅ Pool fee consolidation executed successfully:', signature);
         return signature;
