@@ -591,6 +591,8 @@
                             ratio: displayInfo ? displayInfo.ratioDisplay : `${realPoolData.ratioADecimal || 1}:${realPoolData.ratioBDecimal || 1}`,
                             isPaused: realPoolData.flagsDecoded?.liquidity_paused || realPoolData.flagsDecoded?.swaps_paused || false,
                             feeRate: realPoolData.swapContractFee || 0,
+                            contractLiquidityFee: realPoolData.contractLiquidityFee || 0,
+                            swapContractFee: realPoolData.swapContractFee || 0,
                             ownerOnly: realPoolData.flagsDecoded?.swap_owner_only || false,
                             owner: realPoolData.owner || 'Unknown',
                             liquidity: `${realPoolData.tokenALiquidity || 0} ${realPoolData.tokenASymbol || 'Token A'} / ${realPoolData.tokenBLiquidity || 0} ${realPoolData.tokenBSymbol || 'Token B'}`,
