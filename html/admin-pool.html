@@ -403,13 +403,13 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="new-liquidity-fee">New Liquidity Fee (SOL)</label>
-                    <input type="text" id="new-liquidity-fee" placeholder="e.g. 0.0013">
-                    <div class="help-text">Enter SOL amount (e.g., 0.0013). Leave blank to keep current.</div>
+                    <input type="number" id="new-liquidity-fee" min="0.0001" max="0.01" step="0.000001" placeholder="e.g. 0.0013">
+                    <div class="help-text">Range: 0.0001 - 0.01 SOL (100,000 - 10,000,000 lamports). Leave blank to keep current.</div>
                 </div>
                 <div class="form-group">
                     <label for="new-swap-fee">New Swap Fee (SOL)</label>
-                    <input type="text" id="new-swap-fee" placeholder="e.g. 0.000125">
-                    <div class="help-text">Enter SOL amount (e.g., 0.000125). Leave blank to keep current.</div>
+                    <input type="number" id="new-swap-fee" min="0.00001" max="0.001" step="0.000001" placeholder="e.g. 0.000125">
+                    <div class="help-text">Range: 0.00001 - 0.001 SOL (10,000 - 1,000,000 lamports). Leave blank to keep current.</div>
                 </div>
             </div>
             
@@ -916,13 +916,18 @@
                     return;
                 }
 
-                if (liqVal !== null && (!Number.isInteger(liqVal) || liqVal < 0)) {
-                    showStatus('error', 'Invalid liquidity fee (SOL)');
-                    return;
+                // Validate fee ranges according to API constants
+                if (liqVal !== null) {
+                    if (!Number.isInteger(liqVal) || liqVal < 100_000 || liqVal > 10_000_000) {
+                        showStatus('error', 'Invalid liquidity fee. Range: 0.0001 - 0.01 SOL (100,000 - 10,000,000 lamports)');
+                        return;
+                    }
                 }
-                if (swapVal !== null && (!Number.isInteger(swapVal) || swapVal < 0)) {
-                    showStatus('error', 'Invalid swap fee (SOL)');
-                    return;
+                if (swapVal !== null) {
+                    if (!Number.isInteger(swapVal) || swapVal < 10_000 || swapVal > 1_000_000) {
+                        showStatus('error', 'Invalid swap fee. Range: 0.00001 - 0.001 SOL (10,000 - 1,000,000 lamports)');
+                        return;
+                    }
                 }
 
                 let flags = 0;
