@@ -420,6 +420,67 @@ async function simulateConsolidatePoolFees(poolId) {
 }
 
 /**
+ * Simulate treasury withdrawal to test instruction format
+ */
+async function simulateTreasuryWithdrawFees(amount = null) {
+    const mainTreasuryPDA = getMainTreasuryPDA();
+    const systemStatePDA = getSystemStatePDA();
+    const programDataAccount = await getProgramDataAccount();
+
+    let amountLamports = 0n;
+    if (amount !== null) {
+        const lamports = Math.round(Number(amount) * 1_000_000_000);
+        if (!Number.isFinite(lamports) || lamports < 0) {
+            throw new Error('Invalid withdrawal amount');
+        }
+        amountLamports = BigInt(lamports);
+    }
+
+    // Build instruction data using proper Borsh serialization for PoolInstruction::WithdrawTreasuryFees
+    // The API docs specify this must be Borsh-serialized enum variant, not raw bytes
+    // Based on the working consolidation pattern (discriminator 17), WithdrawTreasuryFees should be discriminator 15
+    // Format: [discriminator: u8, amount: u64] = 9 bytes total
+    const instructionData = new Uint8Array(9);
+    instructionData[0] = 15; // WithdrawTreasuryFees discriminator (from PoolInstruction enum)
+    // Amount as u64 little-endian (8 bytes)
+    const amountView = new DataView(instructionData.buffer, 1, 8);
+    amountView.setBigUint64(0, amountLamports, true);
+
+    let rentSysvar = solanaWeb3.SYSVAR_RENT_PUBKEY;
+    if (!rentSysvar) {
+        rentSysvar = new solanaWeb3.PublicKey('SysvarRent111111111111111111111111111111111');
+    }
+
+    const destinationAccount = adminWallet || solanaWeb3.Keypair.generate().publicKey;
+
+    const ix = new solanaWeb3.TransactionInstruction({
+        keys: [
+            { pubkey: adminWallet || solanaWeb3.Keypair.generate().publicKey, isSigner: true, isWritable: true },
+            { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
+            { pubkey: rentSysvar, isSigner: false, isWritable: false },
+            { pubkey: destinationAccount, isSigner: false, isWritable: true },
+            { pubkey: systemStatePDA, isSigner: false, isWritable: false },
+            { pubkey: programDataAccount, isSigner: false, isWritable: false },
+        ],
+        programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
+        data: instructionData,
+    });
+
+    const tx = new solanaWeb3.Transaction().add(ix);
+    const { blockhash } = await adminConnection.getLatestBlockhash();
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = adminWallet || solanaWeb3.Keypair.generate().publicKey;
+
+    const sim = await adminConnection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true });
+    const logs = sim.value?.logs || [];
+    console.groupCollapsed('🧪 Simulated Treasury Withdrawal Logs');
+    logs.forEach((l) => console.log(l));
+    if (sim.value?.err) console.warn('Simulation error:', sim.value.err);
+    console.groupEnd();
+    return { logs, error: sim.value?.err };
+}
+
+/**
  * Top up a pool PDA with lamports to satisfy rent-exempt + pending fee requirements
  * Workaround for consolidation fee consistency failures when available > rent is slightly below pending fees
  */
@@ -1257,10 +1318,15 @@ async function executeTreasuryWithdrawFees(amount = null) {
             amountLamports = BigInt(lamports);
         }
 
-        // Build instruction data: [15, amount:u64(le)]
+        // Build instruction data using proper Borsh serialization for PoolInstruction::WithdrawTreasuryFees
+        // The API docs specify this must be Borsh-serialized enum variant, not raw bytes
+        // Based on the working consolidation pattern (discriminator 17), WithdrawTreasuryFees should be discriminator 15
+        // Format: [discriminator: u8, amount: u64] = 9 bytes total
         const instructionData = new Uint8Array(9);
-        instructionData[0] = 15; // WithdrawTreasuryFees discriminator (per dashboard integration)
-        new DataView(instructionData.buffer, 1).setBigUint64(0, amountLamports, true);
+        instructionData[0] = 15; // WithdrawTreasuryFees discriminator (from PoolInstruction enum)
+        // Amount as u64 little-endian (8 bytes)
+        const amountView = new DataView(instructionData.buffer, 1, 8);
+        amountView.setBigUint64(0, amountLamports, true);
 
         // Resolve Rent Sysvar
         let rentSysvar = solanaWeb3.SYSVAR_RENT_PUBKEY;
@@ -1273,8 +1339,8 @@ async function executeTreasuryWithdrawFees(amount = null) {
 
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
-                // [0] Admin authority signer (read-only signer is typical; writable not required)
-                { pubkey: adminWallet, isSigner: true, isWritable: false },
+                // [0] System Authority (Signer, Writable) - per API docs
+                { pubkey: adminWallet, isSigner: true, isWritable: true },
                 // [1] Main Treasury PDA (writable)
                 { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
                 // [2] Rent Sysvar (read-only)
@@ -1452,6 +1518,9 @@ if (typeof window !== 'undefined') {
         executeConsolidatePoolFees,
         discoverAllPools,
         getPoolDebugInfo,
+        simulateTreasuryWithdrawFees,
+        simulateConsolidatePoolFees,
+        topUpPoolLamports,
         // Status functions
         checkSystemPauseStatus,
         checkSystemInitialized
