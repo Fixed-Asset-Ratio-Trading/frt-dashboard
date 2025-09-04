@@ -387,7 +387,7 @@
         <!-- Fee Management Section -->
         <div class="admin-section">
             <h3>💰 Fee Management</h3>
-            <p>View and update pool liquidity and swap fee rates (basis points).</p>
+            <p>View and update pool liquidity and swap contract fees (SOL amounts).</p>
             
             <div class="pool-info" style="margin-bottom: 15px;">
                 <div class="info-item">
@@ -462,6 +462,12 @@
         // Global state
         let currentPoolId = null;
         let poolInfo = null;
+        
+        // Helper: format lamports to SOL (global)
+        function formatSolAmount(lamports) {
+            if (!Number.isFinite(lamports) || lamports === 0) return '0 SOL';
+            return `${(lamports / 1e9).toFixed(9)} SOL`;
+        }
         
         // Initialize pool admin page
         document.addEventListener('DOMContentLoaded', async () => {
