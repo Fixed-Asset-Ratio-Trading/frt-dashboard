@@ -537,6 +537,8 @@ class TradingDataService {
                         lp_token_a_mint_bump_seed: pool.lpTokenAMintBumpSeed,
                         lp_token_b_mint_bump_seed: pool.lpTokenBMintBumpSeed,
                         flags: pool.flags,
+                        contract_liquidity_fee: pool.contractLiquidityFee,
+                        swap_contract_fee: pool.swapContractFee,
                         collected_fees_token_a: pool.collectedFeesTokenA,
                         collected_fees_token_b: pool.collectedFeesTokenB,
                         total_fees_withdrawn_token_a: pool.totalFeesWithdrawnTokenA,
