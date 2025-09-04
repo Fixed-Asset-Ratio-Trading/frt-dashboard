@@ -438,10 +438,18 @@ async function simulateTreasuryWithdrawFees(amount = null) {
 
     // Build instruction data using proper Borsh serialization for PoolInstruction::WithdrawTreasuryFees
     // The API docs specify this must be Borsh-serialized enum variant, not raw bytes
-    // Based on the working consolidation pattern (discriminator 17), WithdrawTreasuryFees should be discriminator 15
+    // Use cached discriminator if detected; fallback to 15
     // Format: [discriminator: u8, amount: u64] = 9 bytes total
     const instructionData = new Uint8Array(9);
-    instructionData[0] = 15; // WithdrawTreasuryFees discriminator (from PoolInstruction enum)
+    let withdrawDiscSim = 15;
+    try {
+        const cached = localStorage.getItem('FRT_WITHDRAW_DISC');
+        if (cached) {
+            const n = Number.parseInt(cached, 10);
+            if (Number.isFinite(n) && n >= 0 && n < 256) withdrawDiscSim = n;
+        }
+    } catch (_) {}
+    instructionData[0] = withdrawDiscSim;
     // Amount as u64 little-endian (8 bytes)
     const amountView = new DataView(instructionData.buffer, 1, 8);
     amountView.setBigUint64(0, amountLamports, true);
@@ -478,6 +486,88 @@ async function simulateTreasuryWithdrawFees(amount = null) {
     if (sim.value?.err) console.warn('Simulation error:', sim.value.err);
     console.groupEnd();
     return { logs, error: sim.value?.err };
+}
+
+/**
+ * Brute-force detect the correct PoolInstruction enum variant index for WithdrawTreasuryFees
+ * Tries indices 0..40 via simulation and returns the first that doesn't fail with InvalidInstructionData
+ * Caches the discovered index in localStorage under key 'FRT_WITHDRAW_DISC'
+ */
+async function bruteForceDetectWithdrawDiscriminator(amount = 0.0) {
+    try {
+        const testAmount = amount;
+        let found = null;
+        for (let idx = 0; idx <= 40; idx++) {
+            try {
+                const mainTreasuryPDA = getMainTreasuryPDA();
+                const systemStatePDA = getSystemStatePDA();
+                const programDataAccount = await getProgramDataAccount();
+
+                let amountLamports = 0n;
+                if (testAmount !== null) {
+                    const lamports = Math.round(Number(testAmount) * 1_000_000_000);
+                    if (!Number.isFinite(lamports) || lamports < 0) {
+                        throw new Error('Invalid withdrawal amount');
+                    }
+                    amountLamports = BigInt(lamports);
+                }
+
+                const instructionData = new Uint8Array(9);
+                instructionData[0] = idx; // candidate enum variant index
+                const amountView = new DataView(instructionData.buffer, 1, 8);
+                amountView.setBigUint64(0, amountLamports, true);
+
+                let rentSysvar = solanaWeb3.SYSVAR_RENT_PUBKEY;
+                if (!rentSysvar) {
+                    rentSysvar = new solanaWeb3.PublicKey('SysvarRent111111111111111111111111111111111');
+                }
+
+                const destinationAccount = adminWallet || solanaWeb3.Keypair.generate().publicKey;
+
+                const ix = new solanaWeb3.TransactionInstruction({
+                    keys: [
+                        { pubkey: adminWallet || solanaWeb3.Keypair.generate().publicKey, isSigner: true, isWritable: true },
+                        { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
+                        { pubkey: rentSysvar, isSigner: false, isWritable: false },
+                        { pubkey: destinationAccount, isSigner: false, isWritable: true },
+                        { pubkey: systemStatePDA, isSigner: false, isWritable: false },
+                        { pubkey: programDataAccount, isSigner: false, isWritable: false },
+                    ],
+                    programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
+                    data: instructionData,
+                });
+
+                const tx = new solanaWeb3.Transaction().add(ix);
+                const { blockhash } = await adminConnection.getLatestBlockhash();
+                tx.recentBlockhash = blockhash;
+                tx.feePayer = adminWallet || solanaWeb3.Keypair.generate().publicKey;
+
+                const sim = await adminConnection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true });
+                const err = sim.value?.err || null;
+                const logs = sim.value?.logs || [];
+
+                // Heuristic: if deserialization worked, program logs will include program-specific lines
+                const invalidData = !!err && (JSON.stringify(err).includes('InvalidInstructionData') || JSON.stringify(err).includes('invalid instruction data'));
+                if (!invalidData) {
+                    found = { index: idx, logs, err };
+                    break;
+                }
+            } catch (_) {
+                // Continue trying next index
+            }
+        }
+
+        if (found) {
+            try { localStorage.setItem('FRT_WITHDRAW_DISC', String(found.index)); } catch (_) {}
+            console.log(`✅ Detected WithdrawTreasuryFees discriminator index: ${found.index}`);
+            return found.index;
+        }
+        console.warn('⚠️ Unable to detect WithdrawTreasuryFees discriminator index');
+        return null;
+    } catch (e) {
+        console.error('❌ Detection failed:', e);
+        return null;
+    }
 }
 
 /**
@@ -1320,10 +1410,18 @@ async function executeTreasuryWithdrawFees(amount = null) {
 
         // Build instruction data using proper Borsh serialization for PoolInstruction::WithdrawTreasuryFees
         // The API docs specify this must be Borsh-serialized enum variant, not raw bytes
-        // Based on the working consolidation pattern (discriminator 17), WithdrawTreasuryFees should be discriminator 15
+        // Use cached discriminator if detected; fallback to 15
         // Format: [discriminator: u8, amount: u64] = 9 bytes total
         const instructionData = new Uint8Array(9);
-        instructionData[0] = 15; // WithdrawTreasuryFees discriminator (from PoolInstruction enum)
+        let withdrawDiscExec = 15;
+        try {
+            const cached = localStorage.getItem('FRT_WITHDRAW_DISC');
+            if (cached) {
+                const n = Number.parseInt(cached, 10);
+                if (Number.isFinite(n) && n >= 0 && n < 256) withdrawDiscExec = n;
+            }
+        } catch (_) {}
+        instructionData[0] = withdrawDiscExec;
         // Amount as u64 little-endian (8 bytes)
         const amountView = new DataView(instructionData.buffer, 1, 8);
         amountView.setBigUint64(0, amountLamports, true);
@@ -1521,6 +1619,7 @@ if (typeof window !== 'undefined') {
         simulateTreasuryWithdrawFees,
         simulateConsolidatePoolFees,
         topUpPoolLamports,
+        bruteForceDetectWithdrawDiscriminator,
         // Status functions
         checkSystemPauseStatus,
         checkSystemInitialized
