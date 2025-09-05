@@ -295,8 +295,8 @@
             </div>
             
             <div class="nav-buttons">
-                <button class="nav-btn primary" onclick="window.location.href='index.html'">
-                    📊 View Dashboard
+                <button class="nav-btn primary" onclick="window.location.href='pools.html'">
+                    📊 View Pools
                 </button>
                 <button class="nav-btn secondary" onclick="window.location.href='pool-creation.html'">
                     🏊‍♂️ Create Another Pool
@@ -323,9 +323,9 @@
                 document.getElementById('pool-container').style.display = 'none';
                 document.getElementById('error-container').style.display = 'block';
                 
-                // Redirect to dashboard after 3 seconds
+                // Redirect to pools page after 3 seconds
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    window.location.href = 'pools.html';
                 }, 3000);
                 return;
             }
