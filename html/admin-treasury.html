@@ -573,19 +573,29 @@
         function displayTreasuryInfo() {
             if (!treasuryInfo) return;
 
-            // Withdraw status: show last withdrawal timestamp and 60-minute countdown if within window
+            // Withdraw status: handle 71-hour restart penalty (future timestamp) and 60-minute cooldown
             let withdrawStatus = '✅ Available';
-            if (typeof treasuryInfo.lastWithdrawalTimestamp === 'number' && treasuryInfo.lastWithdrawalTimestamp > 0) {
-                const lastDt = new Date(treasuryInfo.lastWithdrawalTimestamp * 1000).toLocaleString();
-                const nowSec = Math.floor(Date.now() / 1000);
-                const since = nowSec - treasuryInfo.lastWithdrawalTimestamp;
-                if (since < 3600) {
-                    const remaining = 3600 - since;
-                    const m = Math.floor(remaining / 60);
+            const nowSec = Math.floor(Date.now() / 1000);
+            if (typeof treasuryInfo.lastWithdrawalTimestamp === 'number' && treasuryInfo.lastWithdrawalTimestamp !== 0) {
+                if (treasuryInfo.lastWithdrawalTimestamp > nowSec) {
+                    // Restart penalty active - timestamp is set in the future for 71h block
+                    const remaining = treasuryInfo.lastWithdrawalTimestamp - nowSec;
+                    const h = Math.floor(remaining / 3600);
+                    const m = Math.floor((remaining % 3600) / 60);
                     const s = remaining % 60;
-                    withdrawStatus = `Last: ${lastDt} • ⏳ Next in ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                    withdrawStatus = `⛔ Restart penalty active • Next in ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
                 } else {
-                    withdrawStatus = `Last: ${lastDt} • ✅ Available`;
+                    // Standard 60-minute cooldown after last successful withdrawal
+                    const since = nowSec - treasuryInfo.lastWithdrawalTimestamp;
+                    const lastDt = new Date(treasuryInfo.lastWithdrawalTimestamp * 1000).toLocaleString();
+                    if (since < 3600) {
+                        const remaining = 3600 - since;
+                        const m = Math.floor(remaining / 60);
+                        const s = remaining % 60;
+                        withdrawStatus = `Last: ${lastDt} • ⏳ Next in ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                    } else {
+                        withdrawStatus = `Last: ${lastDt} • ✅ Available`;
+                    }
                 }
             }
 
@@ -895,6 +905,7 @@
         }
         async function updateWithdrawalCountdown() {
             try {
+                // Ask backend helper for status (should reflect restart penalty or 60m cooldown)
                 const status = await window.AdminUtils.getWithdrawalStatus(0.0);
                 const el = document.getElementById('withdrawal-countdown');
                 const val = document.getElementById('withdrawal-countdown-value');
