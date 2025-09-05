@@ -371,7 +371,10 @@ async function updatePoolDisplay() {
         
         <div class="pool-metric">
             <div class="metric-label">Pool Address</div>
-            <div class="metric-value" style="font-size: 12px; font-family: monospace;">${poolAddress.slice(0, 20)}...</div>
+            <div class="metric-value address-container">
+                <span class="address-text">${window.CopyUtils?.formatAddressForDisplay(poolAddress) || poolAddress.slice(0, 8) + '...'}</span>
+                ${window.CopyUtils ? window.CopyUtils.createCopyButton(poolAddress, '📋').outerHTML : ''}
+            </div>
         </div>
         
         ${flagsSection}

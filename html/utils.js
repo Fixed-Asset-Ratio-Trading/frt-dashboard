@@ -1234,6 +1234,88 @@ if (typeof window !== 'undefined') {
     };
 }
 
+/**
+ * Copy text to clipboard utility
+ * @param {string} text - Text to copy to clipboard
+ * @returns {Promise<boolean>} - Success status
+ */
+async function copyToClipboard(text) {
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } else {
+            // Fallback for older browsers or non-secure contexts
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            const result = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return result;
+        }
+    } catch (error) {
+        console.error('Failed to copy to clipboard:', error);
+        return false;
+    }
+}
+
+/**
+ * Format address for display (first 8 chars + ... + last 4 chars)
+ * @param {string} address - Full address
+ * @returns {string} - Formatted address
+ */
+function formatAddressForDisplay(address) {
+    if (!address || address.length < 12) return address;
+    return `${address.slice(0, 8)}...${address.slice(-4)}`;
+}
+
+/**
+ * Create a copy button element
+ * @param {string} text - Text to copy
+ * @param {string} displayText - Text to display on button (optional)
+ * @returns {HTMLElement} - Copy button element
+ */
+function createCopyButton(text, displayText = '📋') {
+    const button = document.createElement('button');
+    button.className = 'copy-btn';
+    button.innerHTML = displayText;
+    button.title = 'Copy to clipboard';
+    button.onclick = async (e) => {
+        e.stopPropagation();
+        const success = await copyToClipboard(text);
+        if (success) {
+            button.innerHTML = '✅';
+            button.style.background = '#10b981';
+            setTimeout(() => {
+                button.innerHTML = displayText;
+                button.style.background = '';
+            }, 2000);
+        } else {
+            button.innerHTML = '❌';
+            button.style.background = '#ef4444';
+            setTimeout(() => {
+                button.innerHTML = displayText;
+                button.style.background = '';
+            }, 2000);
+        }
+    };
+    return button;
+}
+
+// Add copy utilities to window object
+if (typeof window !== 'undefined') {
+    window.CopyUtils = {
+        copyToClipboard,
+        formatAddressForDisplay,
+        createCopyButton
+    };
+}
+
 // Export for Node.js environments (if needed)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {

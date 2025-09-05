@@ -299,10 +299,25 @@ function renderPools() {
         item.className = 'pool-item';
         item.onclick = () => setSelectedPool(pool.address);
         item.dataset.address = pool.address;
+        
+        // Create address section with copy button
+        const addressSection = document.createElement('div');
+        addressSection.className = 'address-section';
+        
+        const addressText = document.createElement('span');
+        addressText.className = 'address-text';
+        addressText.textContent = window.CopyUtils?.formatAddressForDisplay(pool.address) || pool.address.slice(0, 8) + '...';
+        
+        const copyButton = window.CopyUtils?.createCopyButton(pool.address, '📋') || document.createElement('button');
+        
+        addressSection.appendChild(addressText);
+        addressSection.appendChild(copyButton);
+        
         item.innerHTML = `
             <div class="pair">${pairName}</div>
             <div class="ratio">ratio ${ratioText}</div>
         `;
+        item.appendChild(addressSection);
         list.appendChild(item);
     });
 
