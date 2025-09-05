@@ -418,7 +418,7 @@
             <div class="form-group">
                 <label for="withdrawal-amount">Withdrawal Amount (SOL)</label>
                 <input type="number" id="withdrawal-amount" step="0.001" placeholder="Leave empty for maximum amount">
-                <div class="help-text">Enter amount in SOL, or leave empty to withdraw maximum available amount</div>
+                <div class="help-text">Enter amount in SOL, or leave empty to withdraw maximum available amount. <span id="withdraw-max-info">Maximum available: -- SOL</span></div>
             </div>
             
             <button id="withdraw-fees-btn" class="btn btn-primary" onclick="executeTreasuryWithdrawFees()">
@@ -504,6 +504,14 @@
                 const lastUpdate = t.last_update_timestamp ? new Date(t.last_update_timestamp * 1000).toLocaleString() : 'N/A';
                 const lastWithdrawTs = (t.last_withdrawal_timestamp ?? 0);
 
+                // Compute maximum withdrawable (respecting rent exempt minimum) and floor to 2 decimals
+                const rentMin = (t.rent_exempt_minimum || 0);
+                const maxLamports = Math.max(0, (t.total_balance || 0) - rentMin);
+                let maxSol = maxLamports / 1_000_000_000;
+                // Floor to 2 decimals, and treat values < 0.01 as 0.00
+                maxSol = Math.floor(maxSol * 100) / 100;
+                if (maxSol < 0.01) maxSol = 0.00;
+
                 treasuryInfo = {
                     totalBalance: totalBalanceSol,
                     totalWithdrawn: totalWithdrawnSol,
@@ -518,9 +526,20 @@
                     ),
                     lastUpdate,
                     lastWithdrawalTimestamp: lastWithdrawTs,
+                    maxWithdrawLamports: maxLamports,
+                    maxWithdrawSol: maxSol,
                 };
 
                 displayTreasuryInfo();
+                // Update max-withdraw UI and button state
+                const maxInfoEl = document.getElementById('withdraw-max-info');
+                if (maxInfoEl) {
+                    maxInfoEl.textContent = `Maximum available: ${treasuryInfo.maxWithdrawSol.toFixed(2)} SOL`;
+                }
+                const withdrawBtn = document.getElementById('withdraw-fees-btn');
+                if (withdrawBtn) {
+                    withdrawBtn.disabled = (treasuryInfo.maxWithdrawSol <= 0);
+                }
                 showStatus('success', '✅ Treasury information refreshed');
                 
             } catch (error) {
@@ -576,7 +595,7 @@
                     </div>
                 </div>
                 <div style="grid-column: 1 / -1; font-size: 12px; color: #6b7280; margin-top: 8px;">
-                    * Totals reflect operations recorded by the central treasury. If a pool collected fees locally (legacy mode), those operations will be reflected here after a consolidation.
+                    * Totals reflect operations recorded after consolidation. Pool operations are included when their fees are consolidated into the treasury.
                 </div>
             `;
             
@@ -871,7 +890,9 @@
                 } else {
                     el.style.display = 'none';
                     val.textContent = '';
-                    btn.disabled = false;
+                    // Enable only if max available > 0
+                    const maxOk = (treasuryInfo && treasuryInfo.maxWithdrawSol && treasuryInfo.maxWithdrawSol > 0);
+                    btn.disabled = !maxOk;
                 }
             } catch (_) {}
         }
