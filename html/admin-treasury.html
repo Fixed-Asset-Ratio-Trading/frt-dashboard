@@ -439,6 +439,7 @@
 
     <script src="libs/solana-web3.min.js"></script>
     <script src="config.js"></script>
+    <script src="data-service.js"></script>
     <script src="utils.js"></script>
     <script src="admin-utils.js"></script>
     <script>
@@ -490,7 +491,9 @@
                 showStatus('info', '🔄 Refreshing treasury information...');
                 // Load real-time treasury info via centralized data service
                 if (!window.TradingDataService?.connection) {
-                    await window.TradingDataService.initialize(window.CONFIG, window.AdminUtils?.adminConnection || null);
+                    // Ensure a connection exists if admin utils connection is not ready
+                    const conn = window.AdminUtils?.adminConnection || new solanaWeb3.Connection(window.CONFIG.rpcUrl, { commitment: 'confirmed' });
+                    await window.TradingDataService.initialize(window.CONFIG, conn);
                 }
                 const state = await window.TradingDataService.loadStateJsonExact();
                 const t = state.main_treasury_state;
