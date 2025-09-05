@@ -1454,9 +1454,43 @@ async function executeTreasuryWithdrawFees(amount = null) {
             data: instructionData,
         });
 
-        const signature = await createAndSendTransaction([instruction]);
-        console.log('✅ Treasury fee withdrawal executed successfully:', signature);
-        return signature;
+        try {
+            const signature = await createAndSendTransaction([instruction]);
+            console.log('✅ Treasury fee withdrawal executed successfully:', signature);
+            return signature;
+        } catch (sendErr) {
+            const msg = (sendErr?.message || String(sendErr)).toLowerCase();
+            const isInvalidData = msg.includes('invalid instruction data');
+            if (!isInvalidData) {
+                throw sendErr;
+            }
+            console.warn('⚠️ Invalid instruction data on withdraw. Attempting discriminator auto-detect via simulation...');
+            const detected = await bruteForceDetectWithdrawDiscriminator(amount ?? 0.0);
+            if (typeof detected === 'number') {
+                try { localStorage.setItem('FRT_WITHDRAW_DISC', String(detected)); } catch (_) {}
+                // Rebuild instruction with detected discriminator
+                const retryData = new Uint8Array(9);
+                retryData[0] = detected;
+                new DataView(retryData.buffer, 1, 8).setBigUint64(0, amountLamports, true);
+                const retryIx = new solanaWeb3.TransactionInstruction({
+                    keys: [
+                        { pubkey: adminWallet, isSigner: true, isWritable: true },
+                        { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
+                        { pubkey: rentSysvar, isSigner: false, isWritable: false },
+                        { pubkey: destinationAccount, isSigner: false, isWritable: true },
+                        { pubkey: systemStatePDA, isSigner: false, isWritable: false },
+                        { pubkey: programDataAccount, isSigner: false, isWritable: false },
+                    ],
+                    programId: new solanaWeb3.PublicKey(window.CONFIG.programId),
+                    data: retryData,
+                });
+                console.log(`🔁 Retrying withdraw with detected discriminator ${detected}...`);
+                const retrySig = await createAndSendTransaction([retryIx]);
+                console.log('✅ Treasury fee withdrawal executed successfully (retry):', retrySig);
+                return retrySig;
+            }
+            throw sendErr;
+        }
         
     } catch (error) {
         console.error('❌ Treasury fee withdrawal failed:', error);
