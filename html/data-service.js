@@ -402,7 +402,11 @@ class TradingDataService {
                 total_swap_contract_fees: readU64(),
                 last_update_timestamp: readI64(),
                 total_consolidations_performed: readU64(),
-                last_consolidation_timestamp: readI64()
+                // Updated schema: last_withdrawal_timestamp instead of last_consolidation_timestamp
+                last_withdrawal_timestamp: readI64(),
+                // Added donation tracking fields
+                donation_count: readU64(),
+                total_donations: readU64()
             };
         } catch (e) {
             console.warn('⚠️ Failed to parse MainTreasuryState:', e?.message);

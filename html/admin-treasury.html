@@ -488,27 +488,28 @@
         async function refreshTreasuryInfo() {
             try {
                 showStatus('info', '🔄 Refreshing treasury information...');
-                
-                // For now, we'll simulate treasury info loading
-                // In a real implementation, this would fetch from the blockchain
-                const mockTreasuryInfo = {
-                    totalBalance: 5.2345,
-                    totalWithdrawn: 12.5678,
-                    poolCreationFees: 1.15,
-                    liquidityFees: 0.0013,
-                    swapFees: 0.0000125,
-                    totalOperations: 1250,
-                    lastUpdate: new Date().toLocaleTimeString(),
-                    withdrawalPenalty: false,
-                    penaltyExpiry: null
+                // Load real-time treasury info via centralized data service
+                if (!window.TradingDataService?.connection) {
+                    await window.TradingDataService.initialize(window.CONFIG, window.AdminUtils?.adminConnection || null);
+                }
+                const state = await window.TradingDataService.loadStateJsonExact();
+                const t = state.main_treasury_state;
+                if (!t) throw new Error('Treasury state not found');
+
+                const totalBalanceSol = (t.total_balance / 1_000_000_000).toFixed(9).replace(/0+$/,'').replace(/\.$/,'');
+                const totalWithdrawnSol = (t.total_withdrawn / 1_000_000_000).toFixed(9).replace(/0+$/,'').replace(/\.$/,'');
+                const lastUpdate = t.last_update_timestamp ? new Date(t.last_update_timestamp * 1000).toLocaleString() : 'N/A';
+                const lastWithdrawTs = (t.last_withdrawal_timestamp ?? 0);
+
+                treasuryInfo = {
+                    totalBalance: totalBalanceSol,
+                    totalWithdrawn: totalWithdrawnSol,
+                    totalOperations: (t.pool_creation_count + t.liquidity_operation_count + t.regular_swap_count + t.treasury_withdrawal_count),
+                    lastUpdate,
+                    lastWithdrawalTimestamp: lastWithdrawTs,
                 };
-                
-                treasuryInfo = mockTreasuryInfo;
+
                 displayTreasuryInfo();
-                
-                // Store in localStorage for persistence
-                localStorage.setItem('treasuryInfo', JSON.stringify(treasuryInfo));
-                
                 showStatus('success', '✅ Treasury information refreshed');
                 
             } catch (error) {
@@ -522,7 +523,23 @@
          */
         function displayTreasuryInfo() {
             if (!treasuryInfo) return;
-            
+
+            // Withdraw status: show last withdrawal timestamp and 60-minute countdown if within window
+            let withdrawStatus = '✅ Available';
+            if (typeof treasuryInfo.lastWithdrawalTimestamp === 'number' && treasuryInfo.lastWithdrawalTimestamp > 0) {
+                const lastDt = new Date(treasuryInfo.lastWithdrawalTimestamp * 1000).toLocaleString();
+                const nowSec = Math.floor(Date.now() / 1000);
+                const since = nowSec - treasuryInfo.lastWithdrawalTimestamp;
+                if (since < 3600) {
+                    const remaining = 3600 - since;
+                    const m = Math.floor(remaining / 60);
+                    const s = remaining % 60;
+                    withdrawStatus = `Last: ${lastDt} • ⏳ Next in ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                } else {
+                    withdrawStatus = `Last: ${lastDt} • ✅ Available`;
+                }
+            }
+
             const content = `
                 <h4>Treasury Status</h4>
                 <div class="info-grid">
@@ -535,18 +552,6 @@
                         <div class="info-value">${treasuryInfo.totalWithdrawn} SOL</div>
                     </div>
                     <div class="info-item">
-                        <div class="info-label">Pool Creation Fees</div>
-                        <div class="info-value">${treasuryInfo.poolCreationFees} SOL</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Liquidity Fees</div>
-                        <div class="info-value">${treasuryInfo.liquidityFees} SOL</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Swap Fees</div>
-                        <div class="info-value">${treasuryInfo.swapFees} SOL</div>
-                    </div>
-                    <div class="info-item">
                         <div class="info-label">Total Operations</div>
                         <div class="info-value">${treasuryInfo.totalOperations.toLocaleString()}</div>
                     </div>
@@ -555,8 +560,8 @@
                         <div class="info-value">${treasuryInfo.lastUpdate}</div>
                     </div>
                     <div class="info-item">
-                        <div class="info-label">Withdrawal Status</div>
-                        <div class="info-value">${treasuryInfo.withdrawalPenalty ? '🚫 Penalty Active' : '✅ Available'}</div>
+                        <div class="info-label">Withdraw Status</div>
+                        <div class="info-value">${withdrawStatus}</div>
                     </div>
                 </div>
             `;
