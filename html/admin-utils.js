@@ -489,6 +489,41 @@ async function simulateTreasuryWithdrawFees(amount = null) {
 }
 
 /**
+ * Analyze treasury withdrawal simulation logs for penalty / rate limits
+ */
+function analyzeTreasuryWithdrawalLogs(logs) {
+    try {
+        const text = (logs || []).join('\n');
+        const result = { blocked: false };
+        if (!text) return result;
+        // Detect restart penalty
+        if (/restart penalty active/i.test(text) || /SYSTEM RESTART PENALTY ACTIVE/i.test(text)) {
+            result.blocked = true;
+            result.reason = 'restart_penalty';
+            const m = text.match(/Remaining penalty time:\s*(\d+)/i);
+            if (m) result.secondsRemaining = Number(m[1]);
+            return result;
+        }
+        // Detect rate limit window
+        if (/rate limit/i.test(text) || /Next withdrawal allowed in/i.test(text)) {
+            result.blocked = true;
+            result.reason = 'rate_limit';
+            const m = text.match(/Next withdrawal allowed in:\s*(\d+)/i);
+            if (m) result.secondsRemaining = Number(m[1]);
+            const h = text.match(/current hourly limit[:\s]+([0-9_]+)/i);
+            if (h) {
+                const n = Number(h[1].replace(/_/g, ''));
+                if (Number.isFinite(n)) result.currentHourlyLimitLamports = n;
+            }
+            return result;
+        }
+        return result;
+    } catch (_) {
+        return { blocked: false };
+    }
+}
+
+/**
  * Brute-force detect the correct PoolInstruction enum variant index for WithdrawTreasuryFees
  * Tries indices 0..40 via simulation and returns the first that doesn't fail with InvalidInstructionData
  * Caches the discovered index in localStorage under key 'FRT_WITHDRAW_DISC'
@@ -1454,6 +1489,23 @@ async function executeTreasuryWithdrawFees(amount = null) {
             data: instructionData,
         });
 
+        // Preflight: simulate to avoid sending failing tx during penalty/rate limit
+        try {
+            const pre = await simulateTreasuryWithdrawFees(amount ?? 0.0);
+            const analysis = analyzeTreasuryWithdrawalLogs(pre.logs);
+            if (analysis.blocked) {
+                const secs = analysis.secondsRemaining ?? null;
+                const reason = analysis.reason === 'restart_penalty' ? 'System restart penalty active' : 'Withdrawal rate limit active';
+                const msg = secs !== null ? `${reason}. Try again in ~${Math.ceil(secs/60)} minutes.` : reason;
+                throw new Error(msg);
+            }
+        } catch (preErr) {
+            // If simulation itself fails due to RPC args etc., continue; otherwise rethrow informative preflight errors
+            if (preErr && /penalty|rate limit/i.test(preErr.message || '')) {
+                throw preErr;
+            }
+        }
+
         try {
             const signature = await createAndSendTransaction([instruction]);
             console.log('✅ Treasury fee withdrawal executed successfully:', signature);
@@ -1464,7 +1516,19 @@ async function executeTreasuryWithdrawFees(amount = null) {
             if (!isInvalidData) {
                 throw sendErr;
             }
-            console.warn('⚠️ Invalid instruction data on withdraw. Attempting discriminator auto-detect via simulation...');
+            console.warn('⚠️ Invalid instruction data on withdraw. Checking logs for rate limits/penalty...');
+            try {
+                const pre = await simulateTreasuryWithdrawFees(amount ?? 0.0);
+                const analysis = analyzeTreasuryWithdrawalLogs(pre.logs);
+                if (analysis.blocked) {
+                    const secs = analysis.secondsRemaining ?? null;
+                    const reason = analysis.reason === 'restart_penalty' ? 'System restart penalty active' : 'Withdrawal rate limit active';
+                    const msg = secs !== null ? `${reason}. Try again in ~${Math.ceil(secs/60)} minutes.` : reason;
+                    throw new Error(msg);
+                }
+            } catch (_) {}
+
+            console.warn('⚠️ Falling back to discriminator auto-detect via simulation...');
             const detected = await bruteForceDetectWithdrawDiscriminator(amount ?? 0.0);
             if (typeof detected === 'number') {
                 try { localStorage.setItem('FRT_WITHDRAW_DISC', String(detected)); } catch (_) {}
@@ -1474,7 +1538,7 @@ async function executeTreasuryWithdrawFees(amount = null) {
                 new DataView(retryData.buffer, 1, 8).setBigUint64(0, amountLamports, true);
                 const retryIx = new solanaWeb3.TransactionInstruction({
                     keys: [
-                        { pubkey: adminWallet, isSigner: true, isWritable: true },
+                        { pubkey: adminWallet, isSigner: true, isWritable: false },
                         { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
                         { pubkey: rentSysvar, isSigner: false, isWritable: false },
                         { pubkey: destinationAccount, isSigner: false, isWritable: true },
