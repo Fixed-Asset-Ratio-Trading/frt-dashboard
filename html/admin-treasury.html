@@ -507,7 +507,15 @@
                 treasuryInfo = {
                     totalBalance: totalBalanceSol,
                     totalWithdrawn: totalWithdrawnSol,
-                    totalOperations: (t.pool_creation_count + t.liquidity_operation_count + t.regular_swap_count + t.treasury_withdrawal_count),
+                    // Align with on-chain total_successful_operations (includes donations and consolidations)
+                    totalOperations: (
+                        (t.pool_creation_count || 0) +
+                        (t.liquidity_operation_count || 0) +
+                        (t.regular_swap_count || 0) +
+                        (t.treasury_withdrawal_count || 0) +
+                        (t.total_consolidations_performed || 0) +
+                        (t.donation_count || 0)
+                    ),
                     lastUpdate,
                     lastWithdrawalTimestamp: lastWithdrawTs,
                 };
