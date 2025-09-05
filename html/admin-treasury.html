@@ -504,11 +504,30 @@
                 const lastUpdate = t.last_update_timestamp ? new Date(t.last_update_timestamp * 1000).toLocaleString() : 'N/A';
                 const lastWithdrawTs = (t.last_withdrawal_timestamp ?? 0);
 
-                // Compute maximum withdrawable (respecting rent exempt minimum) and floor to 2 decimals
-                const rentMin = (t.rent_exempt_minimum || 0);
-                const maxLamports = Math.max(0, (t.total_balance || 0) - rentMin);
+                // Compute maximum withdrawable using live account info and rent exemption
+                let maxLamports = 0;
+                try {
+                    const conn = window.TradingDataService.connection;
+                    const treasuryAddr = state.pda_addresses?.main_treasury;
+                    if (treasuryAddr) {
+                        const pk = new solanaWeb3.PublicKey(treasuryAddr);
+                        const acct = await conn.getAccountInfo(pk, { commitment: 'confirmed' });
+                        if (acct) {
+                            const rentMinComputed = await conn.getMinimumBalanceForRentExemption(acct.data.length);
+                            maxLamports = Math.max(0, acct.lamports - rentMinComputed);
+                        }
+                    }
+                    // Fallback to state fields if account lookup failed
+                    if (maxLamports === 0) {
+                        const rentMin = (t.rent_exempt_minimum || 0);
+                        maxLamports = Math.max(0, (t.total_balance || 0) - rentMin);
+                    }
+                } catch (_) {
+                    const rentMin = (t.rent_exempt_minimum || 0);
+                    maxLamports = Math.max(0, (t.total_balance || 0) - rentMin);
+                }
+                // Floor to 2 decimals in SOL, treat < 0.01 as 0.00
                 let maxSol = maxLamports / 1_000_000_000;
-                // Floor to 2 decimals, and treat values < 0.01 as 0.00
                 maxSol = Math.floor(maxSol * 100) / 100;
                 if (maxSol < 0.01) maxSol = 0.00;
 
