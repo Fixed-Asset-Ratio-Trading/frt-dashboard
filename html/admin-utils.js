@@ -489,6 +489,20 @@ async function simulateTreasuryWithdrawFees(amount = null) {
 }
 
 /**
+ * Get withdrawal status (blocked reason and seconds remaining) via simulation logs
+ */
+async function getWithdrawalStatus(amount = 0.0) {
+    try {
+        const sim = await simulateTreasuryWithdrawFees(amount);
+        const analysis = analyzeTreasuryWithdrawalLogs(sim.logs);
+        return analysis;
+    } catch (e) {
+        // If simulation fails, return unknown (do not block UI)
+        return { blocked: false };
+    }
+}
+
+/**
  * Analyze treasury withdrawal simulation logs for penalty / rate limits
  */
 function analyzeTreasuryWithdrawalLogs(logs) {

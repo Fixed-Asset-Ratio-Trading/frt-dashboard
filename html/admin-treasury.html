@@ -424,6 +424,9 @@
             <button id="withdraw-fees-btn" class="btn btn-primary" onclick="executeTreasuryWithdrawFees()">
                 💰 Withdraw Fees
             </button>
+            <div id="withdrawal-countdown" class="help-text" style="margin-top:8px; display:none;">
+                ⏱️ Next withdrawal available in: <span id="withdrawal-countdown-value">--:--</span>
+            </div>
         </div>
         
         <div class="footer">
@@ -469,6 +472,8 @@
                 
                 // Auto-refresh treasury info if wallet is connected
                 await refreshTreasuryInfo();
+                // Start withdrawal countdown watcher
+                startWithdrawalCountdownWatcher();
                 
                 console.log('✅ Treasury administration page initialized');
             } catch (error) {
@@ -820,6 +825,36 @@
                 withdrawBtn.disabled = false;
                 withdrawBtn.textContent = '💰 Withdraw Fees';
             }
+        }
+
+        // Countdown logic: poll withdrawal status and render countdown
+        let _withdrawCountdownInterval = null;
+        async function startWithdrawalCountdownWatcher() {
+            try {
+                await updateWithdrawalCountdown();
+                if (_withdrawCountdownInterval !== null) clearInterval(_withdrawCountdownInterval);
+                _withdrawCountdownInterval = setInterval(updateWithdrawalCountdown, 15_000); // every 15s
+            } catch (_) {}
+        }
+        async function updateWithdrawalCountdown() {
+            try {
+                const status = await window.AdminUtils.getWithdrawalStatus(0.0);
+                const el = document.getElementById('withdrawal-countdown');
+                const val = document.getElementById('withdrawal-countdown-value');
+                const btn = document.getElementById('withdraw-fees-btn');
+                if (status && status.blocked) {
+                    const secs = status.secondsRemaining ?? 0;
+                    const m = Math.floor(secs / 60);
+                    const s = secs % 60;
+                    val.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                    el.style.display = '';
+                    btn.disabled = true;
+                } else {
+                    el.style.display = 'none';
+                    val.textContent = '';
+                    btn.disabled = false;
+                }
+            } catch (_) {}
         }
         
         /**
