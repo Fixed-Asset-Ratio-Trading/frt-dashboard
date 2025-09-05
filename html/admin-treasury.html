@@ -563,7 +563,7 @@
                         <div class="info-value">${treasuryInfo.totalWithdrawn} SOL</div>
                     </div>
                     <div class="info-item">
-                        <div class="info-label">Total Operations</div>
+                        <div class="info-label">Total Operations*</div>
                         <div class="info-value">${treasuryInfo.totalOperations.toLocaleString()}</div>
                     </div>
                     <div class="info-item">
@@ -574,6 +574,9 @@
                         <div class="info-label">Withdraw Status</div>
                         <div class="info-value">${withdrawStatus}</div>
                     </div>
+                </div>
+                <div style="grid-column: 1 / -1; font-size: 12px; color: #6b7280; margin-top: 8px;">
+                    * Totals reflect operations recorded by the central treasury. If a pool collected fees locally (legacy mode), those operations will be reflected here after a consolidation.
                 </div>
             `;
             
