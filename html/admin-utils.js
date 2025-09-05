@@ -411,7 +411,7 @@ async function simulateConsolidatePoolFees(poolId) {
     tx.recentBlockhash = blockhash;
     tx.feePayer = adminWallet || solanaWeb3.Keypair.generate().publicKey;
 
-    const sim = await adminConnection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true });
+    const sim = await adminConnection.simulateTransaction(tx, undefined, { sigVerify: false, replaceRecentBlockhash: true });
     const logs = sim.value?.logs || [];
     console.groupCollapsed('🧪 Simulated Consolidation Logs');
     logs.forEach((l) => console.log(l));
@@ -463,7 +463,7 @@ async function simulateTreasuryWithdrawFees(amount = null) {
 
     const ix = new solanaWeb3.TransactionInstruction({
         keys: [
-            { pubkey: adminWallet || solanaWeb3.Keypair.generate().publicKey, isSigner: true, isWritable: true },
+            { pubkey: adminWallet || solanaWeb3.Keypair.generate().publicKey, isSigner: true, isWritable: false },
             { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
             { pubkey: rentSysvar, isSigner: false, isWritable: false },
             { pubkey: destinationAccount, isSigner: false, isWritable: true },
@@ -479,7 +479,7 @@ async function simulateTreasuryWithdrawFees(amount = null) {
     tx.recentBlockhash = blockhash;
     tx.feePayer = adminWallet || solanaWeb3.Keypair.generate().publicKey;
 
-    const sim = await adminConnection.simulateTransaction(tx, { sigVerify: false, replaceRecentBlockhash: true });
+    const sim = await adminConnection.simulateTransaction(tx, undefined, { sigVerify: false, replaceRecentBlockhash: true });
     const logs = sim.value?.logs || [];
     console.groupCollapsed('🧪 Simulated Treasury Withdrawal Logs');
     logs.forEach((l) => console.log(l));
@@ -526,7 +526,7 @@ async function bruteForceDetectWithdrawDiscriminator(amount = 0.0) {
 
                 const ix = new solanaWeb3.TransactionInstruction({
                     keys: [
-                        { pubkey: adminWallet || solanaWeb3.Keypair.generate().publicKey, isSigner: true, isWritable: true },
+                        { pubkey: adminWallet || solanaWeb3.Keypair.generate().publicKey, isSigner: true, isWritable: false },
                         { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
                         { pubkey: rentSysvar, isSigner: false, isWritable: false },
                         { pubkey: destinationAccount, isSigner: false, isWritable: true },
@@ -1437,8 +1437,8 @@ async function executeTreasuryWithdrawFees(amount = null) {
 
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
-                // [0] System Authority (Signer, Writable) - per API docs
-                { pubkey: adminWallet, isSigner: true, isWritable: true },
+                // [0] System Authority (Signer, Readonly) - program reads authority, no need to write
+                { pubkey: adminWallet, isSigner: true, isWritable: false },
                 // [1] Main Treasury PDA (writable)
                 { pubkey: mainTreasuryPDA, isSigner: false, isWritable: true },
                 // [2] Rent Sysvar (read-only)
