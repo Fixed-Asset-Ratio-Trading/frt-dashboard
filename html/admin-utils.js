@@ -194,6 +194,21 @@ async function createAndSendTransaction(instructions, signers = []) {
         console.log('🔍 Wallet provider:', walletProvider);
         console.log('🔍 Transaction fee payer:', transaction.feePayer.toString());
         console.log('🔍 Transaction instructions:', transaction.instructions.length);
+
+        // Ensure the connected wallet matches the configured admin wallet
+        try {
+            const providerPk = walletProvider.publicKey?.toString?.();
+            if (!providerPk) {
+                throw new Error('Wallet not connected in provider');
+            }
+            const requiredAdmin = adminWallet?.toString?.();
+            if (requiredAdmin && providerPk !== requiredAdmin) {
+                throw new Error(`This wallet is not the Admin Authority. Connected: ${providerPk}. Required Admin: ${requiredAdmin}. Please switch to the admin wallet and try again.`);
+            }
+        } catch (precheckErr) {
+            // Surface a clear, user-facing error
+            throw precheckErr;
+        }
         
         // Try to sign with the specific wallet method
         let signedTransaction;
@@ -214,6 +229,12 @@ async function createAndSendTransaction(instructions, signers = []) {
                 stack: signError.stack,
                 name: signError.name
             });
+            // Map common wallet mismatch error to a clear admin message
+            if (/not required to sign this transaction/i.test(signError.message || '')) {
+                const providerPk = (getWalletProvider()?.publicKey || {}).toString?.() || 'Unknown';
+                const requiredAdmin = adminWallet?.toString?.() || 'Unknown';
+                throw new Error(`This wallet is not the Admin Authority. Connected: ${providerPk}. Required Admin: ${requiredAdmin}. Please switch to the admin wallet and try again.`);
+            }
             throw new Error(`Transaction signing failed: ${signError.message}`);
         }
         
@@ -514,7 +535,9 @@ function analyzeTreasuryWithdrawalLogs(logs) {
         if (/restart penalty active/i.test(text) || /SYSTEM RESTART PENALTY ACTIVE/i.test(text)) {
             result.blocked = true;
             result.reason = 'restart_penalty';
-            const m = text.match(/Remaining penalty time:\s*(\d+)/i);
+            // Support both 'Remaining penalty time: X' and 'Remaining penalty time: X seconds'
+            let m = text.match(/Remaining penalty time:\s*(\d+)/i);
+            if (!m) m = text.match(/Remaining penalty time:\s*(\d+)\s*seconds/i);
             if (m) result.secondsRemaining = Number(m[1]);
             return result;
         }
@@ -522,7 +545,9 @@ function analyzeTreasuryWithdrawalLogs(logs) {
         if (/rate limit/i.test(text) || /Next withdrawal allowed in/i.test(text)) {
             result.blocked = true;
             result.reason = 'rate_limit';
-            const m = text.match(/Next withdrawal allowed in:\s*(\d+)/i);
+            // Match 'Next withdrawal allowed in X seconds' (no colon) and optional colon variant
+            let m = text.match(/Next withdrawal allowed in\s*(\d+)\s*seconds/i);
+            if (!m) m = text.match(/Next withdrawal allowed in:\s*(\d+)/i);
             if (m) result.secondsRemaining = Number(m[1]);
             const h = text.match(/current hourly limit[:\s]+([0-9_]+)/i);
             if (h) {
@@ -1732,6 +1757,7 @@ if (typeof window !== 'undefined') {
         simulateConsolidatePoolFees,
         topUpPoolLamports,
         bruteForceDetectWithdrawDiscriminator,
+        getWithdrawalStatus,
         // Status functions
         checkSystemPauseStatus,
         checkSystemInitialized
