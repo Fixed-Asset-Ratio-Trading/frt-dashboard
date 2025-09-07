@@ -6,6 +6,38 @@
 let connection = null;
 let wallet = null;
 let isConnected = false;
+let selectedNetwork = 'localnet';
+let uploadedImageFile = null;
+let uploadedImageDataUrl = null;
+let isGeneratingVanity = false;
+
+// Network configurations
+const NETWORK_CONFIGS = {
+    localnet: {
+        name: 'LocalNet',
+        rpcUrl: 'http://192.168.2.88:8899',
+        wsUrl: 'ws://192.168.2.88:8900',
+        displayName: '🏠 LocalNet'
+    },
+    testnet: {
+        name: 'TestNet',
+        rpcUrl: 'https://api.testnet.solana.com',
+        wsUrl: 'wss://api.testnet.solana.com',
+        displayName: '🧪 TestNet'
+    },
+    devnet: {
+        name: 'DevNet',
+        rpcUrl: 'https://api.devnet.solana.com',
+        wsUrl: 'wss://api.devnet.solana.com',
+        displayName: '⚡ DevNet'
+    },
+    mainnet: {
+        name: 'MainNet',
+        rpcUrl: 'https://api.mainnet-beta.solana.com',
+        wsUrl: 'wss://api.mainnet-beta.solana.com',
+        displayName: '🚀 MainNet'
+    }
+};
 
 // Metaplex Token Metadata Program ID - loaded from config
 let TOKEN_METADATA_PROGRAM_ID = null;
@@ -215,21 +247,8 @@ async function initializeApp() {
         // Initialize Metaplex Token Metadata Program ID from config
         await initializeMetaplexConfig();
         
-        // Initialize Solana connection with WebSocket configuration
-        console.log('🔌 Connecting to Solana RPC...');
-        const connectionConfig = {
-            commitment: CONFIG.commitment,
-            disableRetryOnRateLimit: CONFIG.disableRetryOnRateLimit || true
-        };
-        
-        if (CONFIG.wsUrl) {
-            console.log('📡 Using WebSocket endpoint:', CONFIG.wsUrl);
-            connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig, CONFIG.wsUrl);
-        } else {
-            console.log('📡 Using HTTP polling (WebSocket disabled)');
-            connectionConfig.wsEndpoint = false; // Explicitly disable WebSocket
-            connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig);
-        }
+        // Initialize Solana connection based on selected network
+        await initializeNetworkConnection();
         
         // Check if SPL Token library is available
         if (!window.splToken || !window.SPL_TOKEN_LOADED) {
@@ -254,11 +273,58 @@ async function initializeApp() {
         // Setup form event listeners
         setupFormListeners();
         
+        // Initialize UI components
+        initializeUI();
+        
         console.log('✅ Token Creation Dashboard initialized');
+        
+        // Expose functions for inline HTML onclick handlers
+        if (typeof window !== 'undefined') {
+            window.selectNetwork = selectNetwork;
+            window.generateVanityToken = generateVanityToken;
+            window.handleImageUpload = handleImageUpload;
+            window.removeImage = removeImage;
+        }
     } catch (error) {
         console.error('❌ Failed to initialize:', error);
         showStatus('error', 'Failed to initialize application: ' + error.message);
     }
+}
+
+/**
+ * Initialize network connection based on selected network
+ */
+async function initializeNetworkConnection() {
+    const networkConfig = NETWORK_CONFIGS[selectedNetwork];
+    console.log('🔌 Connecting to', networkConfig.displayName, ':', networkConfig.rpcUrl);
+    
+    const connectionConfig = {
+        commitment: 'confirmed',
+        disableRetryOnRateLimit: true
+    };
+    
+    if (networkConfig.wsUrl && selectedNetwork !== 'localnet') {
+        console.log('📡 Using WebSocket endpoint:', networkConfig.wsUrl);
+        connection = new solanaWeb3.Connection(networkConfig.rpcUrl, connectionConfig, networkConfig.wsUrl);
+    } else {
+        console.log('📡 Using HTTP polling (WebSocket disabled)');
+        connectionConfig.wsEndpoint = false;
+        connection = new solanaWeb3.Connection(networkConfig.rpcUrl, connectionConfig);
+    }
+}
+
+/**
+ * Initialize UI components
+ */
+function initializeUI() {
+    // Set default network
+    updateNetworkDisplay();
+    
+    // Update fee estimates
+    updateFeeEstimates();
+    
+    // Initialize advanced options
+    setupAdvancedOptionsListeners();
 }
 
 /**
@@ -276,8 +342,36 @@ function setupFormListeners() {
         input.addEventListener('input', updateCreateButtonState);
     });
     
+    // Advanced options listeners
+    const advancedCheckboxes = document.querySelectorAll('.checkbox-item input[type="checkbox"]');
+    advancedCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateFeeEstimates);
+    });
+    
     // Initial button state
     updateCreateButtonState();
+}
+
+/**
+ * Setup advanced options listeners
+ */
+function setupAdvancedOptionsListeners() {
+    // Disable metadata by default (requires hosted URI)
+    document.getElementById('enable-metadata').checked = false;
+    
+    // Link metadata and immutable options
+    const metadataCheckbox = document.getElementById('enable-metadata');
+    const immutableCheckbox = document.getElementById('enable-immutable');
+    
+    metadataCheckbox.addEventListener('change', function() {
+        if (!this.checked) {
+            immutableCheckbox.checked = false;
+            immutableCheckbox.disabled = true;
+        } else {
+            immutableCheckbox.disabled = false;
+        }
+        updateFeeEstimates();
+    });
 }
 
 /**
@@ -377,6 +471,253 @@ async function disconnectWallet() {
         
     } catch (error) {
         console.error('❌ Error disconnecting wallet:', error);
+    }
+}
+
+/**
+ * Select network for token deployment
+ */
+function selectNetwork(network) {
+    if (selectedNetwork === network) return;
+    
+    selectedNetwork = network;
+    updateNetworkDisplay();
+    
+    // Reinitialize connection with new network
+    if (connection) {
+        initializeNetworkConnection().then(() => {
+            showStatus('info', `Switched to ${NETWORK_CONFIGS[network].displayName}`);
+            updateFeeEstimates();
+        }).catch(error => {
+            console.error('Failed to switch network:', error);
+            showStatus('error', 'Failed to switch network: ' + error.message);
+        });
+    }
+}
+
+/**
+ * Update network display
+ */
+function updateNetworkDisplay() {
+    document.querySelectorAll('.network-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-network="${selectedNetwork}"]`).classList.add('active');
+}
+
+/**
+ * Update fee estimates based on selected options
+ */
+function updateFeeEstimates() {
+    const enableMetadata = document.getElementById('enable-metadata')?.checked || false;
+    
+    let creationFee = 0.006; // Base token creation
+    let metadataFee = enableMetadata ? 0.012 : 0;
+    
+    // Adjust for network
+    if (selectedNetwork === 'mainnet') {
+        creationFee *= 2; // Higher fees on mainnet
+        metadataFee *= 2;
+    }
+    
+    const totalFee = creationFee + metadataFee;
+    
+    document.getElementById('creation-fee').textContent = `~${creationFee.toFixed(3)} SOL`;
+    document.getElementById('metadata-fee').textContent = `~${metadataFee.toFixed(3)} SOL`;
+    document.getElementById('total-fee').textContent = `~${totalFee.toFixed(3)} SOL`;
+}
+
+/**
+ * Handle image upload
+ */
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+        showStatus('error', 'Please select a valid image file (PNG, JPG, GIF, WebP)');
+        return;
+    }
+    
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+        showStatus('error', 'Image file must be less than 5MB');
+        return;
+    }
+    
+    uploadedImageFile = file;
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        uploadedImageDataUrl = e.target.result;
+        const imgEl = document.getElementById('image-preview');
+        imgEl.src = e.target.result;
+        imgEl.style.display = 'block';
+        document.getElementById('upload-placeholder').style.display = 'none';
+        document.getElementById('image-preview-container').style.display = 'block';
+        document.querySelector('.image-upload-section').classList.add('has-image');
+        
+        showStatus('success', `Image "${file.name}" loaded successfully`);
+    };
+    reader.readAsDataURL(file);
+}
+
+/**
+ * Remove uploaded image
+ */
+function removeImage(event) {
+    event.stopPropagation();
+    
+    uploadedImageFile = null;
+    uploadedImageDataUrl = null;
+    
+    document.getElementById('token-image').value = '';
+    document.getElementById('upload-placeholder').style.display = 'block';
+    document.getElementById('image-preview-container').style.display = 'none';
+    document.querySelector('.image-upload-section').classList.remove('has-image');
+    
+    showStatus('info', 'Image removed');
+}
+
+/**
+ * Generate vanity token with custom prefix
+ */
+async function generateVanityToken() {
+    if (isGeneratingVanity) {
+        showStatus('error', 'Vanity generation already in progress');
+        return;
+    }
+    
+    const prefix = document.getElementById('vanity-prefix').value.trim();
+    if (!prefix) {
+        showStatus('error', 'Please enter a prefix for vanity generation');
+        return;
+    }
+    
+    if (prefix.length > 6) {
+        showStatus('error', 'Prefix must be 6 characters or less');
+        return;
+    }
+    
+    // Validate prefix (only alphanumeric)
+    // Base58 charset used by Solana: 123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
+    if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(prefix)) {
+        showStatus('error', 'Prefix must be valid base58 (no 0,O,I,l)');
+        return;
+    }
+    
+    if (!isConnected) {
+        showStatus('error', 'Please connect your wallet first');
+        return;
+    }
+    
+    isGeneratingVanity = true;
+    const vanityBtn = document.querySelector('.vanity-btn');
+    const originalText = vanityBtn.textContent;
+    
+    try {
+        vanityBtn.textContent = '🔄 Generating...';
+        vanityBtn.disabled = true;
+        
+        showStatus('info', `🎯 Generating vanity token with prefix "${prefix}"... This may take a while.`);
+        
+        // Generate vanity keypair
+        const vanityResult = await generateVanityKeypair(prefix);
+        
+        // Auto-fill basic token data for vanity token
+        document.getElementById('token-name').value = `${prefix} Token`;
+        document.getElementById('token-symbol').value = prefix.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase();
+        document.getElementById('token-decimals').value = '9';
+        document.getElementById('token-supply').value = '1000000';
+        document.getElementById('token-description').value = `Premium vanity token with address starting with ${prefix}`;
+        
+        showStatus('success', `🎉 Vanity token generated! Address: ${vanityResult.publicKey.toString()}`);
+        
+        // Auto-create the vanity token
+        await createVanityToken(vanityResult);
+        
+    } catch (error) {
+        console.error('❌ Error generating vanity token:', error);
+        showStatus('error', 'Failed to generate vanity token: ' + error.message);
+    } finally {
+        isGeneratingVanity = false;
+        vanityBtn.textContent = originalText;
+        vanityBtn.disabled = false;
+    }
+}
+
+/**
+ * Generate vanity keypair with specific prefix
+ */
+async function generateVanityKeypair(prefix) {
+    return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+        const maxAttempts = 1000000; // Prevent infinite loops
+        let attempts = 0;
+        
+        const generate = () => {
+            try {
+                const keypair = solanaWeb3.Keypair.generate();
+                const address = keypair.publicKey.toString();
+                attempts++;
+                
+                if (address.startsWith(prefix)) {
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    console.log(`✅ Found vanity address after ${attempts} attempts in ${elapsed.toFixed(2)}s`);
+                    resolve(keypair);
+                    return;
+                }
+                
+                if (attempts >= maxAttempts) {
+                    reject(new Error(`Could not generate vanity address with prefix "${prefix}" after ${maxAttempts} attempts`));
+                    return;
+                }
+                
+                // Update progress every 10000 attempts
+                if (attempts % 10000 === 0) {
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    showStatus('info', `🎯 Generating vanity address... ${attempts} attempts in ${elapsed.toFixed(1)}s`);
+                }
+                
+                // Use setTimeout to prevent blocking the UI
+                setTimeout(generate, 0);
+                
+            } catch (error) {
+                reject(error);
+            }
+        };
+        
+        generate();
+    });
+}
+
+/**
+ * Create vanity token with pre-generated keypair
+ */
+async function createVanityToken(vanityKeypair) {
+    try {
+        showStatus('info', 'Creating vanity token...');
+        
+        // Get form data
+        const formData = getFormData();
+        
+        // Create token with vanity keypair
+        const tokenInfo = await createSPLTokenWithKeypair(formData, vanityKeypair);
+        
+        showStatus('success', `🎉 Vanity token "${formData.name}" created successfully! 
+        💰 ${formData.supply.toLocaleString()} ${formData.symbol} tokens minted
+        🎯 Vanity Address: ${tokenInfo.mint}
+        🌟 This premium address starts with your chosen prefix!`);
+        
+        // Clear vanity input
+        document.getElementById('vanity-prefix').value = '';
+        
+    } catch (error) {
+        console.error('❌ Error creating vanity token:', error);
+        throw error;
     }
 }
 
@@ -624,7 +965,7 @@ async function handleTokenCreation(event) {
 }
 
 /**
- * Get form data
+ * Get form data including new fields
  */
 function getFormData() {
     return {
@@ -632,8 +973,75 @@ function getFormData() {
         symbol: document.getElementById('token-symbol').value.trim().toUpperCase(),
         decimals: parseInt(document.getElementById('token-decimals').value),
         supply: parseInt(document.getElementById('token-supply').value),
-        description: document.getElementById('token-description').value.trim()
+        description: document.getElementById('token-description').value.trim(),
+        // Social links
+        twitter: document.getElementById('twitter-link').value.trim(),
+        discord: document.getElementById('discord-link').value.trim(),
+        website: document.getElementById('website-link').value.trim(),
+        telegram: document.getElementById('telegram-link').value.trim(),
+        // Advanced options
+        revokeFreeze: document.getElementById('revoke-freeze').checked,
+        revokeMint: document.getElementById('revoke-mint').checked,
+        enableMetadata: document.getElementById('enable-metadata').checked,
+        enableImmutable: document.getElementById('enable-immutable').checked,
+        // Image
+        imageFile: uploadedImageFile,
+        imageDataUrl: uploadedImageDataUrl
     };
+}
+
+/**
+ * Upload image to IPFS or use base64 for metadata
+ */
+async function uploadImageForMetadata(imageFile) {
+    if (!imageFile) return null;
+    
+    try {
+        // For now, use base64 data URL (in production, upload to IPFS)
+        const reader = new FileReader();
+        return new Promise((resolve, reject) => {
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(imageFile);
+        });
+    } catch (error) {
+        console.warn('Failed to process image:', error);
+        return null;
+    }
+}
+
+/**
+ * Create enhanced metadata with social links
+ */
+function createEnhancedMetadata(tokenData, imageUri) {
+    const metadata = {
+        name: tokenData.name,
+        symbol: tokenData.symbol,
+        description: tokenData.description,
+        image: imageUri || '',
+        attributes: [],
+        properties: {
+            files: [],
+            category: 'token'
+        }
+    };
+    
+    // Add social links if provided
+    const socialLinks = {};
+    if (tokenData.twitter) socialLinks.twitter = tokenData.twitter;
+    if (tokenData.discord) socialLinks.discord = tokenData.discord;
+    if (tokenData.website) socialLinks.website = tokenData.website;
+    if (tokenData.telegram) socialLinks.telegram = tokenData.telegram;
+    
+    if (Object.keys(socialLinks).length > 0) {
+        metadata.properties.socialLinks = socialLinks;
+    }
+    
+    // Add network info
+    metadata.properties.network = NETWORK_CONFIGS[selectedNetwork].displayName;
+    metadata.properties.createdWith = 'Fixed Ratio Trading Token Creator';
+    
+    return metadata;
 }
 
 /**
@@ -725,9 +1133,24 @@ async function checkNetworkHealth() {
 }
 
 /**
- * Create SPL Token
+ * Create SPL Token with optional custom keypair
+ */
+async function createSPLTokenWithKeypair(tokenData, customKeypair = null) {
+    const mintKeypair = customKeypair || solanaWeb3.Keypair.generate();
+    return await createSPLTokenInternal(tokenData, mintKeypair);
+}
+
+/**
+ * Create SPL Token (public interface)
  */
 async function createSPLToken(tokenData) {
+    return await createSPLTokenInternal(tokenData);
+}
+
+/**
+ * Internal SPL Token creation with enhanced features
+ */
+async function createSPLTokenInternal(tokenData, providedKeypair = null) {
     try {
         console.log('🎨 Creating SPL token with data:', tokenData);
         
@@ -745,9 +1168,9 @@ async function createSPLToken(tokenData) {
         
         let mint, associatedTokenAccount;
         
-        // Generate mint keypair
-        const mintKeypair = solanaWeb3.Keypair.generate();
-        console.log('🔑 Generated mint keypair:', mintKeypair.publicKey.toString());
+        // Use provided keypair or generate new one
+        const mintKeypair = providedKeypair || solanaWeb3.Keypair.generate();
+        console.log('🔑 Using mint keypair:', mintKeypair.publicKey.toString());
         
         // Get rent exemption for mint account
         const mintRent = await connection.getMinimumBalanceForRentExemption(window.splToken.MintLayout.span);
@@ -756,10 +1179,17 @@ async function createSPLToken(tokenData) {
         const metadataAccount = await getMetadataAccount(mintKeypair.publicKey);
         console.log('📄 Metadata account:', metadataAccount.toString());
         
-        // Get image URI for token
-        const imageURI = getTokenImageURI(tokenData.symbol);
+        // Process uploaded image or get default image URI
+        let imageURI = null;
+        if (tokenData.imageFile) {
+            console.log('🖼️ Processing uploaded image...');
+            imageURI = await uploadImageForMetadata(tokenData.imageFile);
+        } else {
+            imageURI = getTokenImageURI(tokenData.symbol);
+        }
+        
         if (imageURI) {
-            console.log('🖼️ Token image URI:', imageURI);
+            console.log('🖼️ Token image URI ready:', imageURI.slice(0, 50) + '...');
         }
         
         // Build instructions array
@@ -808,7 +1238,7 @@ async function createSPLToken(tokenData) {
             )
         );
         
-        // 5. Mint all tokens to your wallet
+        // 5. Mint tokens to your wallet
         const totalSupplyWithDecimals = tokenData.supply * Math.pow(10, tokenData.decimals);
         console.log(`💰 Minting ${tokenData.supply} ${tokenData.symbol} tokens to your wallet...`);
         
@@ -823,7 +1253,34 @@ async function createSPLToken(tokenData) {
             )
         );
         
-        // 6. Create and send basic token transaction first (without metadata)
+        // 6. Revoke authorities if requested
+        if (tokenData.revokeFreeze) {
+            instructions.push(
+                window.splToken.Token.createSetAuthorityInstruction(
+                    window.splToken.TOKEN_PROGRAM_ID,
+                    mintKeypair.publicKey,
+                    null, // new authority (null = revoke)
+                    'FreezeAccount',
+                    wallet.publicKey, // current authority
+                    []
+                )
+            );
+        }
+        
+        if (tokenData.revokeMint) {
+            instructions.push(
+                window.splToken.Token.createSetAuthorityInstruction(
+                    window.splToken.TOKEN_PROGRAM_ID,
+                    mintKeypair.publicKey,
+                    null, // new authority (null = revoke)
+                    'MintTokens',
+                    wallet.publicKey, // current authority
+                    []
+                )
+            );
+        }
+        
+        // 7. Create and send basic token transaction first (without metadata)
         const transaction = new solanaWeb3.Transaction().add(...instructions);
         
         // Set recent blockhash and fee payer
@@ -857,56 +1314,63 @@ async function createSPLToken(tokenData) {
         
         console.log('✅ Token created and minted successfully to your wallet!');
         
-        // 7. Now try to add metadata in a separate transaction
+        // 8. Add metadata if requested
         let metadataAdded = false;
-        try {
-            console.log('📄 Now attempting to add metadata in separate transaction...');
-            // Wait briefly if MPL is still loading (race condition guard)
-            if (window.MPL_READY === false) {
-                await new Promise(r => setTimeout(r, 500));
+        if (tokenData.enableMetadata) {
+            try {
+                console.log('📄 Adding enhanced metadata in separate transaction...');
+                
+                // Wait briefly if MPL is still loading
+                if (window.MPL_READY === false) {
+                    await new Promise(r => setTimeout(r, 500));
+                }
+                
+                // Create enhanced metadata with social links
+                const enhancedMetadata = createEnhancedMetadata(tokenData, imageURI);
+                
+                const metadataInstruction = createMetadataInstruction(
+                    metadataAccount,
+                    mintKeypair.publicKey,
+                    wallet.publicKey,     // mint authority
+                    wallet.publicKey,     // payer
+                    wallet.publicKey,     // update authority
+                    tokenData.name,
+                    tokenData.symbol,
+                    JSON.stringify(enhancedMetadata) // Enhanced metadata as URI
+                );
+                
+                if (!metadataInstruction) {
+                    throw new Error('Metaplex builder unavailable; skipping metadata');
+                }
+                
+                // Create metadata transaction
+                const metadataTransaction = new solanaWeb3.Transaction().add(metadataInstruction);
+                const { blockhash: metadataBlockhash } = await connection.getLatestBlockhash();
+                metadataTransaction.recentBlockhash = metadataBlockhash;
+                metadataTransaction.feePayer = wallet.publicKey;
+                
+                console.log('📝 Requesting wallet signature for enhanced metadata...');
+                const signedMetadataTransaction = await wallet.signTransaction(metadataTransaction);
+                const metadataSignature = await connection.sendRawTransaction(signedMetadataTransaction.serialize());
+                
+                console.log('📡 Enhanced metadata transaction sent:', metadataSignature);
+                const metadataConfirmation = await confirmTransactionWithProgress(metadataSignature, 'confirmed');
+                
+                if (metadataConfirmation.value.err) {
+                    throw new Error('Metadata transaction failed: ' + JSON.stringify(metadataConfirmation.value.err));
+                }
+                
+                metadataAdded = true;
+                console.log('✅ Enhanced metadata with social links added successfully!');
+                
+            } catch (metadataError) {
+                console.warn('⚠️ Enhanced metadata creation failed, but token was created successfully:', metadataError);
             }
-
-            const metadataInstruction = createMetadataInstruction(
-                metadataAccount,
-                mintKeypair.publicKey,
-                wallet.publicKey,     // mint authority
-                wallet.publicKey,     // payer
-                wallet.publicKey,     // update authority
-                tokenData.name,
-                tokenData.symbol,
-                imageURI || ''
-            );
-            if (!metadataInstruction) {
-                throw new Error('Metaplex builder unavailable in browser; skipping metadata creation');
-            }
-            
-            // Create metadata transaction
-            const metadataTransaction = new solanaWeb3.Transaction().add(metadataInstruction);
-            const { blockhash: metadataBlockhash } = await connection.getLatestBlockhash();
-            metadataTransaction.recentBlockhash = metadataBlockhash;
-            metadataTransaction.feePayer = wallet.publicKey;
-            
-            console.log('📝 Requesting wallet signature for metadata...');
-            const signedMetadataTransaction = await wallet.signTransaction(metadataTransaction);
-            const metadataSignature = await connection.sendRawTransaction(signedMetadataTransaction.serialize());
-            
-            console.log('📡 Metadata transaction sent:', metadataSignature);
-            const metadataConfirmation = await confirmTransactionWithProgress(metadataSignature, CONFIG.commitment);
-            
-            if (metadataConfirmation.value.err) {
-                throw new Error('Metadata transaction failed: ' + JSON.stringify(metadataConfirmation.value.err));
-            }
-            
-            metadataAdded = true;
-            console.log('✅ Metadata added successfully!');
-        } catch (metadataError) {
-            console.warn('⚠️ Metadata creation failed, but token was created successfully:', metadataError);
-            console.log('📄 Token created without metadata (you can add metadata later)');
         }
         
-        // Return token info
+        // Return enhanced token info
         const tokenInfo = {
-            mint: mint.publicKey.toString(),  // mint is a Token instance, need .publicKey
+            mint: mint.publicKey.toString(),
             name: tokenData.name,
             symbol: tokenData.symbol,
             decimals: tokenData.decimals,
@@ -917,13 +1381,28 @@ async function createSPLToken(tokenData) {
             metadataAccount: metadataAccount.toString(),
             imageURI: imageURI || null,
             metadataCreated: metadataAdded,
+            network: selectedNetwork,
+            networkName: NETWORK_CONFIGS[selectedNetwork].displayName,
+            // Social links
+            socialLinks: {
+                twitter: tokenData.twitter || null,
+                discord: tokenData.discord || null,
+                website: tokenData.website || null,
+                telegram: tokenData.telegram || null
+            },
+            // Advanced options applied
+            authorities: {
+                freezeRevoked: tokenData.revokeFreeze,
+                mintRevoked: tokenData.revokeMint,
+                metadataImmutable: tokenData.enableImmutable && metadataAdded
+            },
             createdAt: new Date().toISOString()
         };
         
         if (metadataAdded) {
-            console.log('🎉 Token with metadata created successfully:', tokenInfo);
+            console.log('🎉 Enhanced token with metadata and social links created successfully:', tokenInfo);
         } else {
-            console.log('🎉 Token created successfully (metadata pending):', tokenInfo);
+            console.log('🎉 Token created successfully:', tokenInfo);
         }
         return tokenInfo;
         
