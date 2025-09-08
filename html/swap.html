@@ -531,7 +531,12 @@
         
         <!-- Pool Info Section -->
         <div class="pool-info-section">
-            <h2 style="color: #333; margin-bottom: 15px;">🏊‍♂️ Pool Information</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="color: #333; margin: 0;">🏊‍♂️ Pool Information</h2>
+                <button id="refresh-pool-btn" onclick="refreshPoolStatus()" class="nav-btn secondary" style="padding: 8px 16px; font-size: 14px; display: none;">
+                    🔄 Refresh Status
+                </button>
+            </div>
             <div id="pool-loading" class="loading">
                 <h3>🔍 Loading pool information...</h3>
             </div>

@@ -12,6 +12,7 @@ let isConnected = false;
 let userTokens = [];
 let swapDirection = 'AtoB'; // 'AtoB' or 'BtoA'
 let tokenPairRatio = null; // 🎯 CENTRALIZED: TokenPairRatio instance for all calculations
+let poolStatusCheckInterval = null; // For periodic pool status monitoring
 // No slippage tolerance needed for fixed ratio trading
 
 /**
@@ -340,6 +341,9 @@ async function handleWalletConnected() {
         // Initialize swap interface
         initializeSwapInterface();
         
+        // Start periodic pool status monitoring
+        startPoolStatusMonitoring();
+        
         showStatus('success', `Wallet connected: ${wallet.publicKey.toString().slice(0, 8)}...`);
         
     } catch (error) {
@@ -447,6 +451,12 @@ function updatePoolDisplay() {
     poolLoading.style.display = 'none';
     poolDetails.style.display = 'grid';
     
+    // Show refresh button
+    const refreshBtn = document.getElementById('refresh-pool-btn');
+    if (refreshBtn) {
+        refreshBtn.style.display = 'inline-flex';
+    }
+    
     // ✅ CENTRALIZED: Use centralized display functions for consistency
     const displayInfo = window.TokenDisplayUtils?.getCentralizedDisplayInfo(poolData);
     
@@ -473,7 +483,23 @@ function updatePoolDisplay() {
     
 
     
-    poolDetails.innerHTML = `
+    // Add pause warning banner if pool is paused
+    let pauseWarningHtml = '';
+    if (flags.swapsPaused || flags.liquidityPaused) {
+        const pauseType = flags.swapsPaused ? 'Swaps' : 'Liquidity Operations';
+        const pauseIcon = flags.swapsPaused ? '🚫' : '⏸️';
+        pauseWarningHtml = `
+            <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 2px solid #fca5a5;">
+                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">${pauseIcon} Pool ${pauseType} Paused</div>
+                <div style="font-size: 14px; opacity: 0.9;">
+                    ${flags.swapsPaused ? 'Token swaps are currently disabled by the pool owner.' : 'Pool liquidity operations are paused, which may affect trading.'}
+                    <br>Please contact the pool owner or try again later.
+                </div>
+            </div>
+        `;
+    }
+    
+    poolDetails.innerHTML = pauseWarningHtml + `
         <div class="pool-metric">
             <div class="metric-label">Pool Pair</div>
             <div class="metric-value">${display.displayPair} ${display.isOneToManyRatio ? '<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 8px;">🎯 1:Many</span>' : ''}</div>
@@ -496,7 +522,7 @@ function updatePoolDisplay() {
         
         <div class="pool-metric">
             <div class="metric-label">Pool Status</div>
-            <div class="metric-value">${flags.liquidityPaused ? '⏸️ Liquidity Paused' : flags.swapsPaused ? '🚫 Swaps Paused' : '✅ Active'}</div>
+            <div class="metric-value" style="${flags.liquidityPaused || flags.swapsPaused ? 'color: #dc2626; font-weight: bold;' : 'color: #10b981;'}">${flags.liquidityPaused ? '⏸️ Liquidity Paused' : flags.swapsPaused ? '🚫 Swaps Paused' : '✅ Active'}</div>
         </div>
         
         <div class="pool-metric">
@@ -577,8 +603,26 @@ function updateSwapInterfaceWithRealBalances() {
     
     // Hide preview and disable button
     document.getElementById('transaction-preview').style.display = 'none';
-    document.getElementById('swap-btn').disabled = true;
-    document.getElementById('swap-btn').textContent = '🔄 Enter Amount to Swap';
+    
+    // Check if pool is paused and disable swap button accordingly
+    const flags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
+    const swapBtn = document.getElementById('swap-btn');
+    
+    if (flags.swapsPaused) {
+        swapBtn.disabled = true;
+        swapBtn.textContent = '🚫 Swaps Paused by Pool Owner';
+        swapBtn.style.background = '#6b7280'; // Gray background for disabled state
+        showStatus('error', '🚫 Pool swaps are currently paused by the pool owner. Please contact the pool owner or try again later.');
+    } else if (flags.liquidityPaused) {
+        swapBtn.disabled = true;
+        swapBtn.textContent = '⏸️ Pool Operations Paused';
+        swapBtn.style.background = '#6b7280';
+        showStatus('error', '⏸️ Pool liquidity operations are paused, which may affect swaps. Please contact the pool owner or try again later.');
+    } else {
+        swapBtn.disabled = true;
+        swapBtn.textContent = '🔄 Enter Amount to Swap';
+        swapBtn.style.background = ''; // Reset to default
+    }
 }
 
 /**
@@ -675,16 +719,42 @@ function calculateSwapOutputEnhanced() {
         return;
     }
     
+    // Check if pool is paused before doing any calculations
+    const flags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
+    const swapBtn = document.getElementById('swap-btn');
+    
+    if (flags.swapsPaused) {
+        const toAmountInput = document.getElementById('to-amount');
+        const preview = document.getElementById('transaction-preview');
+        toAmountInput.value = '';
+        preview.style.display = 'none';
+        swapBtn.disabled = true;
+        swapBtn.textContent = '🚫 Swaps Paused by Pool Owner';
+        swapBtn.style.background = '#6b7280';
+        return;
+    }
+    
+    if (flags.liquidityPaused) {
+        const toAmountInput = document.getElementById('to-amount');
+        const preview = document.getElementById('transaction-preview');
+        toAmountInput.value = '';
+        preview.style.display = 'none';
+        swapBtn.disabled = true;
+        swapBtn.textContent = '⏸️ Pool Operations Paused';
+        swapBtn.style.background = '#6b7280';
+        return;
+    }
+    
     const fromAmount = parseFloat(document.getElementById('from-amount').value) || 0;
     const toAmountInput = document.getElementById('to-amount');
     const preview = document.getElementById('transaction-preview');
-    const swapBtn = document.getElementById('swap-btn');
     
     if (fromAmount <= 0) {
         toAmountInput.value = '';
         preview.style.display = 'none';
         swapBtn.disabled = true;
         swapBtn.textContent = '🔄 Enter Amount to Swap';
+        swapBtn.style.background = ''; // Reset to default
         return;
     }
     
@@ -765,6 +835,166 @@ function updateTransactionPreview(fromAmount, toAmount) {
 }
 
 /**
+ * Simulate swap transaction to catch pool pause errors before execution
+ */
+async function simulateSwapTransaction(fromAmount) {
+    console.log('🔍 Starting transaction simulation...');
+    
+    try {
+        // Get user token accounts
+        const fromToken = swapDirection === 'AtoB' 
+            ? userTokens.find(t => t.isTokenA)
+            : userTokens.find(t => !t.isTokenA);
+        
+        const toToken = swapDirection === 'AtoB' 
+            ? userTokens.find(t => !t.isTokenA)
+            : userTokens.find(t => t.isTokenA);
+        
+        if (!fromToken) {
+            throw new Error('Source token account not found');
+        }
+        
+        // Check if user has destination token account, or create ATA address
+        let toTokenAccountPubkey;
+        if (toToken) {
+            toTokenAccountPubkey = new solanaWeb3.PublicKey(toToken.tokenAccount);
+        } else {
+            // Create associated token account address for destination token
+            const toTokenMint = swapDirection === 'AtoB' 
+                ? new solanaWeb3.PublicKey(poolData.tokenBMint || poolData.token_b_mint)
+                : new solanaWeb3.PublicKey(poolData.tokenAMint || poolData.token_a_mint);
+            
+            toTokenAccountPubkey = await window.splToken.Token.getAssociatedTokenAddress(
+                window.splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+                window.splToken.TOKEN_PROGRAM_ID,
+                toTokenMint,
+                wallet.publicKey
+            );
+        }
+        
+        // Build the same transaction we would send
+        const simulationTransaction = await buildSwapTransaction(
+            fromAmount,
+            fromToken,
+            toTokenAccountPubkey
+        );
+        
+        // For simulation, we need to set the recent blockhash but don't need to sign
+        const { blockhash } = await connection.getLatestBlockhash('finalized');
+        simulationTransaction.recentBlockhash = blockhash;
+        simulationTransaction.feePayer = wallet.publicKey;
+        
+        console.log('🔍 Simulating transaction with recent blockhash...');
+        console.log('🔍 Transaction details:', {
+            instructionCount: simulationTransaction.instructions.length,
+            feePayer: simulationTransaction.feePayer.toString(),
+            recentBlockhash: simulationTransaction.recentBlockhash
+        });
+        
+        // Try different simulation approaches for compatibility
+        let simulationResult;
+        try {
+            // First try with modern options
+            simulationResult = await connection.simulateTransaction(simulationTransaction, {
+                commitment: 'confirmed',
+                sigVerify: false,
+                replaceRecentBlockhash: false
+            });
+        } catch (modernError) {
+            console.log('🔄 Modern simulation failed, trying legacy approach:', modernError.message);
+            
+            try {
+                // Fallback to basic simulation
+                simulationResult = await connection.simulateTransaction(simulationTransaction);
+            } catch (legacyError) {
+                console.log('🔄 Legacy simulation failed, trying with commitment only:', legacyError.message);
+                
+                // Last fallback with just commitment
+                simulationResult = await connection.simulateTransaction(simulationTransaction, 'confirmed');
+            }
+        }
+        
+        console.log('🔍 Simulation result:', simulationResult);
+        
+        // Check for errors in simulation
+        if (simulationResult.value.err) {
+            console.error('🚨 Transaction simulation failed:', simulationResult.value.err);
+            console.error('🚨 Simulation logs:', simulationResult.value.logs);
+            
+            // Parse the error and logs to provide user-friendly messages
+            const errorMessage = parseSimulationError(simulationResult.value.err, simulationResult.value.logs);
+            throw new Error(errorMessage);
+        }
+        
+        console.log('✅ Transaction simulation succeeded - proceeding with actual transaction');
+        
+    } catch (error) {
+        console.error('❌ Transaction simulation failed:', error);
+        throw error; // Re-throw to be handled by executeSwap
+    }
+}
+
+/**
+ * Parse simulation error to provide user-friendly messages
+ */
+function parseSimulationError(error, logs) {
+    console.log('🔍 Parsing simulation error:', error);
+    console.log('🔍 Available logs:', logs);
+    
+    // Check for pool pause errors in logs
+    if (logs) {
+        for (const log of logs) {
+            if (log.includes('SWAP BLOCKED: Pool swaps are currently paused')) {
+                return '🚫 Pool swaps are currently paused by the pool owner. Please contact the pool owner to resume trading or try again later.';
+            }
+            if (log.includes('LIQUIDITY BLOCKED: Pool liquidity operations are currently paused')) {
+                return '🚫 Pool liquidity operations are currently paused. Swaps may be affected.';
+            }
+            if (log.includes('Pool owner has paused trading')) {
+                return '⏸️ Trading has been paused by the pool owner. Please try again later or contact the pool owner.';
+            }
+            if (log.includes('Contact pool owner to resume trading')) {
+                return '📞 Pool trading is paused. Please contact the pool owner to resume operations.';
+            }
+        }
+    }
+    
+    // Check for specific error codes
+    if (error && typeof error === 'object') {
+        // Custom program error 0x403 (1027 in decimal) typically indicates pause state
+        if (error.InstructionError && Array.isArray(error.InstructionError)) {
+            const [instructionIndex, instructionError] = error.InstructionError;
+            if (instructionError.Custom === 1027 || instructionError.Custom === 0x403) {
+                return '🚫 Pool swaps are currently paused by the pool owner (Error Code: 0x403). Trading has been temporarily disabled. Please contact the pool owner or try again later.';
+            }
+            
+            // Add more specific error code mappings if we discover them
+            const customError = instructionError.Custom;
+            if (customError) {
+                // Check for other known pause-related error codes
+                if (customError >= 1024 && customError <= 1030) {
+                    return `🚫 Pool operations are paused (Error Code: ${customError}). This appears to be a pause-related restriction. Please contact the pool owner.`;
+                }
+                return `❌ Transaction failed with custom program error: ${customError}. Please check the pool status and try again.`;
+            }
+        }
+    }
+    
+    // Check for insufficient funds
+    if (logs && logs.some(log => log.includes('insufficient funds') || log.includes('Insufficient funds'))) {
+        return '💰 Insufficient funds in your wallet. Please check your token balance and try again.';
+    }
+    
+    // Check for account creation issues
+    if (logs && logs.some(log => log.includes('account not found') || log.includes('Account not found'))) {
+        return '🔍 Required account not found. This may be due to a missing token account or pool configuration issue.';
+    }
+    
+    // Generic error message
+    return `❌ Transaction simulation failed: ${error && error.toString ? error.toString() : 'Unknown error'}. Please check the pool status and try again.`;
+}
+
+/**
  * Execute swap transaction
  */
 async function executeSwap() {
@@ -786,6 +1016,11 @@ async function executeSwap() {
         
         console.log('🔄 Starting swap transaction...');
         console.log(`📊 Swapping ${fromAmount} ${swapDirection === 'AtoB' ? poolData.tokenASymbol : poolData.tokenBSymbol} for ${toAmount} ${swapDirection === 'AtoB' ? poolData.tokenBSymbol : poolData.tokenASymbol}`);
+        
+        showStatus('info', '🔍 Simulating transaction...');
+        
+        // 🚨 NEW: Simulate transaction first to catch pool pause errors
+        await simulateSwapTransaction(fromAmount);
         
         showStatus('info', '🔄 Building swap transaction...');
         
@@ -1114,10 +1349,37 @@ function selectToToken() {
 function calculateSwapInputFromOutput() {
     if (!poolData || !isConnected) return;
     
+    // Check if pool is paused before doing any calculations
+    const flags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
+    const swapBtn = document.getElementById('swap-btn');
+    
+    if (flags.swapsPaused) {
+        const toAmountInput = document.getElementById('to-amount');
+        const fromAmountInput = document.getElementById('from-amount');
+        const preview = document.getElementById('transaction-preview');
+        fromAmountInput.value = '';
+        preview.style.display = 'none';
+        swapBtn.disabled = true;
+        swapBtn.textContent = '🚫 Swaps Paused by Pool Owner';
+        swapBtn.style.background = '#6b7280';
+        return;
+    }
+    
+    if (flags.liquidityPaused) {
+        const toAmountInput = document.getElementById('to-amount');
+        const fromAmountInput = document.getElementById('from-amount');
+        const preview = document.getElementById('transaction-preview');
+        fromAmountInput.value = '';
+        preview.style.display = 'none';
+        swapBtn.disabled = true;
+        swapBtn.textContent = '⏸️ Pool Operations Paused';
+        swapBtn.style.background = '#6b7280';
+        return;
+    }
+    
     const toAmountInput = document.getElementById('to-amount');
     const fromAmountInput = document.getElementById('from-amount');
     const preview = document.getElementById('transaction-preview');
-    const swapBtn = document.getElementById('swap-btn');
     
     const toAmount = parseFloat(toAmountInput.value) || 0;
     
@@ -1126,6 +1388,7 @@ function calculateSwapInputFromOutput() {
         preview.style.display = 'none';
         swapBtn.disabled = true;
         swapBtn.textContent = '🔄 Enter Amount to Swap';
+        swapBtn.style.background = ''; // Reset to default
         return;
     }
     
@@ -1272,6 +1535,88 @@ function clearStatus() {
     container.innerHTML = '';
 }
 
+/**
+ * Start periodic pool status monitoring to detect pause state changes
+ */
+function startPoolStatusMonitoring() {
+    // Clear any existing interval
+    if (poolStatusCheckInterval) {
+        clearInterval(poolStatusCheckInterval);
+    }
+    
+    console.log('🔄 Starting pool status monitoring...');
+    
+    // Check pool status every 30 seconds
+    poolStatusCheckInterval = setInterval(async () => {
+        await checkPoolStatusUpdate();
+    }, 30000); // 30 seconds
+}
+
+/**
+ * Stop pool status monitoring
+ */
+function stopPoolStatusMonitoring() {
+    if (poolStatusCheckInterval) {
+        clearInterval(poolStatusCheckInterval);
+        poolStatusCheckInterval = null;
+        console.log('⏹️ Pool status monitoring stopped');
+    }
+}
+
+/**
+ * Check for pool status updates and refresh UI if needed
+ */
+async function checkPoolStatusUpdate() {
+    if (!poolAddress || !poolData) return;
+    
+    try {
+        console.log('🔍 Checking pool status for updates...');
+        
+        // Get fresh pool data
+        const freshPoolData = await window.TradingDataService.getPool(poolAddress, 'rpc');
+        
+        if (freshPoolData && freshPoolData.flags !== undefined) {
+            const oldFlags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
+            const newFlags = window.TokenDisplayUtils.interpretPoolFlags(freshPoolData);
+            
+            // Check if pause status changed
+            const pauseStatusChanged = 
+                oldFlags.swapsPaused !== newFlags.swapsPaused || 
+                oldFlags.liquidityPaused !== newFlags.liquidityPaused;
+            
+            if (pauseStatusChanged) {
+                console.log('🚨 Pool pause status changed!');
+                console.log('  Old flags:', oldFlags);
+                console.log('  New flags:', newFlags);
+                
+                // Update pool data
+                poolData = freshPoolData;
+                
+                // Refresh displays
+                updatePoolDisplay();
+                updateSwapInterfaceWithRealBalances();
+                
+                // Show notification about status change
+                if (newFlags.swapsPaused && !oldFlags.swapsPaused) {
+                    showStatus('error', '🚫 Pool swaps have been paused by the pool owner.');
+                } else if (!newFlags.swapsPaused && oldFlags.swapsPaused) {
+                    showStatus('success', '✅ Pool swaps have been resumed by the pool owner.');
+                }
+                
+                if (newFlags.liquidityPaused && !oldFlags.liquidityPaused) {
+                    showStatus('error', '⏸️ Pool liquidity operations have been paused by the pool owner.');
+                } else if (!newFlags.liquidityPaused && oldFlags.liquidityPaused) {
+                    showStatus('success', '✅ Pool liquidity operations have been resumed by the pool owner.');
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.warn('⚠️ Error checking pool status update:', error);
+        // Don't show error to user - this is background monitoring
+    }
+}
+
 // Helper functions from liquidity.js for pool display
 /**
  * Generate pool flags display section
@@ -1388,8 +1733,59 @@ window.setMaxAmount = setMaxAmount;
 // Slippage functions removed
 window.togglePoolStateDetails = togglePoolStateDetails;
 window.connectWallet = connectWallet;
+window.refreshPoolStatus = refreshPoolStatus;
+
+/**
+ * Manually refresh pool status
+ */
+async function refreshPoolStatus() {
+    try {
+        const refreshBtn = document.getElementById('refresh-pool-btn');
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '⏳ Refreshing...';
+        }
+        
+        console.log('🔄 Manually refreshing pool status...');
+        showStatus('info', '🔄 Refreshing pool status...');
+        
+        // Force refresh pool data
+        await checkPoolStatusUpdate();
+        
+        showStatus('success', '✅ Pool status refreshed successfully');
+        setTimeout(clearStatus, 3000);
+        
+    } catch (error) {
+        console.error('❌ Error refreshing pool status:', error);
+        showStatus('error', 'Failed to refresh pool status: ' + error.message);
+    } finally {
+        const refreshBtn = document.getElementById('refresh-pool-btn');
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '🔄 Refresh Status';
+        }
+    }
+}
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', initializeSwapPage);
+
+// Cleanup when page unloads
+window.addEventListener('beforeunload', () => {
+    stopPoolStatusMonitoring();
+});
+
+// Also cleanup when user navigates away
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        console.log('🔄 Page hidden, pausing pool status monitoring');
+        stopPoolStatusMonitoring();
+    } else {
+        console.log('🔄 Page visible, resuming pool status monitoring');
+        if (poolData && isConnected) {
+            startPoolStatusMonitoring();
+        }
+    }
+});
 
 console.log('🔄 Enhanced Swap JavaScript loaded successfully'); 
