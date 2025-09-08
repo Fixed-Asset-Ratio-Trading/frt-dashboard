@@ -294,6 +294,17 @@
             box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
         
+        .token-option.zero-balance {
+            opacity: 0.7;
+            border-style: dashed;
+        }
+        
+        .token-option.zero-balance:hover {
+            border-color: #f59e0b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
+        
         .token-symbol {
             font-size: 24px;
             font-weight: 700;
@@ -697,7 +708,7 @@
     <div class="container">
         <div class="header">
             <div class="header-left">
-                <img src="images/Fixed_Ratio_Trading_Logo.jpeg" alt="Fixed Ratio Trading Logo" class="logo">
+                <img src="images/Fixedratio_1024x1024.png" alt="Fixed Ratio Trading Logo" class="logo">
                 <div class="header-title">Fixed Ratio Trading</div>
             </div>
             <div class="header-center">
@@ -711,44 +722,27 @@
             </div>
         </div>
         
-        <!-- Pool Info Section -->
-        <div class="pool-info-section">
-            <h2 style="color: #333; margin-bottom: 15px;">🏊‍♂️ Pool Information</h2>
-            <div id="pool-loading" class="loading">
-                <h3>🔍 Loading pool information...</h3>
-            </div>
-            <div id="pool-details" class="pool-details" style="display: none;">
-                <!-- Pool details will be populated here -->
-            </div>
-        </div>
-        
-        <!-- Wallet Connection Section -->
-        <div class="wallet-section">
-            <h2 style="color: #333; margin-bottom: 20px;">🎒 Backpack Wallet Connection</h2>
-            <div class="wallet-status">
-                <div class="wallet-info" id="wallet-info" style="display: none;">
-                    <div class="wallet-avatar" id="wallet-avatar">🎒</div>
-                    <div class="wallet-details">
-                        <h3>Backpack Wallet Connected</h3>
-                        <div class="wallet-address" id="wallet-address">Not connected</div>
-                    </div>
-                </div>
-                <div class="wallet-info" id="wallet-disconnected">
-                    <div class="wallet-avatar">❌</div>
-                    <div class="wallet-details">
-                        <h3>Wallet Not Connected</h3>
-                        <div class="wallet-address">Please connect your Backpack wallet</div>
-                    </div>
-                </div>
-                <button class="connect-btn" id="connect-wallet-btn" onclick="connectWallet()">
-                    Connect Backpack Wallet
-                </button>
-            </div>
-        </div>
-        
         <!-- Token Selection Section -->
         <div class="token-selection-section">
-            <h2 style="color: #333; margin-bottom: 10px;">🪙 Select Token to Add</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h2 style="color: #333; margin: 0;">🪙 Select Token to Add</h2>
+                <!-- Small wallet connection in corner -->
+                <div class="wallet-corner" style="display: flex; align-items: center; gap: 10px;">
+                    <div class="wallet-info" id="wallet-info" style="display: none;">
+                        <div class="wallet-avatar" id="wallet-avatar" style="width: 24px; height: 24px; font-size: 12px;">🎒</div>
+                        <div class="wallet-details" style="font-size: 12px;">
+                            <div style="font-weight: 600;">Connected</div>
+                            <div class="wallet-address" id="wallet-address" style="font-size: 10px; color: #666;">Not connected</div>
+                        </div>
+                    </div>
+                    <div class="wallet-info" id="wallet-disconnected" style="display: flex; align-items: center; gap: 5px;">
+                        <div class="wallet-avatar" style="width: 24px; height: 24px; font-size: 12px;">❌</div>
+                        <button class="connect-btn" id="connect-wallet-btn" onclick="connectWallet()" style="padding: 4px 8px; font-size: 11px;">
+                            Connect
+                        </button>
+                    </div>
+                </div>
+            </div>
             <p style="color: #666; margin-bottom: 20px;">Choose which token you want to add liquidity for</p>
             
             <div id="token-loading" class="loading">
@@ -761,16 +755,18 @@
             </div>
         </div>
         
-        <!-- Phase 3.1: Liquidity Operations Toggle -->
+        <!-- Liquidity Operations Section -->
         <div class="liquidity-operations-section">
             <h2 style="color: #333; margin-bottom: 15px;">💧 Liquidity Operations</h2>
-            <div class="operation-toggle">
-                <button class="toggle-btn active" id="add-toggle" onclick="switchOperation('add')">
-                    ➕ Add Liquidity
-                </button>
-                <button class="toggle-btn" id="remove-toggle" onclick="switchOperation('remove')">
-                    ➖ Remove Liquidity
-                </button>
+            <div class="operation-radio-group" style="display: flex; gap: 20px; margin-bottom: 20px;">
+                <label class="radio-option" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="radio" name="operation" value="add" checked onchange="switchOperation('add')" style="margin: 0;">
+                    <span>➕ Add Liquidity</span>
+                </label>
+                <label class="radio-option" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="radio" name="operation" value="remove" onchange="switchOperation('remove')" style="margin: 0;">
+                    <span>➖ Remove Liquidity</span>
+                </label>
             </div>
         </div>
 
@@ -811,38 +807,8 @@
             <h2 style="color: #333; margin-bottom: 10px;">💰 Remove Liquidity</h2>
             <p style="color: #666; margin-bottom: 15px;">Enter the amount of LP tokens to remove from the liquidity pool</p>
             
-            <!-- LP Token Balances Display -->
-            <div class="lp-balances-section">
-                <h3 style="color: #374151; margin-bottom: 10px;">🎫 Your LP Token Balances</h3>
-                <div class="lp-balance-grid">
-                    <div class="lp-balance-item">
-                        <div class="lp-token-label" id="lp-token-a-label">LP Token A</div>
-                        <div class="lp-token-balance" id="lp-token-a-balance">0.000000</div>
-                    </div>
-                    <div class="lp-balance-item">
-                        <div class="lp-token-label" id="lp-token-b-label">LP Token B</div>
-                        <div class="lp-token-balance" id="lp-token-b-balance">0.000000</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- LP Token Selection -->
-            <div class="lp-token-selection">
-                <h3 style="color: #374151; margin-bottom: 10px;">🔄 Select LP Token to Remove</h3>
-                <div class="lp-token-choice">
-                    <div class="lp-token-option" id="lp-token-a-option" onclick="selectLPToken('a')">
-                        <div class="lp-token-symbol" id="lp-token-a-symbol">LP Token A</div>
-                        <div class="lp-token-balance-display" id="lp-token-a-display">0.000000</div>
-                    </div>
-                    <div class="lp-token-option" id="lp-token-b-option" onclick="selectLPToken('b')">
-                        <div class="lp-token-symbol" id="lp-token-b-symbol">LP Token B</div>
-                        <div class="lp-token-balance-display" id="lp-token-b-display">0.000000</div>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Remove Amount Input -->
-            <div style="text-align: center; margin-top: 20px;">
+            <div style="text-align: center;">
                 <div style="font-size: 14px; color: #666; margin-bottom: 5px;">
                     Amount of <span id="selected-lp-token-name">LP Token</span> to remove
                 </div>
@@ -862,22 +828,25 @@
                 <div style="font-size: 12px; color: #999; margin-top: 8px;">
                     Available: <span id="available-lp-balance">0.000000</span> <span id="available-lp-symbol">LP Token</span>
                 </div>
-                
-                <!-- Expected Output Display -->
-                <div class="expected-output" id="expected-output" style="display: none;">
-                    <h4 style="color: #374151; margin: 15px 0 10px 0;">📈 Expected Output</h4>
-                    <div class="output-display">
-                        <div class="output-item">
-                            <span class="output-label" id="output-token-label">Token:</span>
-                            <span class="output-amount" id="output-token-amount">0.000000</span>
-                        </div>
-                    </div>
-                </div>
             </div>
             
             <button class="remove-liquidity-btn" id="remove-liquidity-btn" onclick="removeLiquidity()" disabled>
                 💧 Remove Liquidity
             </button>
+        </div>
+        
+        <!-- Pool Info Section (Collapsible) -->
+        <div class="pool-info-section" style="margin-top: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; cursor: pointer;" onclick="togglePoolInfo()">
+                <h2 style="color: #333; margin: 0;">🏊‍♂️ Pool Information</h2>
+                <span id="pool-info-toggle" style="font-size: 18px; color: #666;">▼</span>
+            </div>
+            <div id="pool-loading" class="loading">
+                <h3>🔍 Loading pool information...</h3>
+            </div>
+            <div id="pool-details" class="pool-details" style="display: none;">
+                <!-- Pool details will be populated here -->
+            </div>
         </div>
     </div>
 
@@ -904,6 +873,20 @@
             }
             
             window.location.href = 'index.html';
+        }
+        
+        // Toggle pool information section
+        function togglePoolInfo() {
+            const poolDetails = document.getElementById('pool-details');
+            const toggle = document.getElementById('pool-info-toggle');
+            
+            if (poolDetails.style.display === 'none') {
+                poolDetails.style.display = 'grid';
+                toggle.textContent = '▲';
+            } else {
+                poolDetails.style.display = 'none';
+                toggle.textContent = '▼';
+            }
         }
         
         // Update page title with pool info if available
