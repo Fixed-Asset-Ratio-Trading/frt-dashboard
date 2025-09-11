@@ -218,6 +218,23 @@ async function fetchContractVersion() {
         console.log('  Instruction data:', Array.from(instructionData));
         console.log('  Recent blockhash:', blockhash);
         
+        // Check if program account exists before attempting simulation
+        const programAccount = await connection.getAccountInfo(new solanaWeb3.PublicKey(CONFIG.programId));
+        if (!programAccount) {
+            console.error('🚨 Program Account Not Found:');
+            console.error('  Program ID:', CONFIG.programId);
+            console.error('  Cluster:', CONFIG.rpcUrl);
+            console.error('  Suggestion: Deploy the program using: cargo build-sbf && solana program deploy');
+            
+            const errorDetail = `Program Account Not Found: ${CONFIG.programId}`;
+            updateVersionStatus('error', 'Program Not Deployed', `Program ${CONFIG.programId} not found on cluster`);
+            showStatus('error', `❌ Version fetch failed: ${errorDetail}`);
+            contractVersion = null;
+            updateTitle();
+            return;
+        }
+        
+        console.log('✅ Program account found, proceeding with simulation...');
         updateVersionStatus('loading', 'Calling smart contract...', 'Loading...');
         
         try {
@@ -278,6 +295,26 @@ async function fetchContractVersion() {
                 console.log('  Logs:', result.value.logs);
             }
             
+            // Enhanced error logging for ProgramAccountNotFound
+            if (result?.value?.err === 'ProgramAccountNotFound') {
+                console.error('🚨 Program Account Not Found Error Details:');
+                console.error('  Program ID:', CONFIG.programId);
+                console.error('  Cluster:', CONFIG.rpcUrl);
+                console.error('  Suggestion: Deploy the program using: cargo build-sbf && solana program deploy');
+            } else if (result?.value?.err && typeof result.value.err === 'object' && result.value.err.InstructionError) {
+                const instructionError = result.value.err.InstructionError;
+                if (Array.isArray(instructionError) && instructionError.length >= 2) {
+                    const [instructionIndex, customError] = instructionError;
+                    if (customError === 'ProgramAccountNotFound') {
+                        console.error('🚨 Program Account Not Found in Instruction Error Details:');
+                        console.error('  Program ID:', CONFIG.programId);
+                        console.error('  Instruction Index:', instructionIndex);
+                        console.error('  Cluster:', CONFIG.rpcUrl);
+                        console.error('  Suggestion: Deploy the program using: cargo build-sbf && solana program deploy');
+                    }
+                }
+            }
+            
         } catch (error) {
             console.log('⚠️ Smart contract call failed:', error.message);
             lastError = error;
@@ -310,8 +347,30 @@ async function fetchContractVersion() {
         
         if (result && result.value.err) {
             console.error('   Simulation error:', result.value.err);
-            errorDetail = `RPC Simulation Error: ${JSON.stringify(result.value.err)}`;
-            updateVersionStatus('error', 'Simulation Failed', 'RPC simulation error');
+            
+            // Enhanced error handling for ProgramAccountNotFound
+            if (result.value.err === 'ProgramAccountNotFound') {
+                errorDetail = `Program Account Not Found: ${CONFIG.programId}`;
+                updateVersionStatus('error', 'Program Not Deployed', `Program ${CONFIG.programId} not found on cluster`);
+            } else if (typeof result.value.err === 'object' && result.value.err.InstructionError) {
+                const instructionError = result.value.err.InstructionError;
+                if (Array.isArray(instructionError) && instructionError.length >= 2) {
+                    const [instructionIndex, customError] = instructionError;
+                    if (customError === 'ProgramAccountNotFound') {
+                        errorDetail = `Program Account Not Found in instruction ${instructionIndex}: ${CONFIG.programId}`;
+                        updateVersionStatus('error', 'Program Not Deployed', `Program ${CONFIG.programId} not found in instruction ${instructionIndex}`);
+                    } else {
+                        errorDetail = `RPC Simulation Error: ${JSON.stringify(result.value.err)}`;
+                        updateVersionStatus('error', 'Simulation Failed', 'RPC simulation error');
+                    }
+                } else {
+                    errorDetail = `RPC Simulation Error: ${JSON.stringify(result.value.err)}`;
+                    updateVersionStatus('error', 'Simulation Failed', 'RPC simulation error');
+                }
+            } else {
+                errorDetail = `RPC Simulation Error: ${JSON.stringify(result.value.err)}`;
+                updateVersionStatus('error', 'Simulation Failed', 'RPC simulation error');
+            }
         } else if (lastError) {
             console.error('   Last error:', lastError.message);
             errorDetail = `Network Error: ${lastError.message}`;
