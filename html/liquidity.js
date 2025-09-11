@@ -1393,7 +1393,15 @@ async function loadLPTokenBalances() {
             tokenBBalance: lpTokenBBalance,
             totalBalance: totalLPBalance,
             tokenASymbol: poolData.tokenASymbol,
-            tokenBSymbol: poolData.tokenBSymbol
+            tokenBSymbol: poolData.tokenBSymbol,
+            // Add the data needed for the remove liquidity function
+            activeToken: lpTokenABalance > 0 ? 'A' : 'B',
+            activeMint: lpTokenABalance > 0 ? poolData.lpTokenAMint : poolData.lpTokenBMint,
+            activeUnderlyingMint: lpTokenABalance > 0 ? poolData.tokenAMint : poolData.tokenBMint,
+            activeUnderlyingSymbol: lpTokenABalance > 0 ? poolData.tokenASymbol : poolData.tokenBSymbol,
+            balance: totalLPBalance,
+            decimals: totalLPBalance > 0 ? (lpTokenABalance > 0 ? lpTokenADecimals : lpTokenBDecimals) : 6,
+            symbol: lpTokenSymbol
         };
         
         console.log(`✅ LP token balances loaded: LP ${poolData.tokenASymbol}=${lpTokenABalance}, LP ${poolData.tokenBSymbol}=${lpTokenBBalance}`);
@@ -1437,8 +1445,8 @@ function updateRemoveButton() {
  * Phase 3.1: Execute remove liquidity transaction
  */
 async function removeLiquidity() {
-    if (!poolData || !isConnected || !window.selectedLPToken) {
-        showStatus('error', 'Please connect wallet, load pool data, and select an LP token first');
+    if (!poolData || !isConnected || !window.lpTokenData || window.lpTokenData.totalBalance <= 0) {
+        showStatus('error', 'Please connect wallet, load pool data, and ensure you have LP tokens available');
         return;
     }
     
@@ -1449,13 +1457,13 @@ async function removeLiquidity() {
         return;
     }
     
-    if (amount > window.selectedLPToken.balance) {
-        showStatus('error', `Insufficient LP balance. You have ${window.selectedLPToken.balance.toFixed(6)} ${window.selectedLPToken.symbol}`);
+    if (amount > window.lpTokenData.balance) {
+        showStatus('error', `Insufficient LP balance. You have ${window.lpTokenData.balance.toFixed(6)} ${window.lpTokenData.symbol}`);
         return;
     }
     
     // ✅ CRITICAL VALIDATION: Check if pool has sufficient underlying liquidity
-    const underlyingMintForWithdraw = window.selectedLPToken.underlyingMint;
+    const underlyingMintForWithdraw = window.lpTokenData.activeUnderlyingMint;
     const tokenAMintForPool = poolData.tokenAMint || poolData.token_a_mint;
     const tokenBMintForPool = poolData.tokenBMint || poolData.token_b_mint;
 
@@ -1500,11 +1508,11 @@ async function removeLiquidity() {
         removeBtn.disabled = true;
         removeBtn.textContent = '🔄 Removing Liquidity...';
         
-        // Use the selected LP token data
-        const underlyingTokenMint = window.selectedLPToken.underlyingMint;
-        const lpTokenMint = window.selectedLPToken.mint;
-        const tokenSymbol = window.selectedLPToken.underlyingToken;
-        const lpTokenSymbol = window.selectedLPToken.symbol;
+        // Use the active LP token data
+        const underlyingTokenMint = window.lpTokenData.activeUnderlyingMint;
+        const lpTokenMint = window.lpTokenData.activeMint;
+        const tokenSymbol = window.lpTokenData.activeUnderlyingSymbol;
+        const lpTokenSymbol = window.lpTokenData.symbol;
         
         // Get the actual LP token decimals from the blockchain
         console.log('🔍 Fetching LP token decimals...');
@@ -1512,8 +1520,8 @@ async function removeLiquidity() {
         console.log(`✅ LP token decimals: ${lpTokenDecimals}`);
         
         // Validation was already done above, but double-check
-        if (amount > window.selectedLPToken.balance) {
-            throw new Error(`Insufficient LP balance. You have ${window.selectedLPToken.balance.toFixed(6)} ${lpTokenSymbol}`);
+        if (amount > window.lpTokenData.balance) {
+            throw new Error(`Insufficient LP balance. You have ${window.lpTokenData.balance.toFixed(6)} ${lpTokenSymbol}`);
         }
         
         showStatus('info', `Requesting transaction approval from wallet...`);
