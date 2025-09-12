@@ -1145,9 +1145,9 @@ async function buildSwapTransaction(fromAmount, fromToken, toTokenAccountPubkey)
     console.log('  User Input Token Account:', fromToken.tokenAccount);
     console.log('  User Output Token Account:', toTokenAccountPubkey.toString());
     
-    // Create instruction data for Swap using Borsh serialization
-    // Borsh enum discriminator: Swap = 4 (single byte, based on instruction ordering)
+    // Create instruction data for Swap with pool_id: { input_token_mint, amount_in, expected_amount_out, pool_id }
     const inputTokenMint = new solanaWeb3.PublicKey(fromToken.mint);
+    
     
     // Calculate expected output amount for the new contract requirement
     let expectedOutputAmount;
@@ -1229,27 +1229,42 @@ async function buildSwapTransaction(fromAmount, fromToken, toTokenAccountPubkey)
     console.log('  🚨 This is the EXACT value the contract will receive as expected_amount_out!');
     console.log('  🚨 If this shows 100000000 instead of 10000, we found the bug location!');
     
-    const instructionData = new Uint8Array([
-        4, // Swap discriminator (single byte, like other instructions)
-        ...inputTokenMint.toBuffer(), // input_token_mint (32 bytes)
-        ...new Uint8Array(new BigUint64Array([BigInt(amountInBaseUnits)]).buffer), // amount_in (u64 little-endian)
-        ...new Uint8Array(new BigUint64Array([BigInt(expectedOutputAmount)]).buffer) // expected_amount_out (u64 little-endian)
-    ]);
+    // Create instruction data for Swap with pool_id: 1 + 32 + 8 + 8 + 32 = 81 bytes
+    const instructionData = new Uint8Array(81);
+    instructionData[0] = 4; // Swap discriminator
+    
+    // input_token_mint (32 bytes)
+    inputTokenMint.toBytes().forEach((byte, index) => {
+        instructionData[1 + index] = byte;
+    });
+    
+    // amount_in (8 bytes, u64 little-endian)
+    new DataView(instructionData.buffer).setBigUint64(1 + 32, BigInt(amountInBaseUnits), true);
+    
+    // expected_amount_out (8 bytes, u64 little-endian)
+    new DataView(instructionData.buffer).setBigUint64(1 + 32 + 8, BigInt(expectedOutputAmount), true);
+    
+    // pool_id (32 bytes)
+    poolStatePDA.toBytes().forEach((byte, index) => {
+        instructionData[49 + index] = byte;
+    });
     
     console.log('🔍 Swap instruction data:');
     console.log('  Discriminator: [4] (single byte)');
     console.log('  Input token mint:', inputTokenMint.toString());
     console.log('  Amount in base units:', amountInBaseUnits);
     console.log('  Expected output in base units:', expectedOutputAmount);
+    console.log('  Pool ID:', poolStatePDA.toString());
     console.log('  🚨 DEBUG: This expected output will be sent to the contract!');
     console.log('  🚨 DEBUG: If this is 10000, you will receive 10000 TS tokens!');
-    console.log('  Total data length:', instructionData.length, 'bytes');
+    console.log('  Total data length:', instructionData.length, 'bytes (should be 81)');
     
     // 🚨 VERIFY: Check the actual bytes in the instruction data
     console.log('🚨🚨🚨 FINAL VERIFICATION: ACTUAL BYTES BEING SENT 🚨🚨🚨');
     console.log('  📊 Full instruction data bytes:', Array.from(instructionData));
-    console.log('  📊 Last 8 bytes (expected_amount_out):', Array.from(instructionData.slice(-8)));
-    console.log('  📊 Last 8 bytes as little-endian u64:', new DataView(instructionData.buffer).getBigUint64(instructionData.length - 8, true));
+    console.log('  📊 Expected amount out bytes (at offset 41):', Array.from(instructionData.slice(41, 49)));
+    console.log('  📊 Expected amount out as little-endian u64:', new DataView(instructionData.buffer).getBigUint64(41, true));
+    console.log('  📊 Pool ID bytes (at offset 49):', Array.from(instructionData.slice(49, 81)));
     console.log('  🚨 The contract will receive this exact value as expected_amount_out!');
     
     // Build account keys array (11 accounts for decimal-aware swap)

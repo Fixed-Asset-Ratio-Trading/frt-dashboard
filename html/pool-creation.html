@@ -706,6 +706,60 @@
                 </p>
             </div>
             
+            <!-- Pool Flags Configuration -->
+            <div class="pool-flags-section" style="display: none;" id="pool-flags-section">
+                <h3 style="color: #333; margin-bottom: 20px;">🚩 Pool Configuration Flags</h3>
+                <div style="background: #f8f9fa; border: 2px solid #e5e7eb; border-radius: 12px; padding: 20px;">
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                        Configure optional pool behavior flags. These settings affect how the pool operates and cannot be changed after creation.
+                    </p>
+                    
+                    <div style="display: grid; gap: 15px;">
+                        <!-- Owner-Only Swaps Flag (Bit 5) -->
+                        <div style="display: flex; align-items: flex-start; gap: 10px;">
+                            <input type="checkbox" id="flag-owner-only-swaps" style="margin-top: 4px;" onchange="updatePoolFlags()">
+                            <div>
+                                <label for="flag-owner-only-swaps" style="font-weight: 600; color: #7c3aed; cursor: pointer;">
+                                    🔒 Owner-Only Swaps
+                                </label>
+                                <div style="color: #666; font-size: 13px; margin-top: 2px;">
+                                    Only the pool creator can execute swaps. Useful for custom fee models or restricted access pools.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Exact Exchange Required Flag (Bit 6) -->
+                        <div style="display: flex; align-items: flex-start; gap: 10px;">
+                            <input type="checkbox" id="flag-exact-exchange" style="margin-top: 4px;" onchange="updatePoolFlags()">
+                            <div>
+                                <label for="flag-exact-exchange" style="font-weight: 600; color: #dc2626; cursor: pointer;">
+                                    🎯 Exact Exchange Required
+                                </label>
+                                <div style="color: #666; font-size: 13px; margin-top: 2px;">
+                                    Rejects swaps that would result in precision loss or dust. Ensures exact mathematical exchanges only.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Info about other flags -->
+                        <div style="background: #f0f9ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; margin-top: 10px;">
+                            <div style="color: #1e40af; font-size: 13px; font-weight: 600; margin-bottom: 4px;">
+                                ℹ️ Additional Pool Flags
+                            </div>
+                            <div style="color: #1e40af; font-size: 12px; line-height: 1.4;">
+                                Other flags (One-to-Many, Pause Controls, Withdrawal Protection) are automatically managed by the system or set by admin authority after pool creation.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Active Flags Display -->
+                    <div id="active-flags-display" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb; display: none;">
+                        <div style="color: #666; font-size: 14px; margin-bottom: 8px;">Active Flags:</div>
+                        <div id="active-flags-list" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Pool Summary -->
             <div class="pool-summary-section" style="display: none;" id="pool-summary-section">
                 <h3 style="color: #333; margin-bottom: 20px;">📋 Pool Summary</h3>
@@ -723,6 +777,12 @@
                     <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
                         <div style="color: #666; font-size: 14px; margin-bottom: 5px;">Initial State</div>
                         <div style="color: #999; font-size: 14px;">Pool will be created with no liquidity. Add liquidity later to enable trading.</div>
+                        
+                        <!-- Show active flags in summary -->
+                        <div id="summary-flags" style="margin-top: 10px; display: none;">
+                            <div style="color: #666; font-size: 14px; margin-bottom: 5px;">Pool Flags</div>
+                            <div id="summary-flags-list" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1139,10 +1139,17 @@ async function executePoolPause(poolId) {
         const { poolStatePDA } = await validatePoolStateAccount(poolId);
         console.log('🔍 DEBUG: Pool state PDA validated:', poolStatePDA.toString());
         
-        // Create instruction data: discriminator (1 byte) + pause_flags (1 byte)
-        // According to source code: PausePool { pause_flags: u8 }
+        // Create instruction data: discriminator (1 byte) + pause_flags (1 byte) + pool_id (32 bytes)
+        // According to API: PausePool { pause_flags: u8, pool_id: Pubkey }
         const pauseFlags = 3; // PAUSE_FLAG_ALL - pause all operations
-        const instructionData = new Uint8Array([19, pauseFlags]); // Discriminator 19 + pause flags
+        const instructionData = new Uint8Array(1 + 1 + 32); // 34 bytes total
+        instructionData[0] = 19; // PausePool discriminator
+        instructionData[1] = pauseFlags; // pause_flags
+        
+        // Copy pool_id bytes (32 bytes)
+        poolStatePDA.toBytes().forEach((byte, index) => {
+            instructionData[2 + index] = byte;
+        });
         console.log('🔍 DEBUG: Instruction data:', Array.from(instructionData));
         console.log('🔍 DEBUG: Using discriminator 19 for PausePool with pause_flags:', pauseFlags);
         
@@ -1207,10 +1214,17 @@ async function executePoolUnpause(poolId) {
         // Validate that the pool state account exists and is owned by our program
         const { poolStatePDA } = await validatePoolStateAccount(poolId);
         
-        // Create instruction data: discriminator (1 byte) + unpause_flags (1 byte)
-        // According to source code: UnpausePool { unpause_flags: u8 }
+        // Create instruction data: discriminator (1 byte) + unpause_flags (1 byte) + pool_id (32 bytes)
+        // According to API: UnpausePool { unpause_flags: u8, pool_id: Pubkey }
         const unpauseFlags = 3; // PAUSE_FLAG_ALL - unpause all operations
-        const instructionData = new Uint8Array([20, unpauseFlags]); // Discriminator 20 + unpause flags
+        const instructionData = new Uint8Array(1 + 1 + 32); // 34 bytes total
+        instructionData[0] = 20; // UnpausePool discriminator
+        instructionData[1] = unpauseFlags; // unpause_flags
+        
+        // Copy pool_id bytes (32 bytes)
+        poolStatePDA.toBytes().forEach((byte, index) => {
+            instructionData[2 + index] = byte;
+        });
         console.log('🔍 DEBUG: Instruction data:', Array.from(instructionData));
         console.log('🔍 DEBUG: Using discriminator 20 for UnpausePool with unpause_flags:', unpauseFlags);
         
@@ -1284,17 +1298,21 @@ async function executePoolUpdateFees(poolId, updateFlags = 3, liquidityFeeLampor
         const systemStatePDA = getSystemStatePDA();
         const poolStatePDA = new solanaWeb3.PublicKey(poolId);
         
-        // Create instruction data per API: discriminator (22) + flags (u8) + liquidity_fee (u64) + swap_fee (u64)
-        const instructionData = new Uint8Array(1 + 1 + 8 + 8);
+        // Create instruction data per API: discriminator (22) + flags (u8) + liquidity_fee (u64) + swap_fee (u64) + pool_id (32)
+        const instructionData = new Uint8Array(1 + 1 + 8 + 8 + 32); // 50 bytes total
         instructionData[0] = 22; // UpdatePoolFees
-        instructionData[1] = updateFlags & 0x03; // flags
+        instructionData[1] = updateFlags & 0x03; // update_flags
         const view = new DataView(instructionData.buffer);
-        // liquidity fee (u64 little-endian) at byte offset 2
+        // new_liquidity_fee (u64 little-endian) at byte offset 2
         const liquidity = BigInt((updateFlags & 1) ? liquidityFeeLamports : 0);
         view.setBigUint64(2, liquidity, true);
-        // swap fee (u64 little-endian) at byte offset 10
+        // new_swap_fee (u64 little-endian) at byte offset 10
         const swap = BigInt((updateFlags & 2) ? swapFeeLamports : 0);
         view.setBigUint64(10, swap, true);
+        // pool_id (32 bytes) at byte offset 18
+        poolStatePDA.toBytes().forEach((byte, index) => {
+            instructionData[18 + index] = byte;
+        });
         
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [
@@ -1354,16 +1372,16 @@ async function executeSwapSetOwnerOnly(poolId, ownerOnly = true, designatedOwner
 
         // v0.16.x+ tolerates size variations; do not hard-fail on legacy sizes
         
-        // Create instruction data per API (discriminator 21)
-        // Layout: [21, enable_restriction:u8, designated_owner:Pubkey]
-        const instructionData = new Uint8Array(34); // 1 + 1 + 32
+        // Create instruction data per API: discriminator + enable_restriction + designated_owner + pool_id
+        // Layout: [21, enable_restriction:u8, designated_owner:Pubkey, pool_id:Pubkey]
+        const instructionData = new Uint8Array(1 + 1 + 32 + 32); // 66 bytes total
         instructionData[0] = 21; // SetSwapOwnerOnly
         
-        // Borsh serialization for SetSwapOwnerOnly struct
-        instructionData[1] = ownerOnly ? 1 : 0; // enable_restriction (bool)
+        // enable_restriction (1 byte)
+        instructionData[1] = ownerOnly ? 1 : 0;
         
+        // designated_owner (32 bytes)
         if (designatedOwner) {
-            // Add designated owner address (32 bytes)
             const designatedOwnerBytes = new solanaWeb3.PublicKey(designatedOwner).toBuffer();
             instructionData.set(designatedOwnerBytes, 2);
         } else {
@@ -1371,6 +1389,11 @@ async function executeSwapSetOwnerOnly(poolId, ownerOnly = true, designatedOwner
             const zeroAddress = new solanaWeb3.PublicKey('11111111111111111111111111111111').toBuffer();
             instructionData.set(zeroAddress, 2);
         }
+        
+        // pool_id (32 bytes) at offset 34
+        poolStatePDA.toBytes().forEach((byte, index) => {
+            instructionData[34 + index] = byte;
+        });
         
         const instruction = new solanaWeb3.TransactionInstruction({
             keys: [

@@ -836,6 +836,9 @@ async function addLiquidity() {
             programId
         );
         
+        // Note: Main treasury PDA is not needed for deposit instruction
+        // Fee collection is handled internally by the contract
+        
         // Get LP token mint PDAs (derive from pool state)
         const [lpTokenAMint] = await solanaWeb3.PublicKey.findProgramAddress(
             [new TextEncoder().encode('lp_token_a_mint'), poolPubkey.toBytes()],
@@ -846,9 +849,8 @@ async function addLiquidity() {
             programId
         );
         
-        // Determine which token vault and LP mint to use based on selected token
+        // Determine which LP mint to use based on selected token for ATA creation
         const isTokenA = selectedToken.mint === poolData.tokenAMint;
-        const targetVault = isTokenA ? poolData.tokenAVault : poolData.tokenBVault;
         const targetLPMint = isTokenA ? lpTokenAMint : lpTokenBMint;
         
         // Find user's token account for the selected token
@@ -884,32 +886,41 @@ async function addLiquidity() {
             transaction.add(createAtaIx);
         }
         
-        // Serialize instruction data: Deposit { deposit_token_mint, amount }
-        const instructionData = new Uint8Array(1 + 32 + 8); // 1 byte discriminator + 32 bytes pubkey + 8 bytes u64
-        instructionData[0] = 2; // Deposit instruction discriminator (assuming it's the 3rd instruction)
+        // Serialize instruction data: Deposit { deposit_token_mint, amount, pool_id }
+        const instructionData = new Uint8Array(73); // 1 + 32 + 8 + 32 bytes
+        instructionData[0] = 2; // Deposit instruction discriminator
+        
+        // Copy deposit_token_mint bytes (32 bytes)
         tokenMint.toBytes().forEach((byte, index) => {
             instructionData[1 + index] = byte;
         });
+        
+        // Copy amount bytes (8 bytes, u64 little-endian)
         const amountBytes = new ArrayBuffer(8);
-        new DataView(amountBytes).setBigUint64(0, BigInt(amountLamports), true); // little-endian
+        new DataView(amountBytes).setBigUint64(0, BigInt(amountLamports), true);
         new Uint8Array(amountBytes).forEach((byte, index) => {
             instructionData[1 + 32 + index] = byte;
+        });
+        
+        // Copy pool_id bytes (32 bytes)
+        poolPubkey.toBytes().forEach((byte, index) => {
+            instructionData[41 + index] = byte;
         });
         
         const depositInstruction = new solanaWeb3.TransactionInstruction({
             programId: programId,
             keys: [
-                { pubkey: userWallet, isSigner: true, isWritable: true },                    // User Authority Signer
-                { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }, // System Program
-                { pubkey: systemStatePDA, isSigner: false, isWritable: false },             // System State PDA
-                { pubkey: poolPubkey, isSigner: false, isWritable: true },                  // Pool State PDA
-                { pubkey: window.splToken.TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },  // SPL Token Program
-                { pubkey: new solanaWeb3.PublicKey(poolData.tokenAVault), isSigner: false, isWritable: true }, // Token A Vault
-                { pubkey: new solanaWeb3.PublicKey(poolData.tokenBVault), isSigner: false, isWritable: true }, // Token B Vault
-                { pubkey: userTokenAccount, isSigner: false, isWritable: true },            // User Input Token Account
-                { pubkey: userLPTokenAccount, isSigner: false, isWritable: true },          // User Output LP Account
-                { pubkey: lpTokenAMint, isSigner: false, isWritable: true },                // LP Token A Mint
-                { pubkey: lpTokenBMint, isSigner: false, isWritable: true },                // LP Token B Mint
+                { pubkey: userWallet, isSigner: true, isWritable: true },                    // 0: User Authority Signer
+                { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }, // 1: System Program
+                { pubkey: systemStatePDA, isSigner: false, isWritable: false },             // 2: System State PDA  
+                { pubkey: poolPubkey, isSigner: false, isWritable: true },                  // 3: Pool State PDA
+                { pubkey: window.splToken.TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },  // 4: SPL Token Program
+                { pubkey: new solanaWeb3.PublicKey(poolData.tokenAVault), isSigner: false, isWritable: true }, // 5: Token A Vault PDA
+                { pubkey: new solanaWeb3.PublicKey(poolData.tokenBVault), isSigner: false, isWritable: true }, // 6: Token B Vault PDA
+                { pubkey: userTokenAccount, isSigner: false, isWritable: true },            // 7: User Input Token Account
+                { pubkey: userLPTokenAccount, isSigner: false, isWritable: true },          // 8: User Output LP Token Account
+                { pubkey: lpTokenAMint, isSigner: false, isWritable: true },                // 9: LP Token A Mint PDA
+                { pubkey: lpTokenBMint, isSigner: false, isWritable: true },                // 10: LP Token B Mint PDA
             ],
             data: instructionData
         });
@@ -917,14 +928,22 @@ async function addLiquidity() {
         transaction.add(depositInstruction);
         
         // Debug: Log transaction details
-        console.log('🔍 Add Liquidity Transaction Debug:');
+        console.log('🔍 Add Liquidity Transaction Debug (FIXED VERSION):');
         console.log('  Amount (raw):', amount);
         console.log('  Amount (lamports):', amountLamports);
         console.log('  Token Mint:', tokenMint.toString());
-        console.log('  Target Vault:', targetVault);
-        console.log('  Target LP Mint:', targetLPMint.toString());
+        console.log('  Token A Vault:', poolData.tokenAVault);
+        console.log('  Token B Vault:', poolData.tokenBVault);
+        console.log('  LP Token A Mint:', lpTokenAMint.toString());
+        console.log('  LP Token B Mint:', lpTokenBMint.toString());
         console.log('  User Token Account:', userTokenAccount.toString());
         console.log('  User LP Token Account:', userLPTokenAccount.toString());
+        console.log('  System State PDA:', systemStatePDA.toString());
+        console.log('  📊 ACCOUNT COUNT VERIFICATION:', depositInstruction.keys.length, 'accounts (should be 11)');
+        console.log('  📋 ACCOUNT LIST:');
+        depositInstruction.keys.forEach((key, index) => {
+            console.log(`    ${index}: ${key.pubkey.toString()} (${key.isSigner ? 'Signer' : 'Non-signer'}, ${key.isWritable ? 'Writable' : 'Read-only'})`);
+        });
         
         // Get recent blockhash
         const { blockhash } = await connection.getLatestBlockhash();
@@ -1621,24 +1640,29 @@ async function removeLiquidity() {
         console.log('  Withdraw Token Mint bytes:', withdrawTokenMint.toBytes());
         console.log('  LP Amount (lamports):', lpAmountLamports);
         
-        // Serialize withdraw instruction data using Borsh format: Withdraw { withdraw_token_mint, lp_amount_to_burn }
-        const instructionData = new Uint8Array(1 + 32 + 8);
+        // Serialize withdraw instruction data: Withdraw { withdraw_token_mint, lp_amount_to_burn, pool_id }
+        const instructionData = new Uint8Array(73); // 1 + 32 + 8 + 32 bytes
         instructionData[0] = 3; // Withdraw instruction discriminator
         
-        // Serialize withdraw_token_mint (32 bytes)
+        // Copy withdraw_token_mint bytes (32 bytes)
         const mintBytes = withdrawTokenMint.toBytes();
         for (let i = 0; i < 32; i++) {
             instructionData[1 + i] = mintBytes[i];
         }
         
-        // Serialize lp_amount_to_burn (8 bytes, little-endian u64)
+        // Copy lp_amount_to_burn bytes (8 bytes, u64 little-endian)
         const amountBuffer = new ArrayBuffer(8);
         const amountView = new DataView(amountBuffer);
-        amountView.setBigUint64(0, BigInt(lpAmountLamports), true); // little-endian
+        amountView.setBigUint64(0, BigInt(lpAmountLamports), true);
         const amountBytes = new Uint8Array(amountBuffer);
         for (let i = 0; i < 8; i++) {
             instructionData[1 + 32 + i] = amountBytes[i];
         }
+        
+        // Copy pool_id bytes (32 bytes)
+        poolPubkey.toBytes().forEach((byte, index) => {
+            instructionData[41 + index] = byte;
+        });
         
         console.log('🔍 Final instruction data:', Array.from(instructionData).map(b => b.toString(16).padStart(2, '0')).join(' '));
         

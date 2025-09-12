@@ -509,11 +509,14 @@ function updatePoolCreationDisplay() {
     // Show ratio section if both tokens are selected
     if (selectedTokenA && selectedTokenB) {
         ratioSection.style.display = 'block';
+        document.getElementById('pool-flags-section').style.display = 'block';
         updateRatioDisplay();
+        updatePoolFlags();
         updatePoolSummary();
         updateCreateButtonState();
     } else {
         ratioSection.style.display = 'none';
+        document.getElementById('pool-flags-section').style.display = 'none';
         document.getElementById('pool-summary-section').style.display = 'none';
     }
 }
@@ -559,6 +562,9 @@ function updateRatioDisplay() {
         // Update pool summary
         updatePoolSummary();
     }
+    
+    // Update pool flags (auto-detect one-to-many)
+    updatePoolFlags();
     
     // Always update button state based on validation
     updateCreateButtonState();
@@ -613,6 +619,77 @@ function validateRatioInput(value) {
 
 
 /**
+ * Update pool flags display and validation
+ */
+function updatePoolFlags() {
+    if (!selectedTokenA || !selectedTokenB) return;
+    
+    const activeFlags = getSelectedFlags();
+    const activeFlagsDisplay = document.getElementById('active-flags-display');
+    const activeFlagsList = document.getElementById('active-flags-list');
+    
+    // Show active flags if any are selected
+    if (activeFlags.length > 0) {
+        activeFlagsDisplay.style.display = 'block';
+        activeFlagsList.innerHTML = activeFlags.map(flag => 
+            `<span style="background: ${flag.color}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                ${flag.icon} ${flag.name}
+            </span>`
+        ).join('');
+    } else {
+        activeFlagsDisplay.style.display = 'none';
+    }
+    
+    console.log('🚩 Pool flags updated:', {
+        activeFlags: activeFlags.map(f => f.name),
+        flagsByte: calculateFlagsByte()
+    });
+}
+
+/**
+ * Get selected pool flags
+ */
+function getSelectedFlags() {
+    const flags = [];
+    
+    if (document.getElementById('flag-owner-only-swaps').checked) {
+        flags.push({ name: 'Owner-Only Swaps', icon: '🔒', color: '#7c3aed' });
+    }
+    if (document.getElementById('flag-exact-exchange').checked) {
+        flags.push({ name: 'Exact Exchange Required', icon: '🎯', color: '#dc2626' });
+    }
+    
+    return flags;
+}
+
+/**
+ * Calculate flags byte value from selected checkboxes
+ * Only bits 5 and 6 are allowed during pool initialization
+ */
+function calculateFlagsByte() {
+    let flags = 0;
+    
+    // Bit 5 (32): Owner-only swaps (settable at creation)
+    if (document.getElementById('flag-owner-only-swaps').checked) {
+        flags |= 32;
+    }
+    
+    // Bit 6 (64): Exact exchange required (settable at creation)
+    if (document.getElementById('flag-exact-exchange').checked) {
+        flags |= 64;
+    }
+    
+    // Note: Other flags (bits 0-4) are managed by the system or admin authority:
+    // - Bit 0 (1): One-to-many ratio (automatically set by contract based on ratio analysis)
+    // - Bit 1 (2): Liquidity paused (set by admin after creation)
+    // - Bit 2 (4): Swaps paused (set by admin after creation)
+    // - Bit 3 (8): Withdrawal protection (set by admin after creation)
+    // - Bit 4 (16): Single LP token mode (reserved for future use)
+    
+    return flags;
+}
+
+/**
  * Update pool summary display
  */
 function updatePoolSummary() {
@@ -621,6 +698,8 @@ function updatePoolSummary() {
     const summarySection = document.getElementById('pool-summary-section');
     const summaryPair = document.getElementById('summary-pair');
     const summaryRate = document.getElementById('summary-rate');
+    const summaryFlags = document.getElementById('summary-flags');
+    const summaryFlagsList = document.getElementById('summary-flags-list');
     
     // Respect user's selection order: first selected token appears first
     const displayPair = `${selectedTokenA.symbol} / ${selectedTokenB.symbol}`;
@@ -628,6 +707,19 @@ function updatePoolSummary() {
     
     summaryPair.textContent = displayPair;
     summaryRate.textContent = rateText;
+    
+    // Show active flags in summary
+    const activeFlags = getSelectedFlags();
+    if (activeFlags.length > 0) {
+        summaryFlags.style.display = 'block';
+        summaryFlagsList.innerHTML = activeFlags.map(flag => 
+            `<span style="background: ${flag.color}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                ${flag.icon} ${flag.name}
+            </span>`
+        ).join('');
+    } else {
+        summaryFlags.style.display = 'none';
+    }
     
     summarySection.style.display = 'block';
 }
@@ -686,6 +778,10 @@ function resetPoolCreation() {
     currentRatio = 1;
     
     document.getElementById('ratio-input').value = '1';
+    
+    // Reset valid flag checkboxes (only bits 5 and 6 are settable at creation)
+    document.getElementById('flag-owner-only-swaps').checked = false;
+    document.getElementById('flag-exact-exchange').checked = false;
     
     updatePoolCreationDisplay();
 }
@@ -1088,12 +1184,26 @@ async function createPoolTransaction(tokenA, tokenB, ratio) {
         
         console.log('Main treasury PDA:', mainTreasuryPDA[0].toString());
         
-        // ✅ BASIS POINTS REFACTOR: Create instruction data using basis points ratios
-        // Borsh enum discriminator: InitializeProgram=0, InitializePool=1 (single byte)
-        const discriminator = new Uint8Array([1]); // InitializePool discriminator (single byte)
-        const ratioAInstructionBytes = new Uint8Array(new BigUint64Array([BigInt(finalRatioABasisPoints)]).buffer); // ratio_a_numerator (basis points)
-        const ratioBInstructionBytes = new Uint8Array(new BigUint64Array([BigInt(finalRatioBBasisPoints)]).buffer); // ratio_b_denominator (basis points)
+        // Verify main treasury account exists (critical for pool creation)
+        console.log('🔍 Verifying main treasury account exists...');
+        try {
+            const mainTreasuryInfo = await connection.getAccountInfo(mainTreasuryPDA[0]);
+            if (!mainTreasuryInfo) {
+                throw new Error('Main treasury account not found. The program must be initialized first using InitializeProgram (discriminator 0) before pools can be created.');
+            }
+            console.log('✅ Main treasury account verified');
+        } catch (error) {
+            console.log('❌ Main treasury verification failed:', error.message);
+            throw error;
+        }
         
+        // ✅ BASIS POINTS REFACTOR: Create instruction data using ratios ONLY (no flags in this version)
+        // Discriminator: InitializePool=1 (single byte)
+        const discriminator = new Uint8Array([1]);
+        const ratioAInstructionBytes = new Uint8Array(new BigUint64Array([BigInt(finalRatioABasisPoints)]).buffer);
+        const ratioBInstructionBytes = new Uint8Array(new BigUint64Array([BigInt(finalRatioBBasisPoints)]).buffer);
+        
+        // Exact 17-byte format: [1-byte discriminator] + [8-byte ratio A] + [8-byte ratio B]
         const instructionData = concatUint8Arrays([
             discriminator,
             ratioAInstructionBytes,
@@ -1101,10 +1211,10 @@ async function createPoolTransaction(tokenA, tokenB, ratio) {
         ]);
         
         console.log('🔍 BASIS POINTS INSTRUCTION DATA for InitializePool:');
-        console.log('  Discriminator: [1, 0, 0, 0] (Borsh enum little-endian u32)');
+        console.log('  Discriminator: [1] (single byte)');
         console.log('  ratio_a_numerator:', finalRatioABasisPoints, 'basis points');
         console.log('  ratio_b_denominator:', finalRatioBBasisPoints, 'basis points');
-        console.log('  Total data length:', instructionData.length, 'bytes');
+        console.log('  Total data length:', instructionData.length, 'bytes (expected 17)');
         console.log('  Data:', Array.from(instructionData));
         
         console.log('🔍 INSTRUCTION DATA BYTES BREAKDOWN:');
@@ -1142,22 +1252,35 @@ async function createPoolTransaction(tokenA, tokenB, ratio) {
         
         console.log('System State PDA:', systemStatePDA[0].toString());
         
-        // ✅ SECURITY FIX: Updated account structure to match smart contract's expected order
-        // 13 accounts total, matching the exact order expected by process_pool_initialize
+        // Verify system state account exists (critical for pool creation)
+        console.log('🔍 Verifying system state account exists...');
+        try {
+            const systemStateInfo = await connection.getAccountInfo(systemStatePDA[0]);
+            if (!systemStateInfo) {
+                throw new Error('System state account not found. The program must be initialized first using InitializeProgram (discriminator 0) before pools can be created.');
+            }
+            console.log('✅ System state account verified');
+        } catch (error) {
+            console.log('❌ System state verification failed:', error.message);
+            throw error;
+        }
+        
+        // ✅ CORRECTED: Account structure matches API documentation exactly
+        // 13 accounts total, matching the exact order from A_FIXED_RATIO_TRADING_API.md
         const accountKeys = [
-            { pubkey: wallet.publicKey, isSigner: true, isWritable: true },           // 0: User Authority Signer
-            { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }, // 1: System Program Account
-            { pubkey: systemStatePDA[0], isSigner: false, isWritable: false },        // 2: System State PDA (for pause validation)
-            { pubkey: poolStatePDA[0], isSigner: false, isWritable: true },           // 3: Pool State PDA
-            { pubkey: new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'), isSigner: false, isWritable: false },   // 4: SPL Token Program Account
-            { pubkey: mainTreasuryPDA[0], isSigner: false, isWritable: true },        // 5: Main Treasury PDA
-            { pubkey: solanaWeb3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },      // 6: Rent Sysvar Account
-            { pubkey: tokenAMint, isSigner: false, isWritable: false },         // 7: Token A Mint Account (normalized order)
-            { pubkey: tokenBMint, isSigner: false, isWritable: false },            // 8: Token B Mint Account (normalized order)
-            { pubkey: tokenAVaultPDA[0], isSigner: false, isWritable: true },         // 9: Token A Vault PDA
-            { pubkey: tokenBVaultPDA[0], isSigner: false, isWritable: true },         // 10: Token B Vault PDA
-            { pubkey: lpTokenAMintPDA[0], isSigner: false, isWritable: true },        // 11: LP Token A Mint PDA
-            { pubkey: lpTokenBMintPDA[0], isSigner: false, isWritable: true }         // 12: LP Token B Mint PDA
+            { pubkey: wallet.publicKey, isSigner: true, isWritable: true },            // 0: User Authority Signer (writable for fee transfer)
+            { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }, // 1: System Program
+            { pubkey: systemStatePDA[0], isSigner: false, isWritable: false },        // 2: System State PDA
+            { pubkey: poolStatePDA[0], isSigner: false, isWritable: true },           // 3: Pool State PDA (writable)
+            { pubkey: new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'), isSigner: false, isWritable: false },   // 4: SPL Token Program
+            { pubkey: mainTreasuryPDA[0], isSigner: false, isWritable: true },        // 5: Main Treasury PDA (writable)
+            { pubkey: solanaWeb3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },      // 6: Rent Sysvar
+            { pubkey: tokenAMint, isSigner: false, isWritable: false },         // 7: Token A Mint Account (readable)
+            { pubkey: tokenBMint, isSigner: false, isWritable: false },            // 8: Token B Mint Account (readable)
+            { pubkey: tokenAVaultPDA[0], isSigner: false, isWritable: true },         // 9: Token A Vault PDA (writable)
+            { pubkey: tokenBVaultPDA[0], isSigner: false, isWritable: true },         // 10: Token B Vault PDA (writable)
+            { pubkey: lpTokenAMintPDA[0], isSigner: false, isWritable: true },        // 11: LP Token A Mint PDA (writable)
+            { pubkey: lpTokenBMintPDA[0], isSigner: false, isWritable: true }         // 12: LP Token B Mint PDA (writable)
         ];
         
         // Validate all account keys have proper structure
@@ -1179,7 +1302,7 @@ async function createPoolTransaction(tokenA, tokenB, ratio) {
             console.log(`  ${index}: ${account.pubkey.toString()} (signer: ${account.isSigner}, writable: ${account.isWritable})`);
         });
         
-        // Verify that token mint accounts exist
+        // Verify that token mint accounts exist and have correct data structure
         console.log('🔍 Verifying token mint accounts exist...');
         try {
             const tokenAInfo = await connection.getAccountInfo(primaryTokenMint);
@@ -1193,8 +1316,29 @@ async function createPoolTransaction(tokenA, tokenB, ratio) {
             }
             
             console.log('✅ Token mint accounts verified');
+            console.log('🔍 Token A mint data length:', tokenAInfo.data.length, 'bytes');
+            console.log('🔍 Token B mint data length:', tokenBInfo.data.length, 'bytes');
         } catch (error) {
             console.log('❌ Token mint verification failed:', error.message);
+            throw error;
+        }
+        
+        // Verify all account data structures before creating instruction
+        console.log('🔍 Verifying all account data structures...');
+        try {
+            for (let i = 0; i < accountKeys.length; i++) {
+                const account = accountKeys[i];
+                const accountInfo = await connection.getAccountInfo(account.pubkey);
+                
+                if (accountInfo) {
+                    console.log(`  Account ${i} (${account.pubkey.toString()}): ${accountInfo.data.length} bytes, owner: ${accountInfo.owner.toString()}`);
+                } else {
+                    console.log(`  Account ${i} (${account.pubkey.toString()}): Not found (will be created)`);
+                }
+            }
+            console.log('✅ Account data verification complete');
+        } catch (error) {
+            console.log('❌ Account data verification failed:', error.message);
             throw error;
         }
         
@@ -1541,8 +1685,9 @@ function copyErrorMessage() {
     });
 }
 
-// Make function available globally for HTML onclick
+// Make functions available globally for HTML onclick
 window.copyErrorMessage = copyErrorMessage;
+window.updatePoolFlags = updatePoolFlags;
 
 /**
  * Check if pool already exists (check RPC data by calculating expected pool address)
