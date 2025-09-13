@@ -971,6 +971,10 @@ function parseSimulationError(error, logs) {
             // Add more specific error code mappings if we discover them
             const customError = instructionError.Custom;
             if (customError) {
+                // AmountMismatch (0x417 / 1047): expected_amount_out must match exact calculated output
+                if (customError === 1047 || customError === 0x417) {
+                    return '❌ Amount mismatch (0x417). The expected output does not exactly match the contract calculation. Adjust the amounts and try again.';
+                }
                 // Check for other known pause-related error codes
                 if (customError >= 1024 && customError <= 1030) {
                     return `🚫 Pool operations are paused (Error Code: ${customError}). This appears to be a pause-related restriction. Please contact the pool owner.`;

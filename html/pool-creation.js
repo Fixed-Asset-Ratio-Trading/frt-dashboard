@@ -1197,30 +1197,35 @@ async function createPoolTransaction(tokenA, tokenB, ratio) {
             throw error;
         }
         
-        // ✅ BASIS POINTS REFACTOR: Create instruction data using ratios ONLY (no flags in this version)
+        // ✅ InitializePool instruction data: discriminator + ratios + flags (u8)
         // Discriminator: InitializePool=1 (single byte)
         const discriminator = new Uint8Array([1]);
         const ratioAInstructionBytes = new Uint8Array(new BigUint64Array([BigInt(finalRatioABasisPoints)]).buffer);
         const ratioBInstructionBytes = new Uint8Array(new BigUint64Array([BigInt(finalRatioBBasisPoints)]).buffer);
+        const flags = calculateFlagsByte();
+        const flagsByte = new Uint8Array([flags]);
         
-        // Exact 17-byte format: [1-byte discriminator] + [8-byte ratio A] + [8-byte ratio B]
+        // Exact 18-byte format: [1-byte discriminator] + [8-byte ratio A] + [8-byte ratio B] + [1-byte flags]
         const instructionData = concatUint8Arrays([
             discriminator,
             ratioAInstructionBytes,
-            ratioBInstructionBytes
+            ratioBInstructionBytes,
+            flagsByte
         ]);
         
         console.log('🔍 BASIS POINTS INSTRUCTION DATA for InitializePool:');
         console.log('  Discriminator: [1] (single byte)');
         console.log('  ratio_a_numerator:', finalRatioABasisPoints, 'basis points');
         console.log('  ratio_b_denominator:', finalRatioBBasisPoints, 'basis points');
-        console.log('  Total data length:', instructionData.length, 'bytes (expected 17)');
+        console.log('  flags (u8):', flags, `(0b${flags.toString(2).padStart(8, '0')})`);
+        console.log('  Total data length:', instructionData.length, 'bytes (expected 18)');
         console.log('  Data:', Array.from(instructionData));
         
         console.log('🔍 INSTRUCTION DATA BYTES BREAKDOWN:');
         console.log(`   discriminator: [${Array.from(discriminator).join(', ')}]`);
         console.log(`   ratioAInstructionBytes: [${Array.from(ratioAInstructionBytes).join(', ')}] (should match PDA ratioABytes)`);
         console.log(`   ratioBInstructionBytes: [${Array.from(ratioBInstructionBytes).join(', ')}] (should match PDA ratioBBytes)`);
+        console.log(`   flagsByte: [${Array.from(flagsByte).join(', ')}]`);
         
         // Verify that instruction bytes match PDA bytes
         const pdaRatioAMatch = Array.from(ratioAInstructionBytes).join(',') === Array.from(ratioABytes).join(',');
@@ -1494,6 +1499,25 @@ async function createPoolTransaction(tokenA, tokenB, ratio) {
         } catch (error) {
             console.error(`❌ Pool creation error (attempt ${attempt}/${maxRetries}):`, error);
             lastError = error;
+            
+            // Do NOT retry if the user rejected the wallet signature
+            const errMsg = (error && error.message ? error.message : String(error)).toLowerCase();
+            const errCode = (error && (error.code || error.errorCode)) || null;
+            if (
+                errCode === 4001 || // EIP-1193 style user rejection code used by some wallets
+                errMsg.includes('user rejected') ||
+                errMsg.includes('request rejected') ||
+                errMsg.includes('denied') ||
+                errMsg.includes('declined') ||
+                errMsg.includes('cancelled') ||
+                errMsg.includes('canceled') ||
+                errMsg.includes('rejected the request') ||
+                errMsg.includes('rejected request') ||
+                errMsg.includes('signature rejected')
+            ) {
+                console.log('🛑 User rejected wallet action. Aborting without retry.');
+                throw error;
+            }
             
             // Check if it's a blockhash error and we should retry
             if (error.message && error.message.includes('Blockhash not found') && attempt < maxRetries) {
