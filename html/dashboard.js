@@ -1,6 +1,9 @@
 // Fixed Ratio Trading Dashboard - JavaScript Logic
 // Connects to Solana validator and displays real-time pool information
 // Configuration is loaded from config.js
+//
+// Dependencies:
+// - error-codes.js: Centralized error code mapping (loaded via script tag)
 
 // Global state
 let connection = null;

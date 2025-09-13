@@ -1,6 +1,9 @@
 /**
  * Admin Utilities for Fixed Ratio Trading Dashboard
  * Provides functions for all administrative operations
+ * 
+ * Dependencies:
+ * - error-codes.js: Centralized error code mapping (loaded via script tag)
  */
 
 // Global admin state

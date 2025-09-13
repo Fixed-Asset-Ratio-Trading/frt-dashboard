@@ -1,6 +1,9 @@
 // Liquidity Management - JavaScript Logic
 // Handles adding liquidity to specific pools
 // Configuration is loaded from config.js
+//
+// Dependencies:
+// - error-codes.js: Centralized error code mapping (loaded via script tag)
 
 // Global state
 let connection = null;
@@ -1079,11 +1082,37 @@ function getComputeUnitErrorMessage(simulationError, simulationLogs, currentComp
 
 /**
  * Build a user-facing error message with specific CU guidance when applicable
+ * Uses centralized error mapping for known error codes
  */
 function buildUserFacingErrorMessage(error, currentComputeUnits) {
     const raw = error?.message || String(error || '');
     const lower = raw.toLowerCase();
 
+    // First, try to parse with centralized error mapping
+    const errorInfo = parseTransactionError(error);
+    
+    // If we got a recognized error code, use it with liquidity-specific context
+    if (errorInfo.code && errorInfo.code !== -1) {
+        if (isPauseError(errorInfo.code)) {
+            const suggestions = getErrorSuggestions(errorInfo.code);
+            return `${formatErrorForUser(errorInfo)} Suggestions: ${suggestions.join(', ')}.`;
+        }
+        
+        if (isBalanceError(errorInfo.code)) {
+            return `${formatErrorForUser(errorInfo)} Please check your token balances and ensure you have enough tokens for liquidity operations.`;
+        }
+        
+        // For liquidity-specific errors, provide context
+        if (errorInfo.code >= 1010 && errorInfo.code <= 1019) {
+            return `${formatErrorForUser(errorInfo)} Check your LP token balances and pool conditions.`;
+        }
+        
+        // Return the centralized error message for other recognized codes
+        return formatErrorForUser(errorInfo);
+    }
+
+    // Fallback to original logic for non-coded errors
+    
     // Prefer CU-specific messaging first
     if (
         raw.includes('compute unit') ||

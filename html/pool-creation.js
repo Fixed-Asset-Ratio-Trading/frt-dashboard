@@ -1,6 +1,9 @@
 // Pool Creation Dashboard - JavaScript Logic
 // Handles Backpack wallet connection, token fetching, and pool creation
 // Configuration is loaded from config.js
+//
+// Dependencies:
+// - error-codes.js: Centralized error code mapping (loaded via script tag)
 
 // Global state
 let connection = null;
@@ -1566,10 +1569,36 @@ function getComputeUnitErrorMessage(simulationError, simulationLogs, currentComp
 
 /**
  * Build a user-facing error message with specific CU guidance when applicable (pool creation)
+ * Uses centralized error mapping for known error codes
  */
 function buildUserFacingErrorMessage(error, currentComputeUnits) {
     const raw = error?.message || String(error || '');
     const lower = raw.toLowerCase();
+
+    // First, try to parse with centralized error mapping
+    const errorInfo = parseTransactionError(error);
+    
+    // If we got a recognized error code, use it with pool creation-specific context
+    if (errorInfo.code && errorInfo.code !== -1) {
+        if (isPauseError(errorInfo.code)) {
+            const suggestions = getErrorSuggestions(errorInfo.code);
+            return `${formatErrorForUser(errorInfo)} Pool creation may be restricted. Suggestions: ${suggestions.join(', ')}.`;
+        }
+        
+        if (isBalanceError(errorInfo.code)) {
+            return `${formatErrorForUser(errorInfo)} Ensure you have sufficient SOL for the 1.15 SOL pool creation fee plus transaction costs.`;
+        }
+        
+        // For pool configuration errors, provide specific guidance
+        if (errorInfo.code >= 1000 && errorInfo.code <= 1009) {
+            return `${formatErrorForUser(errorInfo)} Check your token selection and ratio configuration.`;
+        }
+        
+        // Return the centralized error message for other recognized codes
+        return formatErrorForUser(errorInfo);
+    }
+
+    // Fallback to original logic for non-coded errors
 
     // Prefer CU-specific messaging first
     if (

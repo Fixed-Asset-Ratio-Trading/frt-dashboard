@@ -1,6 +1,9 @@
 /**
  * Enhanced Swap Page JavaScript
  * Implements complete swap functionality with wallet integration and real transactions
+ * 
+ * Dependencies:
+ * - error-codes.js: Centralized error code mapping (loaded via script tag)
  */
 
 // Global variables
@@ -935,13 +938,13 @@ async function simulateSwapTransaction(fromAmount) {
 }
 
 /**
- * Parse simulation error to provide user-friendly messages
+ * Parse simulation error to provide user-friendly messages using centralized error mapping
  */
 function parseSimulationError(error, logs) {
     console.log('🔍 Parsing simulation error:', error);
     console.log('🔍 Available logs:', logs);
     
-    // Check for pool pause errors in logs
+    // Check for pool pause errors in logs first (these are specific log messages)
     if (logs) {
         for (const log of logs) {
             if (log.includes('SWAP BLOCKED: Pool swaps are currently paused')) {
@@ -959,43 +962,39 @@ function parseSimulationError(error, logs) {
         }
     }
     
-    // Check for specific error codes
-    if (error && typeof error === 'object') {
-        // Custom program error 0x403 (1027 in decimal) typically indicates pause state
-        if (error.InstructionError && Array.isArray(error.InstructionError)) {
-            const [instructionIndex, instructionError] = error.InstructionError;
-            if (instructionError.Custom === 1027 || instructionError.Custom === 0x403) {
-                return '🚫 Pool swaps are currently paused by the pool owner (Error Code: 0x403). Trading has been temporarily disabled. Please contact the pool owner or try again later.';
-            }
-            
-            // Add more specific error code mappings if we discover them
-            const customError = instructionError.Custom;
-            if (customError) {
-                // AmountMismatch (0x417 / 1047): expected_amount_out must match exact calculated output
-                if (customError === 1047 || customError === 0x417) {
-                    return '❌ Amount mismatch (0x417). The expected output does not exactly match the contract calculation. Adjust the amounts and try again.';
-                }
-                // Check for other known pause-related error codes
-                if (customError >= 1024 && customError <= 1030) {
-                    return `🚫 Pool operations are paused (Error Code: ${customError}). This appears to be a pause-related restriction. Please contact the pool owner.`;
-                }
-                return `❌ Transaction failed with custom program error: ${customError}. Please check the pool status and try again.`;
-            }
+    // Use centralized error parsing for all error types
+    const errorInfo = parseTransactionError(error);
+    
+    // Add swap-specific context to certain errors
+    if (errorInfo.code) {
+        // Add suggestions for swap-specific errors
+        if (isPauseError(errorInfo.code)) {
+            const suggestions = getErrorSuggestions(errorInfo.code);
+            return `${formatErrorForUser(errorInfo)} Suggestions: ${suggestions.join(', ')}.`;
+        }
+        
+        if (isBalanceError(errorInfo.code)) {
+            return `${formatErrorForUser(errorInfo)} Please check your token balances and ensure you have enough tokens for the swap.`;
+        }
+        
+        // For amount mismatch errors, provide specific swap guidance
+        if (errorInfo.code === 1047) {
+            return `${formatErrorForUser(errorInfo)} This often happens when there's a small precision difference. Try using the exact output amount displayed in the UI.`;
         }
     }
     
-    // Check for insufficient funds
+    // Check for insufficient funds in logs (fallback for non-coded errors)
     if (logs && logs.some(log => log.includes('insufficient funds') || log.includes('Insufficient funds'))) {
         return '💰 Insufficient funds in your wallet. Please check your token balance and try again.';
     }
     
-    // Check for account creation issues
+    // Check for account creation issues (fallback for non-coded errors)
     if (logs && logs.some(log => log.includes('account not found') || log.includes('Account not found'))) {
         return '🔍 Required account not found. This may be due to a missing token account or pool configuration issue.';
     }
     
-    // Generic error message
-    return `❌ Transaction simulation failed: ${error && error.toString ? error.toString() : 'Unknown error'}. Please check the pool status and try again.`;
+    // Return formatted error using centralized system
+    return formatErrorForUser(errorInfo) || `❌ Transaction simulation failed: ${error && error.toString ? error.toString() : 'Unknown error'}. Please check the pool status and try again.`;
 }
 
 /**
