@@ -47,19 +47,24 @@ async function loadConfig() {
     } catch (error) {
         console.error('❌ Failed to load configuration:', error);
         
-        // Fallback to hardcoded values
+        // Fallback to hardcoded mainnet values
         window.TRADING_CONFIG = {
-            rpcUrl: 'http://192.168.2.88:8899',
-            wsUrl: null,
-            programId: '4aeVqtWhrUh6wpX8acNj2hpWXKEQwxjA3PYb2sHhNyCn',
+            rpcUrl: 'https://api.mainnet-beta.solana.com',
+            wsUrl: 'wss://api.mainnet-beta.solana.com',
+            programId: 'quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD',
             commitment: 'confirmed',
             disableRetryOnRateLimit: true,
             refreshInterval: 10000,
             poolStateSeedPrefix: 'pool_state',
-            metaplex: null, // No metaplex config in fallback
+            metaplex: {
+                tokenMetadataProgramId: 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s',
+                candyMachineProgramId: 'cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ',
+                auctionHouseProgramId: 'hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk',
+                deploymentType: 'mainnet'
+            },
             expectedWallet: '5GGZiMwU56rYL1L52q7Jz7ELkSN4iYyQqdv418hxPh6t',
             version: '1.0.0',
-            lastUpdated: '2024-01-15',
+            lastUpdated: '2025-09-14',
             
             // Security settings - dashboard restricted to user operations only
             securityMode: 'user-operations-only',

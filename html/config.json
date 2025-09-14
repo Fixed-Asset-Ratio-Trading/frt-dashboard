@@ -1,29 +1,32 @@
 {
   "solana": {
-    "rpcUrl": "http://192.168.2.88:8899",
-    "wsUrl": "ws://192.168.2.88:8900",
+    "rpcUrl": "https://api.mainnet-beta.solana.com",
+    "wsUrl": "wss://api.mainnet-beta.solana.com",
     "commitment": "confirmed",
-    "disableRetryOnRateLimit": true
+    "disableRetryOnRateLimit": true,
+    "network": "mainnet-beta"
   },
   "program": {
-    "programId": "4aeVqtWhrUh6wpX8acNj2hpWXKEQwxjA3PYb2sHhNyCn",
+    "programId": "quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD",
     "poolStateSeedPrefix": "pool_state"
   },
   "metaplex": {
     "tokenMetadataProgramId": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
     "candyMachineProgramId": "cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ",
     "auctionHouseProgramId": "hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk",
-    "lastUpdated": "2025-08-10",
-    "deploymentType": "remote",
-    "remoteRpcUrl": "http://192.168.2.88:8899"
+    "lastUpdated": "2025-09-14",
+    "deploymentType": "mainnet",
+    "remoteRpcUrl": "https://api.mainnet-beta.solana.com"
   },
   "wallets": {
     "expectedBackpackWallet": "5GGZiMwU56rYL1L52q7Jz7ELkSN4iYyQqdv418hxPh6t"
   },
   "dashboard": {
-    "refreshInterval": 10000
+    "refreshInterval": 10000,
+    "title": "Fixed Ratio Trading Dashboard",
+    "network": "mainnet-beta"
   },
   "version": "1.0.0",
-  "lastUpdated": "2025-08-16",
-  "_description": "Centralized configuration for Fixed Ratio Trading project - used by dashboard, scripts, and deployment tools"
+  "lastUpdated": "2025-09-14",
+  "_description": "Centralized configuration for Fixed Ratio Trading project - Mainnet deployment"
 }
