@@ -1,10 +1,11 @@
 {
   "solana": {
-    "rpcUrl": "https://api.mainnet-beta.solana.com",
-    "wsUrl": "wss://api.mainnet-beta.solana.com",
+    "rpcUrl": "https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602",
+    "wsUrl": "wss://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602",
     "commitment": "confirmed",
-    "disableRetryOnRateLimit": true,
-    "network": "mainnet-beta"
+    "disableRetryOnRateLimit": false,
+    "network": "mainnet-beta",
+    "provider": "chainstack"
   },
   "program": {
     "programId": "quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD",
@@ -16,7 +17,7 @@
     "auctionHouseProgramId": "hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk",
     "lastUpdated": "2025-09-14",
     "deploymentType": "mainnet",
-    "remoteRpcUrl": "https://api.mainnet-beta.solana.com"
+    "remoteRpcUrl": "https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602"
   },
   "wallets": {
     "expectedBackpackWallet": "5GGZiMwU56rYL1L52q7Jz7ELkSN4iYyQqdv418hxPh6t"

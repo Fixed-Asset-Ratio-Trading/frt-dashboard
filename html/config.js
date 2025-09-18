@@ -47,10 +47,10 @@ async function loadConfig() {
     } catch (error) {
         console.error('❌ Failed to load configuration:', error);
         
-        // Fallback to hardcoded mainnet values
+        // Fallback to hardcoded Chainstack mainnet values
         window.TRADING_CONFIG = {
-            rpcUrl: 'https://api.mainnet-beta.solana.com',
-            wsUrl: 'wss://api.mainnet-beta.solana.com',
+            rpcUrl: 'https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602',
+            wsUrl: 'wss://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602',
             programId: 'quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD',
             commitment: 'confirmed',
             disableRetryOnRateLimit: true,

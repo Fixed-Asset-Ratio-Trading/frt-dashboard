@@ -330,19 +330,57 @@ sync_files() {
     echo -e "${GREEN}✅ Files synced successfully${NC}"
 }
 
+# Function to store Chainstack credentials securely on remote server
+store_chainstack_credentials() {
+    echo -e "${YELLOW}🔐 Storing Chainstack credentials securely on remote server...${NC}"
+    
+    # Create secure credentials directory on remote server (outside web root)
+    ssh "$REMOTE_HOST" "mkdir -p /home/dev/.config/chainstack && chmod 700 /home/dev/.config/chainstack"
+    
+    # Store credentials in secure file on remote server
+    ssh "$REMOTE_HOST" "cat > /home/dev/.config/chainstack/credentials << 'EOF'
+# Chainstack Solana Mainnet Credentials
+# Generated: $(date)
+# WARNING: Keep this file secure - contains API credentials
+
+# Direct endpoints (no auth required)
+CHAINSTACK_HTTPS_ENDPOINT=https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602
+CHAINSTACK_WSS_ENDPOINT=wss://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602
+
+# Password-protected endpoints (for future use if needed)
+CHAINSTACK_HTTPS_BASE=https://solana-mainnet.core.chainstack.com
+CHAINSTACK_WSS_BASE=wss://solana-mainnet.core.chainstack.com
+CHAINSTACK_USERNAME=condescending-fermi
+CHAINSTACK_PASSWORD=jockey-snore-detest-uproar-fleshy-faucet
+
+# Usage notes:
+# - Direct endpoints are configured for origin/IP filtering
+# - Password-protected endpoints available as backup
+# - Never commit these credentials to version control
+EOF"
+    
+    # Set secure permissions
+    ssh "$REMOTE_HOST" "chmod 600 /home/dev/.config/chainstack/credentials"
+    
+    echo -e "${GREEN}✅ Chainstack credentials stored securely at /home/dev/.config/chainstack/credentials${NC}"
+    echo "   🔒 File permissions: 600 (owner read/write only)"
+    echo "   📁 Location: Outside web root for security"
+}
+
 # Function to update remote configuration
 update_config() {
-    echo -e "${YELLOW}⚙️ Updating remote configuration for Solana Mainnet...${NC}"
+    echo -e "${YELLOW}⚙️ Updating remote configuration for Solana Mainnet with Chainstack...${NC}"
     
-    # Create config for HTTPS deployment with mainnet settings
+    # Create config for HTTPS deployment with Chainstack mainnet settings
     ssh "$REMOTE_HOST" "cat > $REMOTE_HTML_DIR/config.json << 'EOF'
 {
   \"solana\": {
-    \"rpcUrl\": \"https://api.mainnet-beta.solana.com\",
-    \"wsUrl\": \"wss://api.mainnet-beta.solana.com\",
+    \"rpcUrl\": \"https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602\",
+    \"wsUrl\": \"wss://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602\",
     \"commitment\": \"confirmed\",
-    \"disableRetryOnRateLimit\": true,
-    \"network\": \"mainnet-beta\"
+    \"disableRetryOnRateLimit\": false,
+    \"network\": \"mainnet-beta\",
+    \"provider\": \"chainstack\"
   },
   \"program\": {
     \"programId\": \"quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD\",
@@ -354,7 +392,7 @@ update_config() {
     \"auctionHouseProgramId\": \"hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk\",
     \"lastUpdated\": \"$(date +%Y-%m-%d)\",
     \"deploymentType\": \"mainnet\",
-    \"remoteRpcUrl\": \"https://api.mainnet-beta.solana.com\"
+           \"remoteRpcUrl\": \"https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602\"
   },
   \"wallets\": {
     \"expectedBackpackWallet\": \"5GGZiMwU56rYL1L52q7Jz7ELkSN4iYyQqdv418hxPh6t\"
@@ -377,9 +415,10 @@ update_config() {
 }
 EOF"
     
-    echo -e "${GREEN}✅ Remote configuration updated for Solana Mainnet${NC}"
+    echo -e "${GREEN}✅ Remote configuration updated for Solana Mainnet with Chainstack${NC}"
     echo "   🌐 Network: Solana Mainnet Beta"
-    echo "   🔗 RPC URL: https://api.mainnet-beta.solana.com"
+    echo "   🔗 RPC Provider: Chainstack (Premium)"
+    echo "   🔗 RPC URL: https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602"
     echo "   📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD"
 }
 
@@ -388,6 +427,7 @@ case $ACTION in
     "setup")
         echo -e "${BLUE}🔧 Initial HTTPS setup...${NC}"
         setup_ssl_certificates
+        store_chainstack_credentials
         sync_files
         update_config
         setup_nginx
