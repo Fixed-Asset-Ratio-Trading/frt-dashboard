@@ -2,6 +2,12 @@
   "solana": {
     "rpcUrl": "https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602",
     "wsUrl": "wss://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602",
+    "fallbackRpcUrls": [
+      "https://api.mainnet-beta.solana.com",
+      "https://solana-api.projectserum.com",
+      "https://rpc.ankr.com/solana",
+      "https://solana.blockdaemon.com"
+    ],
     "commitment": "confirmed",
     "disableRetryOnRateLimit": false,
     "network": "mainnet-beta",

@@ -88,20 +88,27 @@ document.addEventListener('DOMContentLoaded', async () => {
  */
 async function initializeApp() {
     try {
-        // Initialize Solana connection with WebSocket configuration
+        // Initialize Solana connection with robust fallback support
         console.log('🔌 Connecting to Solana RPC...');
-        const connectionConfig = {
-            commitment: CONFIG.commitment,
-            disableRetryOnRateLimit: CONFIG.disableRetryOnRateLimit || true
-        };
         
-        if (CONFIG.wsUrl) {
-            console.log('📡 Using WebSocket endpoint:', CONFIG.wsUrl);
-            connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig, CONFIG.wsUrl);
+        // Use the robust connection helper from config.js
+        if (typeof createRobustConnection === 'function') {
+            connection = await createRobustConnection();
         } else {
-            console.log('📡 Using HTTP polling (WebSocket disabled)');
-            connectionConfig.wsEndpoint = false; // Explicitly disable WebSocket
-            connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig);
+            // Fallback to original method if helper not available
+            const connectionConfig = {
+                commitment: CONFIG.commitment,
+                disableRetryOnRateLimit: CONFIG.disableRetryOnRateLimit || true
+            };
+            
+            if (CONFIG.wsUrl) {
+                console.log('📡 Using WebSocket endpoint:', CONFIG.wsUrl);
+                connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig, CONFIG.wsUrl);
+            } else {
+                console.log('📡 Using HTTP polling (WebSocket disabled)');
+                connectionConfig.wsEndpoint = false; // Explicitly disable WebSocket
+                connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig);
+            }
         }
         
         // Check if SPL Token library is available

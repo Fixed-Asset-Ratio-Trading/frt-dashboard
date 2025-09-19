@@ -15,6 +15,7 @@ async function loadConfig() {
             // Solana connection settings
             rpcUrl: sharedConfig.solana.rpcUrl,
             wsUrl: sharedConfig.solana.wsUrl,
+            fallbackRpcUrls: sharedConfig.solana.fallbackRpcUrls || [],
             commitment: sharedConfig.solana.commitment,
             disableRetryOnRateLimit: sharedConfig.solana.disableRetryOnRateLimit,
             
@@ -47,10 +48,17 @@ async function loadConfig() {
     } catch (error) {
         console.error('❌ Failed to load configuration:', error);
         
-        // Fallback to hardcoded Chainstack mainnet values
+        // Fallback to hardcoded Chainstack mainnet values with multiple endpoints
         window.TRADING_CONFIG = {
             rpcUrl: 'https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602',
             wsUrl: 'wss://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602',
+            // Fallback RPC endpoints for better connectivity
+            fallbackRpcUrls: [
+                'https://api.mainnet-beta.solana.com',
+                'https://solana-api.projectserum.com',
+                'https://rpc.ankr.com/solana',
+                'https://solana.blockdaemon.com'
+            ],
             programId: 'quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD',
             commitment: 'confirmed',
             disableRetryOnRateLimit: true,
@@ -86,6 +94,68 @@ async function initializeConfig() {
     
     if (window.TRADING_CONFIG && window.TRADING_CONFIG.rpcUrl) {
         console.log('✅ Trading configuration loaded:', window.TRADING_CONFIG.rpcUrl);
+    }
+}
+
+// Connection helper function with fallback support
+async function createRobustConnection() {
+    const config = window.TRADING_CONFIG || window.CONFIG;
+    if (!config) {
+        throw new Error('Configuration not loaded');
+    }
+    
+    const connectionConfig = {
+        commitment: config.commitment || 'confirmed',
+        disableRetryOnRateLimit: config.disableRetryOnRateLimit || true
+    };
+    
+    // List of RPC endpoints to try (primary + fallbacks)
+    const rpcEndpoints = [
+        config.rpcUrl,
+        ...(config.fallbackRpcUrls || [])
+    ].filter(Boolean);
+    
+    console.log(`🔄 Attempting to connect to ${rpcEndpoints.length} RPC endpoints...`);
+    
+    for (let i = 0; i < rpcEndpoints.length; i++) {
+        const rpcUrl = rpcEndpoints[i];
+        try {
+            console.log(`🔌 Trying RPC endpoint ${i + 1}/${rpcEndpoints.length}: ${rpcUrl}`);
+            
+            // Create connection without WebSocket first to test basic connectivity
+            const testConnection = new solanaWeb3.Connection(rpcUrl, {
+                ...connectionConfig,
+                wsEndpoint: false // Disable WebSocket for initial test
+            });
+            
+            // Test the connection with a simple call
+            const version = await testConnection.getVersion();
+            console.log(`✅ RPC endpoint ${i + 1} working, Solana version:`, version['solana-core']);
+            
+            // If primary endpoint and WebSocket is configured, try with WebSocket
+            if (i === 0 && config.wsUrl) {
+                try {
+                    console.log('📡 Attempting WebSocket connection:', config.wsUrl);
+                    const wsConnection = new solanaWeb3.Connection(rpcUrl, connectionConfig, config.wsUrl);
+                    // Test WebSocket connection
+                    await wsConnection.getVersion();
+                    console.log('✅ WebSocket connection successful');
+                    return wsConnection;
+                } catch (wsError) {
+                    console.warn('⚠️ WebSocket failed, falling back to HTTP polling:', wsError.message);
+                    return testConnection;
+                }
+            }
+            
+            // Return HTTP-only connection for fallback endpoints
+            return testConnection;
+            
+        } catch (error) {
+            console.warn(`❌ RPC endpoint ${i + 1} failed:`, error.message);
+            if (i === rpcEndpoints.length - 1) {
+                throw new Error(`All RPC endpoints failed. Last error: ${error.message}`);
+            }
+        }
     }
 }
 

@@ -226,11 +226,9 @@
         <div style="margin-bottom: 15px;">
             <label for="tokenSelect"><strong>Select Token to Test:</strong></label>
             <select id="tokenSelect" onchange="switchToken()" style="margin-left: 10px; padding: 5px;">
-                <option value="0">tSAT (working in Solana Explorer)</option>
-                <option value="1">BONK (famous token)</option>
-                <option value="2">tSAT (original failing one)</option>
-                <option value="3">Custom A (8doS...XfDMb)</option>
-                <option value="4">Custom B (9Avy...pump)</option>
+                <option value="0">Token 1 (6DNSN2B...WcU)</option>
+                <option value="1">Token 2 (tSATjNA...dAX)</option>
+                <option value="2">Token 3 (tSATdGG...sxu)</option>
             </select>
             <button onclick="runTests()" style="margin-left: 10px; padding: 5px 15px;">🔄 Run Tests</button>
         </div>
@@ -279,29 +277,19 @@
         // Test multiple tokens
         const TEST_TOKENS = [
             {
-                mint: 'tSATjNAJorWxzSkNUSnwUEFQV1SLskfjf9EhvYhbdAX',
-                symbol: 'tSAT',
-                name: 'tSAT (working in Solana Explorer)'
+                mint: '6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU',
+                symbol: 'TOKEN1',
+                name: 'Token 1 (6DNSN2B...WcU)'
             },
             {
-                mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
-                symbol: 'BONK',
-                name: 'BONK (famous token)'
+                mint: 'tSATjNAJorWxzSkNUSnwUEFQV1SLskfjf9EhvYhbdAX',
+                symbol: 'TOKEN2',
+                name: 'Token 2 (tSATjNA...dAX)'
             },
             {
                 mint: 'tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu',
-                symbol: 'tSAT',
-                name: 'tSAT (original failing one)'
-            },
-            {
-                mint: '8doS8nzmgVZEaACxALkbK5fZtw4UuoRp4Yt8NEaXfDMb',
-                symbol: 'CUSTA',
-                name: 'Custom A (8doS...XfDMb)'
-            },
-            {
-                mint: '6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU',
-                symbol: 'CUSTB',
-                name: 'Custom B (9Avy...pump)'
+                symbol: 'TOKEN3',
+                name: 'Token 3 (tSATdGG...sxu)'
             }
         ];
         
@@ -581,7 +569,21 @@
         }
 
         // Initialize page
+        // Populate dropdown with tokens dynamically
+        function populateTokenDropdown() {
+            const select = document.getElementById('tokenSelect');
+            select.innerHTML = ''; // Clear existing options
+            
+            TEST_TOKENS.forEach((token, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = token.name;
+                select.appendChild(option);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            populateTokenDropdown(); // Populate dropdown first
             updateTokenInfo();
             runTests();
         });
