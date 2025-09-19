@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Image Source Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        
+        .token-info {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .image-test {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: #fafafa;
+        }
+        
+        .image-test.success {
+            border-color: #4CAF50;
+            background: #f8fff8;
+        }
+        
+        .image-test.failed {
+            border-color: #f44336;
+            background: #fff8f8;
+        }
+        
+        .image-test h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .image-test img {
+            width: 64px;
+            height: 64px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: block;
+        }
+        
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.failed {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .source-url {
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+            margin-top: 5px;
+        }
+
+        details {
+            margin-top: 8px;
+        }
+        .meta-box {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 8px 10px;
+        }
+        .meta-content {
+            margin-top: 8px;
+        }
+        .meta-content .kv {
+            margin: 4px 0;
+        }
+        .meta-content code {
+            background: #f0f0f0;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+        pre.json {
+            max-height: 200px;
+            overflow: auto;
+            background: #f7f7f7;
+            border: 1px solid #eee;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+    </style>
+    <!-- Solana JS libs for PDA + Metaplex decoding -->
+    <script src="./libs/solana-web3.min.js"></script>
+    <script>
+        // Convert ipfs:// URIs to HTTPS gateway URLs with fallbacks
+        function ipfsToHttp(uri) {
+            if (!uri) return uri;
+            if (uri.startsWith('ipfs://')) {
+                const cidPath = uri.replace('ipfs://', '');
+                const gateways = [
+                    `https://gateway.pinata.cloud/ipfs/${cidPath}`,
+                    `https://ipfs.io/ipfs/${cidPath}`,
+                    `https://cloudflare-ipfs.com/ipfs/${cidPath}`,
+                    `https://dweb.link/ipfs/${cidPath}`
+                ];
+                return gateways[0];
+            }
+            // Handle direct IPFS gateway URLs - extract CID and use preferred gateway
+            const ipfsMatch = uri.match(/\/ipfs\/([A-Za-z0-9]+)/);
+            if (ipfsMatch) {
+                const cid = ipfsMatch[1];
+                return `https://gateway.pinata.cloud/ipfs/${cid}`;
+            }
+            // Some URIs are plain CID without scheme
+            if (/^[A-Za-z0-9]{46,}$/.test(uri)) {
+                return `https://gateway.pinata.cloud/ipfs/${uri}`;
+            }
+            return uri;
+        }
+
+        // Minimal Metaplex metadata decode (name, symbol, uri)
+        // This decoder reads the first part until the URI which we need for image
+        function decodeMetaplexMetadataUri(dataBase64) {
+            try {
+                const bytes = atob(dataBase64);
+                const buf = new Uint8Array(bytes.length);
+                for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+
+                // Metaplex Metadata layout (simplified):
+                // key:u8, updateAuthority:32, mint:32, name: string, symbol: string, uri: string, ...
+                // Strings are Rust-style: first u32 LE length, then bytes
+                let offset = 1 + 32 + 32; // skip key + updateAuthority + mint
+
+                const readString = () => {
+                    const len = buf[offset] | (buf[offset+1]<<8) | (buf[offset+2]<<16) | (buf[offset+3]<<24);
+                    offset += 4;
+                    const slice = buf.slice(offset, offset + len);
+                    offset += len;
+                    return new TextDecoder().decode(slice).replace(/\0+$/g, '');
+                };
+
+                const name = readString();
+                const symbol = readString();
+                const rawUri = readString();
+                const uri = ipfsToHttp(rawUri);
+                return { name, symbol, uri, rawUri };
+            } catch (e) {
+                console.warn('Failed to decode Metaplex metadata:', e);
+                return null;
+            }
+        }
+
+        function updateMetaUI(index, { pda, rawUri, httpUri, jsonObject }) {
+            try {
+                if (pda) {
+                    const el = document.getElementById(`pda-${index}`);
+                    if (el) el.textContent = pda;
+                }
+                if (rawUri !== undefined) {
+                    const el = document.getElementById(`raw-uri-${index}`);
+                    if (el) el.textContent = rawUri || '';
+                }
+                if (httpUri !== undefined) {
+                    const el = document.getElementById(`http-uri-${index}`);
+                    if (el) el.textContent = httpUri || '';
+                }
+                if (jsonObject !== undefined) {
+                    const el = document.getElementById(`json-${index}`);
+                    if (el) {
+                        const text = JSON.stringify(jsonObject, null, 2);
+                        el.textContent = text.length > 5000 ? (text.slice(0, 5000) + '\n... (truncated)') : text;
+                    }
+                }
+            } catch (e) {
+                console.warn('updateMetaUI failed:', e);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>🔍 Token Image Source Test</h1>
+    
+    <div class="token-info">
+        <h3>Token Image Source Testing</h3>
+        <div style="margin-bottom: 15px;">
+            <label for="tokenSelect"><strong>Select Token to Test:</strong></label>
+            <select id="tokenSelect" onchange="switchToken()" style="margin-left: 10px; padding: 5px;">
+                <option value="0">tSAT (working in Solana Explorer)</option>
+                <option value="1">BONK (famous token)</option>
+                <option value="2">tSAT (original failing one)</option>
+                <option value="3">Custom A (8doS...XfDMb)</option>
+                <option value="4">Custom B (9Avy...pump)</option>
+            </select>
+            <button onclick="runTests()" style="margin-left: 10px; padding: 5px 15px;">🔄 Run Tests</button>
+        </div>
+        <p><strong>Current Token:</strong> <span id="currentTokenInfo"></span></p>
+        <p><strong>Mint Address:</strong> <code id="currentMintAddress"></code></p>
+        <p>This test tries multiple image sources including your paid Chainstack RPC and the winning DexScreener method.</p>
+
+        <div id="aggMetaPanel" style="margin-top: 14px;">
+            <details open>
+                <summary><strong>Aggregated Token Metadata</strong></summary>
+                <div class="meta-box">
+                    <div class="meta-content">
+                        <div class="kv"><strong>Mint:</strong> <code id="agg-mint"></code></div>
+                        <div class="kv"><strong>On-chain (Metaplex):</strong> <span id="agg-onchain-name"></span> <span id="agg-onchain-symbol"></span></div>
+                        <div class="kv"><strong>Metadata PDA:</strong> <code id="agg-pda"></code></div>
+                        <div class="kv"><strong>URI (raw):</strong> <code id="agg-uri-raw"></code></div>
+                        <div class="kv"><strong>URI (HTTP):</strong> <code id="agg-uri-http"></code></div>
+                        <div class="kv"><strong>JSON name:</strong> <span id="agg-json-name"></span></div>
+                        <div class="kv"><strong>JSON symbol:</strong> <span id="agg-json-symbol"></span></div>
+                        <div class="kv"><strong>Description:</strong> <span id="agg-desc"></span></div>
+                        <div class="kv"><strong>Image:</strong> <code id="agg-image"></code></div>
+                        <div class="kv"><strong>Website:</strong> <code id="agg-website"></code></div>
+                        <div class="kv"><strong>Twitter:</strong> <code id="agg-twitter"></code></div>
+                        <div class="kv"><strong>Telegram:</strong> <code id="agg-telegram"></code></div>
+                        <div class="kv"><strong>Jupiter name/symbol:</strong> <span id="agg-jup-name"></span> <span id="agg-jup-symbol"></span></div>
+                        <div class="kv"><strong>Jupiter logoURI:</strong> <code id="agg-jup-logo"></code></div>
+                        <div class="kv"><strong>Token Extensions URI:</strong> <code id="agg-ext-uri"></code></div>
+                        <details style="margin-top:8px;">
+                            <summary>Full JSON (off-chain)</summary>
+                            <pre class="json" id="agg-json-pre"></pre>
+                        </details>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Image Source Tests</h2>
+        <div class="image-grid" id="imageGrid">
+            <!-- Images will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Test multiple tokens
+        const TEST_TOKENS = [
+            {
+                mint: 'tSATjNAJorWxzSkNUSnwUEFQV1SLskfjf9EhvYhbdAX',
+                symbol: 'tSAT',
+                name: 'tSAT (working in Solana Explorer)'
+            },
+            {
+                mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+                symbol: 'BONK',
+                name: 'BONK (famous token)'
+            },
+            {
+                mint: 'tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu',
+                symbol: 'tSAT',
+                name: 'tSAT (original failing one)'
+            },
+            {
+                mint: '8doS8nzmgVZEaACxALkbK5fZtw4UuoRp4Yt8NEaXfDMb',
+                symbol: 'CUSTA',
+                name: 'Custom A (8doS...XfDMb)'
+            },
+            {
+                mint: '6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU',
+                symbol: 'CUSTB',
+                name: 'Custom B (9Avy...pump)'
+            }
+        ];
+        
+        let currentTokenIndex = 0;
+        let TOKEN_MINT = TEST_TOKENS[currentTokenIndex].mint;
+        let TOKEN_SYMBOL = TEST_TOKENS[currentTokenIndex].symbol;
+        
+        // Chainstack RPC configuration
+        const CHAINSTACK_RPC = 'https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602';
+        const CHAINSTACK_AUTH_RPC = 'https://solana-mainnet.core.chainstack.com';
+        const CHAINSTACK_AUTH = btoa('condescending-fermi:jockey-snore-detest-uproar-fleshy-faucet');
+
+        // Different image sources to test
+        function getImageSources(tokenMint) {
+            return [
+                {
+                    name: '🏆 DexScreener (WINNER!)',
+                    url: `https://dd.dexscreener.com/ds-data/tokens/solana/${tokenMint}.png`,
+                    cost: 'Free',
+                    description: 'Works for BONK! Best free option'
+                },
+                {
+                    name: '🔥 Metaplex PDA -> URI -> image',
+                    url: 'FETCH_METAPLEX_PDA',
+                    description: 'Official method via metadata PDA',
+                    cost: 'Free (RPC)'
+                },
+                {
+                    name: '🚀 Chainstack + Proper Auth',
+                    url: 'FETCH_CHAINSTACK_AUTH',
+                    description: 'Your paid Chainstack RPC with authentication',
+                    cost: 'Paid (Your Chainstack Plan)'
+                },
+                {
+                    name: '🆓 Jupiter Token List',
+                    url: 'FETCH_JUPITER_LIST',
+                    description: 'Jupiter comprehensive token list',
+                    cost: 'Free'
+                },
+                {
+                    name: '🆓 Solana Token Registry',
+                    url: `https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/${tokenMint}/logo.png`,
+                    cost: 'Free'
+                },
+                {
+                    name: '🆓 CoinGecko',
+                    url: `https://assets.coingecko.com/coins/images/solana-${tokenMint.toLowerCase()}/small/logo.png`,
+                    cost: 'Free (rate limited)'
+                },
+                {
+                    name: '🔍 Fallback: Generated SVG',
+                    url: 'GENERATE_SVG',
+                    description: 'Always works - generate SVG with token symbol',
+                    cost: 'Free (always works)'
+                }
+            ];
+        }
+
+        function createImageTest(source, index) {
+            const div = document.createElement('div');
+            div.className = 'image-test';
+            div.id = `test-${index}`;
+            
+            const costBadge = source.cost ? `<span class="cost-badge" style="background: #e74c3c; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">${source.cost}</span>` : '';
+            const description = source.description || (source.url && source.url.startsWith('http') ? source.url : 'API Method');
+            
+            div.innerHTML = `
+                <h4>${source.name} ${costBadge}</h4>
+                <img id="img-${index}" src="" alt="${TOKEN_SYMBOL}">
+                <div class="status loading" id="status-${index}">⏳ Loading...</div>
+                <div class="source-url">${description}</div>
+                <details>
+                    <summary>Metadata details</summary>
+                    <div class="meta-box">
+                        <div class="meta-content">
+                            <div class="kv"><strong>PDA:</strong> <code id="pda-${index}"></code></div>
+                            <div class="kv"><strong>Raw URI:</strong> <code id="raw-uri-${index}"></code></div>
+                            <div class="kv"><strong>HTTP URI:</strong> <code id="http-uri-${index}"></code></div>
+                            <div class="kv"><strong>JSON:</strong></div>
+                            <pre class="json" id="json-${index}"></pre>
+                        </div>
+                    </div>
+                </details>
+            `;
+            
+            return div;
+        }
+
+        async function testImageSource(source, index) {
+            const img = document.getElementById(`img-${index}`);
+            const status = document.getElementById(`status-${index}`);
+            const container = document.getElementById(`test-${index}`);
+            
+            try {
+                if (source.url === 'FETCH_METAPLEX_PDA') {
+                    status.textContent = '🔥 Deriving metadata PDA...';
+                    const mintPk = new solanaWeb3.PublicKey(TOKEN_MINT);
+                    const METADATA_PROGRAM_ID = new solanaWeb3.PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
+                    const seed1 = new TextEncoder().encode('metadata');
+                    const seed2 = METADATA_PROGRAM_ID.toBuffer();
+                    const seed3 = mintPk.toBuffer();
+                    const [metadataPda] = await solanaWeb3.PublicKey.findProgramAddress(
+                        [seed1, seed2, seed3],
+                        METADATA_PROGRAM_ID
+                    );
+                    updateMetaUI(index, { pda: metadataPda.toBase58() });
+
+                    status.textContent = '📡 Fetching metadata account...';
+                    // Use Chainstack with Basic Auth to avoid CORS issues
+                    const resp = await fetch(CHAINSTACK_AUTH_RPC, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${CHAINSTACK_AUTH}` },
+                        body: JSON.stringify({
+                            jsonrpc: '2.0', id: 1, method: 'getAccountInfo',
+                            params: [metadataPda.toBase58(), { encoding: 'base64' }]
+                        })
+                    });
+                    if (!resp.ok) throw new Error(`RPC ${resp.status}`);
+                    const json = await resp.json();
+                    const value = json?.result?.value;
+                    if (!value) throw new Error('No metadata account');
+                    const dataB64 = value.data?.[0];
+                    if (!dataB64) throw new Error('No data in metadata');
+
+                    const decoded = decodeMetaplexMetadataUri(dataB64);
+                    if (!decoded?.uri) throw new Error('No URI in metadata');
+                    updateMetaUI(index, { rawUri: decoded.rawUri, httpUri: decoded.uri });
+                    status.textContent = '🧩 Fetching JSON metadata...';
+                    const metaResp = await fetch(decoded.uri);
+                    if (!metaResp.ok) throw new Error(`Meta ${metaResp.status}`);
+                    const metaJson = await metaResp.json();
+                    updateMetaUI(index, { jsonObject: metaJson });
+                    if (!metaJson.image) throw new Error('No image in JSON');
+                    img.src = ipfsToHttp(metaJson.image);
+                    status.textContent = '✅ Metaplex image loaded';
+                    status.className = 'status success';
+                    container.className = 'image-test success';
+                    const urlDiv = container.querySelector('.source-url');
+                    urlDiv.textContent = img.src;
+                    return;
+                }
+                if (source.url === 'FETCH_CHAINSTACK_AUTH') {
+                    // Use Chainstack with proper authentication
+                    status.textContent = '🚀 Chainstack + Auth...';
+                    
+                    const response = await fetch(CHAINSTACK_AUTH_RPC, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Basic ${CHAINSTACK_AUTH}`
+                        },
+                        body: JSON.stringify({
+                            jsonrpc: '2.0',
+                            id: 1,
+                            method: 'getAccountInfo',
+                            params: [TOKEN_MINT, { encoding: 'jsonParsed', commitment: 'confirmed' }]
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Chainstack auth response:', data);
+                        
+                        // Look for metadata in the response
+                        if (data.result && data.result.value && data.result.value.data) {
+                            console.log('Account data found - check console for details');
+                        }
+                    }
+                    
+                    throw new Error('Chainstack auth working but no image metadata found');
+                    
+                } else if (source.url === 'FETCH_JUPITER_LIST') {
+                    // Try Jupiter's comprehensive token list
+                    status.textContent = '🔍 Fetching Jupiter token list...';
+                    const response = await fetch('https://token.jup.ag/all');
+                    if (response.ok) {
+                        const tokens = await response.json();
+                        const token = tokens.find(t => t.address === TOKEN_MINT);
+                        if (token && token.logoURI) {
+                            img.src = token.logoURI;
+                            status.textContent = `✅ Jupiter List Success!`;
+                            status.className = 'status success';
+                            container.className = 'image-test success';
+                            
+                            const urlDiv = container.querySelector('.source-url');
+                            urlDiv.textContent = token.logoURI;
+                        } else {
+                            throw new Error('Token not found in Jupiter list');
+                        }
+                    } else {
+                        throw new Error(`Jupiter list API returned ${response.status}`);
+                    }
+                    
+                } else if (source.url === 'GENERATE_SVG') {
+                    // Generate SVG fallback
+                    status.textContent = '🎨 Generating SVG...';
+                    
+                    const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
+                    const color = colors[TOKEN_MINT.charCodeAt(0) % colors.length];
+                    const initial = TOKEN_SYMBOL.charAt(0).toUpperCase();
+                    
+                    const svgData = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='${color}'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30' font-family='Arial'>${initial}</text></svg>`;
+                    
+                    img.src = svgData;
+                    status.textContent = `✅ SVG Generated!`;
+                    status.className = 'status success';
+                    container.className = 'image-test success';
+                    
+                    const urlDiv = container.querySelector('.source-url');
+                    urlDiv.textContent = 'Generated SVG with token initial';
+                    return;
+                    
+                } else {
+                    // Regular image test
+                    img.src = source.url;
+                    
+                    // Set up success/error handlers
+                    img.onload = () => {
+                        status.textContent = '✅ Success!';
+                        status.className = 'status success';
+                        container.className = 'image-test success';
+                        console.log(`✅ ${source.name}: SUCCESS - ${source.url}`);
+                    };
+                    
+                    img.onerror = () => {
+                        status.textContent = '❌ Failed to load';
+                        status.className = 'status failed';
+                        container.className = 'image-test failed';
+                        console.log(`❌ ${source.name}: FAILED - ${source.url}`);
+                    };
+                }
+            } catch (error) {
+                status.textContent = `❌ Error: ${error.message}`;
+                status.className = 'status failed';
+                container.className = 'image-test failed';
+                console.log(`❌ ${source.name}: ERROR -`, error);
+            }
+        }
+
+        // Switch token function
+        function switchToken() {
+            const select = document.getElementById('tokenSelect');
+            currentTokenIndex = parseInt(select.value);
+            TOKEN_MINT = TEST_TOKENS[currentTokenIndex].mint;
+            TOKEN_SYMBOL = TEST_TOKENS[currentTokenIndex].symbol;
+            
+            updateTokenInfo();
+        }
+        
+        // Update token info display
+        function updateTokenInfo() {
+            document.getElementById('currentTokenInfo').textContent = TEST_TOKENS[currentTokenIndex].name;
+            document.getElementById('currentMintAddress').textContent = TOKEN_MINT;
+            // Trigger aggregated metadata fetch when token changes
+            fetchAggregatedMetadata(TOKEN_MINT).catch(console.warn);
+        }
+
+        // Initialize the test
+        function runTests() {
+            const grid = document.getElementById('imageGrid');
+            grid.innerHTML = ''; // Clear previous results
+            
+            const imageSources = getImageSources(TOKEN_MINT);
+            
+            imageSources.forEach((source, index) => {
+                const testDiv = createImageTest(source, index);
+                grid.appendChild(testDiv);
+                
+                // Start the test after a small delay to prevent overwhelming
+                setTimeout(() => testImageSource(source, index), index * 300);
+            });
+            
+            console.log('🔍 Testing token images for:', TOKEN_MINT);
+            console.log('📊 Total sources to test:', imageSources.length);
+            // Refresh aggregated metadata as well
+            fetchAggregatedMetadata(TOKEN_MINT).catch(console.warn);
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTokenInfo();
+            runTests();
+        });
+
+        async function fetchAggregatedMetadata(mint) {
+            // Clear previous
+            const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || ''; };
+            setText('agg-mint', mint);
+            setText('agg-onchain-name', '');
+            setText('agg-onchain-symbol', '');
+            setText('agg-pda', '');
+            setText('agg-uri-raw', '');
+            setText('agg-uri-http', '');
+            setText('agg-json-name', '');
+            setText('agg-json-symbol', '');
+            setText('agg-desc', '');
+            setText('agg-image', '');
+            setText('agg-website', '');
+            setText('agg-twitter', '');
+            setText('agg-telegram', '');
+            setText('agg-jup-name', '');
+            setText('agg-jup-symbol', '');
+            setText('agg-jup-logo', '');
+            setText('agg-ext-uri', '');
+            const jsonPre = document.getElementById('agg-json-pre'); if (jsonPre) jsonPre.textContent = '';
+
+            try {
+                // 1) Metaplex PDA -> URI -> JSON
+                const mintPk = new solanaWeb3.PublicKey(mint);
+                const METADATA_PROGRAM_ID = new solanaWeb3.PublicKey('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s');
+                const seed1 = new TextEncoder().encode('metadata');
+                const seed2 = METADATA_PROGRAM_ID.toBuffer();
+                const seed3 = mintPk.toBuffer();
+                const [metadataPda] = await solanaWeb3.PublicKey.findProgramAddress([seed1, seed2, seed3], METADATA_PROGRAM_ID);
+                setText('agg-pda', metadataPda.toBase58());
+
+                const resp = await fetch(CHAINSTACK_AUTH_RPC, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${CHAINSTACK_AUTH}` },
+                    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getAccountInfo', params: [metadataPda.toBase58(), { encoding: 'base64' }] })
+                });
+                if (resp.ok) {
+                    const j = await resp.json();
+                    const dataB64 = j?.result?.value?.data?.[0];
+                    if (dataB64) {
+                        const dec = decodeMetaplexMetadataUri(dataB64);
+                        if (dec) {
+                            setText('agg-onchain-name', dec.name || '');
+                            setText('agg-onchain-symbol', dec.symbol || '');
+                            setText('agg-uri-raw', dec.rawUri || '');
+                            setText('agg-uri-http', dec.uri || '');
+                            if (dec.uri) {
+                                const metaResp = await fetch(dec.uri);
+                                if (metaResp.ok) {
+                                    const metaJson = await metaResp.json();
+                                    jsonPre.textContent = JSON.stringify(metaJson, null, 2).slice(0, 10000);
+                                    setText('agg-json-name', metaJson.name || '');
+                                    setText('agg-json-symbol', metaJson.symbol || '');
+                                    setText('agg-desc', metaJson.description || '');
+                                    setText('agg-image', ipfsToHttp(metaJson.image || ''));
+                                    // common external links
+                                    setText('agg-website', metaJson.website || metaJson.external_url || '');
+                                    // try several common twitter keys
+                                    setText('agg-twitter', (metaJson.twitter || metaJson.twitter_url || (metaJson.extensions && metaJson.extensions.twitter) || ''));
+                                    // try telegram
+                                    setText('agg-telegram', (metaJson.telegram || (metaJson.extensions && metaJson.extensions.telegram) || ''));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2) Token Extensions (if any)
+                try {
+                    const extResp = await fetch(CHAINSTACK_AUTH_RPC, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${CHAINSTACK_AUTH}` },
+                        body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'getAccountInfo', params: [mint, { encoding: 'jsonParsed' }] })
+                    });
+                    if (extResp.ok) {
+                        const ej = await extResp.json();
+                        const info = ej?.result?.value?.data?.parsed?.info;
+                        if (info?.extensions) {
+                            const m = info.extensions.find(x => (x.extension === 'metadata' || x.type === 'metadata'));
+                            if (m?.state?.uri) setText('agg-ext-uri', m.state.uri);
+                        }
+                    }
+                } catch {}
+
+                // 3) Jupiter token list
+                try {
+                    const jresp = await fetch('https://token.jup.ag/all');
+                    if (jresp.ok) {
+                        const list = await jresp.json();
+                        const tok = list.find(t => t.address === mint);
+                        if (tok) {
+                            setText('agg-jup-name', tok.name || '');
+                            setText('agg-jup-symbol', tok.symbol || '');
+                            setText('agg-jup-logo', tok.logoURI || '');
+                        }
+                    }
+                } catch {}
+            } catch (e) {
+                console.warn('fetchAggregatedMetadata error', e);
+            }
+        }
+    </script>
+</body>
+</html>

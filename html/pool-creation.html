@@ -201,6 +201,212 @@
             margin-top: 20px;
         }
         
+        /* Manual token entry styles */
+        .manual-token-section {
+            background: #f8f9fa;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .manual-token-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .manual-token-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: monospace;
+            transition: border-color 0.3s ease;
+        }
+        
+        .manual-token-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .add-token-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .add-token-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        /* Pagination styles */
+        .pagination-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .pagination-info {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .pagination-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .pagination-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .pagination-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .page-info {
+            color: #374151;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        /* Token image styles */
+        .token-image {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 15px auto;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .token-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        /* Clear button styles */
+        .selected-token-content {
+            flex: 1;
+        }
+        
+        .selected-token-image {
+            width: 48px;
+            height: 48px;
+            margin-right: 15px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .selected-token-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        
+        .token-selection.active {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+        
+        .clear-token-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            border-radius: 50%;
+            background: #ef4444;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+        
+        .clear-token-btn:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+        
+        .clear-token-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Clear all button styles */
+        .clear-all-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .clear-all-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+        
+        .clear-all-btn:active {
+            transform: translateY(0);
+        }
+        
         .token-card {
             background: #f8f9fa;
             border: 2px solid #e5e7eb;
@@ -598,6 +804,21 @@
             .tokens-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .manual-token-input-group {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .pagination-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .pagination-controls {
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -653,19 +874,38 @@
             <h2 style="color: #333; margin-bottom: 10px;">🪙 Your Tokens</h2>
             <p style="color: #666; margin-bottom: 20px;">Select two tokens from your wallet to create a trading pool</p>
             
+            <!-- Manual Token Entry -->
+            <div class="manual-token-section">
+                <h3 style="color: #333; margin-bottom: 15px;">➕ Add Token Manually</h3>
+                <div class="manual-token-input-group">
+                    <input type="text" id="manual-token-input" placeholder="Enter token mint address (e.g., EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v)" class="manual-token-input">
+                    <button onclick="addTokenManually(document.getElementById('manual-token-input').value)" class="add-token-btn">
+                        Add Token
+                    </button>
+                </div>
+                <p style="color: #666; font-size: 12px; margin-top: 8px;">
+                    💡 You can add any token by its mint address, even if you don't own it
+                </p>
+            </div>
+            
             <div id="tokens-loading" class="loading">
                 <h3>🔍 Loading your tokens...</h3>
                 <p>Please connect your wallet to see your token balances</p>
             </div>
             
-            <div id="tokens-container" class="tokens-grid" style="display: none;">
+            <div id="tokens-container" style="display: none;">
                 <!-- Tokens will be populated here -->
             </div>
         </div>
         
         <!-- Pool Creation Section -->
         <div class="pool-creation-section">
-            <h2 style="color: #333; margin-bottom: 25px;">⚖️ Configure Pool</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h2 style="color: #333; margin: 0;">⚖️ Configure Pool</h2>
+                <button class="clear-all-btn" onclick="clearTokenSelection()" title="Clear token selections (B first, then A)">
+                    🗑️ Clear Selection
+                </button>
+            </div>
             
             <!-- Token Pair Selection -->
             <div class="pool-setup">

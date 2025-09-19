@@ -17,6 +17,11 @@ let errorCountdownTimer = null;
 // Compute unit budget for pool creation (tunable for testing)
 let poolCreateComputeUnits = 195_000; // Testing threshold - pool creation uses ~90k CUs
 
+// Pagination state
+let currentTokenPage = 0;
+const tokensPerPage = 4;
+let totalTokenPages = 0;
+
 /**
  * Browser-compatible helper to concatenate Uint8Arrays (replaces Buffer.concat)
  */
@@ -29,6 +34,19 @@ function concatUint8Arrays(arrays) {
         offset += arr.length;
     }
     return result;
+}
+
+// Human-readable number formatter (no scientific notation)
+function formatHumanNumber(value) {
+    if (value === null || value === undefined || isNaN(value)) return '0';
+    const abs = Math.abs(value);
+    const isInt = Number.isInteger(value);
+    const formatInt = (n) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    if (abs >= 1_000_000_000_000) return `${formatInt(Math.trunc(value / 1_000_000_000_000))}T`;
+    if (abs >= 1_000_000_000) return `${formatInt(Math.trunc(value / 1_000_000_000))}B`;
+    if (abs >= 1_000_000) return `${formatInt(Math.trunc(value / 1_000_000))}M`;
+    if (abs >= 1_000) return formatInt(value);
+    return isInt ? `${value}` : value.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
 // Initialize when page loads
@@ -224,9 +242,9 @@ async function checkWalletBalance() {
         const solBalance = balance / solanaWeb3.LAMPORTS_PER_SOL;
         
         if (solBalance < 0.1) {
-            showStatus('error', `⚠️ Low SOL balance: ${solBalance.toFixed(4)} SOL. You may need more SOL for transactions.`);
+            showStatus('error', `⚠️ Low SOL balance: ${formatHumanNumber(solBalance)} SOL. You may need more SOL for transactions.`);
         } else {
-            console.log(`💰 Wallet balance: ${solBalance.toFixed(4)} SOL`);
+            console.log(`💰 Wallet balance: ${formatHumanNumber(solBalance)} SOL`);
         }
     } catch (error) {
         console.error('❌ Error checking balance:', error);
@@ -236,11 +254,23 @@ async function checkWalletBalance() {
 /**
  * Load user's SPL tokens
  */
+// Store raw token accounts for lazy loading
+let rawTokenAccounts = [];
+let loadedTokensCount = 0;
+let isLoadingTokens = false;
+
 async function loadUserTokens() {
+    // Prevent concurrent token loading
+    if (isLoadingTokens) {
+        console.log('⏳ Token loading already in progress, skipping...');
+        return;
+    }
+    
     try {
+        isLoadingTokens = true;
         showStatus('info', '🔍 Loading your tokens...');
         
-        // Get all token accounts for the user
+        // Get all token accounts for the user (but don't process them all yet)
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
             wallet.publicKey,
             { programId: window.splToken.TOKEN_PROGRAM_ID }
@@ -248,52 +278,91 @@ async function loadUserTokens() {
         
         console.log(`Found ${tokenAccounts.value.length} token accounts`);
         
-        userTokens = [];
+        // Filter accounts with balances and sort by balance (highest first)
+        rawTokenAccounts = tokenAccounts.value
+            .filter(account => {
+                const balance = parseFloat(account.account.data.parsed.info.tokenAmount.uiAmount) || 0;
+                return balance > 0;
+            })
+            .sort((a, b) => {
+                const balanceA = parseFloat(a.account.data.parsed.info.tokenAmount.uiAmount) || 0;
+                const balanceB = parseFloat(b.account.data.parsed.info.tokenAmount.uiAmount) || 0;
+                return balanceB - balanceA;
+            });
         
-        for (const tokenAccount of tokenAccounts.value) {
-            const accountInfo = tokenAccount.account.data.parsed.info;
-            
-            // Skip accounts with zero balance
-            if (parseFloat(accountInfo.tokenAmount.uiAmount) <= 0) {
-                continue;
-            }
-            
-            try {
-                // Try to get token metadata (name, symbol)
-                const mintAddress = accountInfo.mint;
-                let tokenInfo = {
-                    mint: mintAddress,
-                    balance: parseFloat(accountInfo.tokenAmount.uiAmount),
-                    decimals: accountInfo.tokenAmount.decimals,
-                    symbol: `${mintAddress.slice(0, 4)}`, // Default symbol fallback: first 4 chars of mint
-                    name: `Token ${mintAddress.slice(0, 8)}...`, // Default name
-                    tokenAccount: tokenAccount.pubkey.toString()
-                };
-                
-                // Try to fetch metadata from common sources
-                await tryFetchTokenMetadata(tokenInfo);
-                
-                userTokens.push(tokenInfo);
-            } catch (error) {
-                console.warn(`Failed to process token ${accountInfo.mint}:`, error);
-            }
-        }
+        console.log(`Found ${rawTokenAccounts.length} tokens with balances`);
         
-        console.log(`✅ Loaded ${userTokens.length} tokens with balances`);
+        // Preserve manually added tokens
+        const manuallyAddedTokens = userTokens.filter(token => token.isManuallyAdded);
         
-        // Update UI
+        // Reset state but keep manually added tokens
+        userTokens = [...manuallyAddedTokens];
+        loadedTokensCount = 0;
+        currentTokenPage = 0;
+        
+        // Load first batch of tokens (only first 4)
+        await loadTokenBatch(0, tokensPerPage);
+        
         updateTokensDisplay();
         
-        if (userTokens.length === 0) {
-            showStatus('info', '📭 No tokens found in your wallet. Create some tokens first!');
+        if (userTokens.length > 0) {
+            showStatus('success', `✅ Loaded first ${userTokens.length} tokens (${rawTokenAccounts.length} total available)`);
         } else {
-            clearStatus();
+            showStatus('info', '📭 No tokens with balances found in your wallet');
         }
         
     } catch (error) {
-        console.error('❌ Error loading tokens:', error);
+        console.error('❌ Error loading user tokens:', error);
         showStatus('error', 'Failed to load tokens: ' + error.message);
+    } finally {
+        isLoadingTokens = false;
     }
+}
+
+/**
+ * Load a batch of tokens with metadata
+ */
+async function loadTokenBatch(startIndex, count) {
+    const endIndex = Math.min(startIndex + count, rawTokenAccounts.length);
+    
+    for (let i = startIndex; i < endIndex; i++) {
+        if (i >= rawTokenAccounts.length) break;
+        
+        const tokenAccount = rawTokenAccounts[i];
+        const accountInfo = tokenAccount.account.data.parsed.info;
+        const mintAddress = accountInfo.mint;
+        const balance = parseFloat(accountInfo.tokenAmount.uiAmount) || 0;
+        
+        let tokenInfo = {
+            mint: mintAddress,
+            balance: balance,
+            decimals: accountInfo.tokenAmount.decimals,
+            symbol: `${mintAddress.slice(0, 4)}`, // Default symbol fallback
+            name: `Token ${mintAddress.slice(0, 8)}...`, // Default name
+            tokenAccount: tokenAccount.pubkey.toString()
+        };
+        
+        try {
+            // Try to fetch metadata from common sources
+            await tryFetchTokenMetadata(tokenInfo);
+        } catch (error) {
+            console.warn(`Failed to fetch metadata for token ${mintAddress}:`, error);
+        }
+        
+        // Check if token already exists (avoid duplicates)
+        const existingIndex = userTokens.findIndex(token => token.mint === mintAddress);
+        if (existingIndex >= 0) {
+            // If it's a manually added token, preserve the isManuallyAdded flag
+            if (userTokens[existingIndex].isManuallyAdded) {
+                tokenInfo.isManuallyAdded = true;
+            }
+            userTokens[existingIndex] = tokenInfo;
+        } else {
+            userTokens.push(tokenInfo);
+        }
+    }
+    
+    loadedTokensCount = Math.max(loadedTokensCount, endIndex);
 }
 
 /**
@@ -312,12 +381,42 @@ async function tryFetchTokenMetadata(tokenInfo) {
             return;
         }
         
+        // Try Jupiter token list as fallback
+        console.log(`🔍 Trying Jupiter token list for ${tokenInfo.mint}`);
+        const jupiterMetadata = await fetchJupiterTokenMetadata(tokenInfo.mint);
+        if (jupiterMetadata) {
+            tokenInfo.symbol = jupiterMetadata.symbol || tokenInfo.symbol;
+            tokenInfo.name = jupiterMetadata.name || tokenInfo.name;
+            console.log(`✅ Found Jupiter metadata: ${tokenInfo.symbol} (${tokenInfo.name})`);
+            return;
+        }
+        
         // Fallback to default values
         console.log(`⚠️ Using default metadata for token ${tokenInfo.mint}`);
         
     } catch (error) {
         console.warn('❌ Error fetching token metadata:', error);
     }
+}
+
+/**
+ * Fetch token metadata from Jupiter token list
+ */
+async function fetchJupiterTokenMetadata(mintAddress) {
+    try {
+        const response = await fetch(`https://token.jup.ag/token/${mintAddress}`);
+        if (response.ok) {
+            const data = await response.json();
+            return {
+                name: data.name,
+                symbol: data.symbol,
+                image: data.logoURI
+            };
+        }
+    } catch (error) {
+        console.warn(`Failed to fetch Jupiter metadata for ${mintAddress}:`, error);
+    }
+    return null;
 }
 
 /**
@@ -390,7 +489,7 @@ async function queryMetaplexMetadata(tokenMintAddress) {
 }
 
 /**
- * Update tokens display
+ * Update tokens display with pagination
  */
 function updateTokensDisplay() {
     const tokensContainer = document.getElementById('tokens-container');
@@ -408,10 +507,42 @@ function updateTokensDisplay() {
     }
     
     tokensLoading.style.display = 'none';
-    tokensContainer.style.display = 'grid';
+    tokensContainer.style.display = 'block';
+    
+    // Calculate pagination based on total available tokens, not just loaded ones
+    const totalAvailableTokens = rawTokenAccounts.length || userTokens.length;
+    totalTokenPages = Math.ceil(totalAvailableTokens / tokensPerPage);
+    const startIndex = currentTokenPage * tokensPerPage;
+    const endIndex = Math.min(startIndex + tokensPerPage, userTokens.length);
+    const tokensToShow = userTokens.slice(startIndex, endIndex);
+    
+    // Clear container and add pagination controls
     tokensContainer.innerHTML = '';
     
-    userTokens.forEach((token, index) => {
+    // Add pagination info and controls
+    const paginationHeader = document.createElement('div');
+    paginationHeader.className = 'pagination-header';
+    paginationHeader.innerHTML = `
+        <div class="pagination-info">
+            <span>Showing ${startIndex + 1}-${Math.min(startIndex + tokensToShow.length, totalAvailableTokens)} of ${totalAvailableTokens} tokens</span>
+        </div>
+        <div class="pagination-controls">
+            <button class="pagination-btn" onclick="previousTokenPage()" ${currentTokenPage === 0 ? 'disabled' : ''}>
+                ← Previous
+            </button>
+            <span class="page-info">Page ${currentTokenPage + 1} of ${totalTokenPages}</span>
+            <button class="pagination-btn" onclick="nextTokenPage()" ${currentTokenPage >= totalTokenPages - 1 ? 'disabled' : ''}>
+                Next →
+            </button>
+        </div>
+    `;
+    tokensContainer.appendChild(paginationHeader);
+    
+    // Add tokens grid
+    const tokensGrid = document.createElement('div');
+    tokensGrid.className = 'tokens-grid';
+    
+    tokensToShow.forEach((token, index) => {
         const tokenCard = document.createElement('div');
         tokenCard.className = 'token-card';
         tokenCard.onclick = () => selectToken(token);
@@ -425,23 +556,252 @@ function updateTokensDisplay() {
         }
         
         tokenCard.innerHTML = `
+            <div class="token-image">
+                ${createTokenImageHTML(token.mint, token.symbol)}
+            </div>
             <div class="token-header">
                 <div class="token-symbol">${token.symbol}</div>
-                <div class="token-balance">${token.balance.toLocaleString()}</div>
+                <div class="token-balance">${formatHumanNumber(token.balance)}</div>
             </div>
             <div class="token-name">${token.name}</div>
-            <div class="token-mint">${token.mint.slice(0, 20)}...</div>
+            <div class="token-mint" title="${token.mint}">${token.mint.slice(0, 8)}...${token.mint.slice(-8)}</div>
             ${(isSelectedA || isSelectedB) ? `<div class="selected-badge">${isSelectedA ? 'A' : 'B'}</div>` : ''}
         `;
         
-        tokensContainer.appendChild(tokenCard);
+        tokensGrid.appendChild(tokenCard);
     });
+    
+    tokensContainer.appendChild(tokensGrid);
 }
 
 /**
- * Select a token for the pool
+ * Navigate to previous token page
+ */
+function previousTokenPage() {
+    if (currentTokenPage > 0) {
+        currentTokenPage--;
+        updateTokensDisplay();
+    }
+}
+
+/**
+ * Navigate to next token page
+ */
+async function nextTokenPage() {
+    if (currentTokenPage < Math.ceil(rawTokenAccounts.length / tokensPerPage) - 1) {
+        currentTokenPage++;
+        
+        // Check if we need to load more tokens
+        const requiredTokens = (currentTokenPage + 1) * tokensPerPage;
+        if (requiredTokens > userTokens.length && loadedTokensCount < rawTokenAccounts.length) {
+            showStatus('info', 'Loading more tokens...');
+            
+            // Load next batch
+            const startIndex = loadedTokensCount;
+            const tokensToLoad = Math.min(tokensPerPage, rawTokenAccounts.length - startIndex);
+            
+            await loadTokenBatch(startIndex, tokensToLoad);
+            
+            showStatus('success', `Loaded ${tokensToLoad} more tokens`);
+        }
+        
+        updateTokensDisplay();
+    }
+}
+
+/**
+ * Get token image URL with multiple fallback sources
+ */
+function getTokenImage(mintAddress) {
+    // Try multiple sources for token images
+    const imageSources = [
+        // Jupiter token list (most comprehensive)
+        `https://static.jup.ag/jup-token-list/${mintAddress}.png`,
+        // Solana token registry
+        `https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/${mintAddress}/logo.png`,
+        // CoinGecko proxy (for popular tokens)
+        `https://assets.coingecko.com/coins/images/solana-${mintAddress.toLowerCase()}/small/logo.png`,
+        // Fallback to a generic token icon
+        `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>?</text></svg>`
+    ];
+    
+    // Return the first source, the img tag will handle fallbacks with onerror
+    return imageSources[0];
+}
+
+/**
+ * Create image element with multiple fallback sources
+ */
+function createTokenImageElement(mintAddress, symbol, className = '') {
+    const imageSources = [
+        `https://static.jup.ag/jup-token-list/${mintAddress}.png`,
+        `https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/${mintAddress}/logo.png`,
+        `https://assets.coingecko.com/coins/images/solana-${mintAddress.toLowerCase()}/small/logo.png`
+    ];
+    
+    let fallbackIndex = 0;
+    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${symbol.charAt(0)}</text></svg>`;
+    
+    const onError = `
+        this.onerror = null;
+        if (${fallbackIndex} < ${imageSources.length - 1}) {
+            this.src = '${imageSources[++fallbackIndex]}';
+            this.onerror = arguments.callee;
+        } else {
+            this.src = '${fallbackSvg}';
+        }
+    `;
+    
+    return `<img src="${imageSources[0]}" alt="${symbol}" class="${className}" onerror="${onError}">`;
+}
+
+/**
+ * Create token image HTML using PHP cache
+ */
+function createTokenImageHTML(mintAddress, symbol) {
+    // Use our PHP cache endpoint for reliable image serving
+    const cacheUrl = `/token-image.php?mint=${mintAddress}`;
+    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${symbol.charAt(0)}</text></svg>`;
+    
+    // Simple fallback to generated SVG if PHP cache fails
+    const onErrorHandler = `this.src='${fallbackSvg}'; this.onerror=null;`;
+    
+    return `<img src="${cacheUrl}" alt="${symbol}" onerror="${onErrorHandler}">`;
+}
+
+/**
+ * Handle image loading errors with fallback sources
+ */
+function handleImageError(imgElement, mintAddress, symbol) {
+    const coingeckoUrl = `https://assets.coingecko.com/coins/images/solana-${mintAddress.toLowerCase()}/small/logo.png`;
+    const solanaUrl = `https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/${mintAddress}/logo.png`;
+    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${symbol.charAt(0)}</text></svg>`;
+    
+    if (imgElement.src === solanaUrl) {
+        imgElement.src = coingeckoUrl;
+    } else if (imgElement.src === coingeckoUrl) {
+        imgElement.src = fallbackSvg;
+    }
+    // If it's already the fallback SVG, do nothing
+}
+
+/**
+ * Add token manually by mint address
+ */
+async function addTokenManually(mintAddress) {
+    try {
+        if (!mintAddress || mintAddress.trim().length === 0) {
+            showStatus('error', 'Please enter a valid token mint address');
+            return;
+        }
+        
+        mintAddress = mintAddress.trim();
+        
+        // Validate it's a valid public key
+        try {
+            new solanaWeb3.PublicKey(mintAddress);
+        } catch (error) {
+            showStatus('error', 'Invalid token mint address format');
+            return;
+        }
+        
+        // Check if token is already in the list
+        const existingToken = userTokens.find(token => token.mint === mintAddress);
+        if (existingToken) {
+            // If token exists, just select it for the pool
+            selectTokenForPool(existingToken);
+            showStatus('info', `Token ${existingToken.symbol} is already in your list and selected for pool`);
+            
+            // Clear the input
+            const manualTokenInput = document.getElementById('manual-token-input');
+            if (manualTokenInput) {
+                manualTokenInput.value = '';
+            }
+            return;
+        }
+        
+        showStatus('info', 'Loading token information...');
+        
+        // Get token account info
+        const mintInfo = await connection.getParsedAccountInfo(new solanaWeb3.PublicKey(mintAddress));
+        if (!mintInfo.value || !mintInfo.value.data.parsed) {
+            showStatus('error', 'Token mint not found or invalid');
+            return;
+        }
+        
+        const mintData = mintInfo.value.data.parsed.info;
+        
+        // Try to get metadata
+        let tokenName = 'Unknown Token';
+        let tokenSymbol = 'UNK';
+        
+        try {
+            const metadata = await queryMetaplexMetadata(mintAddress);
+            if (metadata) {
+                tokenName = metadata.name || tokenName;
+                tokenSymbol = metadata.symbol || tokenSymbol;
+            }
+        } catch (error) {
+            console.warn('Could not fetch token metadata:', error);
+        }
+        
+        // Check if user has this token (balance will be 0 if they don't)
+        let balance = 0;
+        try {
+            const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+                wallet.publicKey,
+                { mint: new solanaWeb3.PublicKey(mintAddress) }
+            );
+            
+            if (tokenAccounts.value.length > 0) {
+                const accountInfo = tokenAccounts.value[0].account.data.parsed.info;
+                balance = parseFloat(accountInfo.tokenAmount.uiAmount) || 0;
+            }
+        } catch (error) {
+            console.warn('Could not fetch token balance:', error);
+        }
+        
+        // Add token to list
+        const newToken = {
+            mint: mintAddress,
+            name: tokenName,
+            symbol: tokenSymbol,
+            balance: balance,
+            decimals: mintData.decimals,
+            isManuallyAdded: true
+        };
+        
+        userTokens.unshift(newToken); // Add to beginning of list
+        updateTokensDisplay();
+        
+        // Automatically select the token for pool configuration
+        selectTokenForPool(newToken);
+        
+        showStatus('success', `Added ${tokenSymbol} to token list and selected for pool${balance > 0 ? ` (Balance: ${formatHumanNumber(balance)})` : ' (No balance)'}`);
+        
+        // Clear the input
+        const manualTokenInput = document.getElementById('manual-token-input');
+        if (manualTokenInput) {
+            manualTokenInput.value = '';
+        }
+        
+    } catch (error) {
+        console.error('Error adding token manually:', error);
+        showStatus('error', 'Failed to add token: ' + error.message);
+    }
+}
+
+/**
+ * Select a token for the pool (from token grid)
  */
 function selectToken(token) {
+    selectTokenForPool(token);
+}
+
+/**
+ * Select a token for pool configuration (shared logic)
+ */
+function selectTokenForPool(token) {
     // If no tokens selected, this becomes Token A
     if (!selectedTokenA && !selectedTokenB) {
         selectedTokenA = token;
@@ -456,11 +816,14 @@ function selectToken(token) {
         selectedTokenB = token;
         showStatus('success', `Selected ${token.symbol} as Token B`);
     }
-    // If both are selected, replace the most recently clicked one
+    // If both are selected, replace Token B first, then Token A
     else {
-        // For simplicity, let's replace Token B
         if (selectedTokenA.mint === token.mint) {
             showStatus('info', `${token.symbol} is already selected as Token A`);
+            return;
+        }
+        if (selectedTokenB && selectedTokenB.mint === token.mint) {
+            showStatus('info', `${token.symbol} is already selected as Token B`);
             return;
         }
         selectedTokenB = token;
@@ -469,6 +832,46 @@ function selectToken(token) {
     
     updateTokensDisplay();
     updatePoolCreationDisplay();
+}
+
+/**
+ * Clear token selection (B first, then A)
+ */
+function clearTokenSelection() {
+    if (selectedTokenB) {
+        selectedTokenB = null;
+        showStatus('info', 'Cleared Token B selection');
+    } else if (selectedTokenA) {
+        selectedTokenA = null;
+        showStatus('info', 'Cleared Token A selection');
+    } else {
+        showStatus('info', 'No tokens selected to clear');
+        return;
+    }
+    
+    updateTokensDisplay();
+    updatePoolCreationDisplay();
+}
+
+/**
+ * Clear specific token selection
+ */
+function clearTokenA() {
+    if (selectedTokenA) {
+        selectedTokenA = null;
+        showStatus('info', 'Cleared Token A selection');
+        updateTokensDisplay();
+        updatePoolCreationDisplay();
+    }
+}
+
+function clearTokenB() {
+    if (selectedTokenB) {
+        selectedTokenB = null;
+        showStatus('info', 'Cleared Token B selection');
+        updateTokensDisplay();
+        updatePoolCreationDisplay();
+    }
 }
 
 /**
@@ -484,9 +887,15 @@ function updatePoolCreationDisplay() {
     if (selectedTokenA) {
         tokenASelection.className = 'token-selection active';
         tokenASelection.innerHTML = `
-            <div class="selected-token-symbol">${selectedTokenA.symbol}</div>
-            <div class="selected-token-name">${selectedTokenA.name}</div>
-            <div class="selected-token-balance">Balance: ${selectedTokenA.balance.toLocaleString()}</div>
+            <div class="selected-token-image">
+                ${createTokenImageHTML(selectedTokenA.mint, selectedTokenA.symbol)}
+            </div>
+            <div class="selected-token-content">
+                <div class="selected-token-symbol">${selectedTokenA.symbol}</div>
+                <div class="selected-token-name">${selectedTokenA.name}</div>
+                <div class="selected-token-balance">Balance: ${formatHumanNumber(selectedTokenA.balance)}</div>
+            </div>
+            <button class="clear-token-btn" onclick="clearTokenA()" title="Clear Token A">×</button>
         `;
     } else {
         tokenASelection.className = 'token-selection empty';
@@ -497,9 +906,15 @@ function updatePoolCreationDisplay() {
     if (selectedTokenB) {
         tokenBSelection.className = 'token-selection active';
         tokenBSelection.innerHTML = `
-            <div class="selected-token-symbol">${selectedTokenB.symbol}</div>
-            <div class="selected-token-name">${selectedTokenB.name}</div>
-            <div class="selected-token-balance">Balance: ${selectedTokenB.balance.toLocaleString()}</div>
+            <div class="selected-token-image">
+                ${createTokenImageHTML(selectedTokenB.mint, selectedTokenB.symbol)}
+            </div>
+            <div class="selected-token-content">
+                <div class="selected-token-symbol">${selectedTokenB.symbol}</div>
+                <div class="selected-token-name">${selectedTokenB.name}</div>
+                <div class="selected-token-balance">Balance: ${formatHumanNumber(selectedTokenB.balance)}</div>
+            </div>
+            <button class="clear-token-btn" onclick="clearTokenB()" title="Clear Token B">×</button>
         `;
     } else {
         tokenBSelection.className = 'token-selection empty';

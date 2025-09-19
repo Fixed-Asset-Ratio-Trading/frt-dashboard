@@ -178,9 +178,12 @@ function interpretPoolFlags(pool) {
  * @returns {string} Formatted rate string with 3 decimal places
  */
 function formatExchangeRateStandard(rate) {
-    if (rate >= 1000000) {
-        // Use scientific notation for very large numbers
-        return rate.toExponential(2);
+    if (rate >= 1000000000) {
+        // Use human readable format for very large numbers
+        return `${(rate / 1000000000).toLocaleString('en-US', { maximumFractionDigits: 3 })}B`;
+    } else if (rate >= 1000000) {
+        // Use human readable format for millions
+        return `${(rate / 1000000).toLocaleString('en-US', { maximumFractionDigits: 3 })}M`;
     } else if (rate >= 100) {
         // 3 decimal places for standard pools as per Phase 1.3 requirements
         return rate.toLocaleString('en-US', { 
@@ -212,9 +215,12 @@ function formatExchangeRateStandard(rate) {
  * @returns {string} Formatted rate string
  */
 function formatExchangeRate(rate) {
-    if (rate >= 1000000) {
-        // Use scientific notation for very large numbers
-        return rate.toExponential(2);
+    if (rate >= 1000000000) {
+        // Use human readable format for very large numbers
+        return `${(rate / 1000000000).toLocaleString('en-US', { maximumFractionDigits: 2 })}B`;
+    } else if (rate >= 1000000) {
+        // Use human readable format for millions
+        return `${(rate / 1000000).toLocaleString('en-US', { maximumFractionDigits: 2 })}M`;
     } else if (rate >= 100) {
         // No decimal places for large whole numbers
         return rate.toLocaleString('en-US', { 

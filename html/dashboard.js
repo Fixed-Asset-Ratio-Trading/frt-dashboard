@@ -13,6 +13,10 @@ let contractVersion = null;
 let mainTreasuryState = null;
 let systemState = null;
 
+// Wallet state
+let wallet = null;
+let isWalletConnected = false;
+
 // Initialize dashboard when page loads
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Fixed Ratio Trading Dashboard initializing...');
@@ -241,16 +245,34 @@ async function fetchContractVersion() {
         updateVersionStatus('loading', 'Calling smart contract...', 'Loading...');
         
         try {
-            // Use an ephemeral, randomly generated keypair for simulation only
-            // No SOL is required since we are not submitting the transaction on-chain
-            const keypair = solanaWeb3.Keypair.generate();
-            console.log('🔑 Using ephemeral keypair for simulation:', keypair.publicKey.toString());
+            let feePayer;
+            let signedTransaction;
             
-            // Create signed transaction for simulation
-            const signedTransaction = new solanaWeb3.Transaction().add(instruction);
-            signedTransaction.recentBlockhash = blockhash;
-            signedTransaction.feePayer = keypair.publicKey;
-            signedTransaction.sign(keypair);
+            if (isWalletConnected && wallet && wallet.publicKey) {
+                // Use connected wallet for simulation
+                console.log('🔑 Using connected wallet for simulation:', wallet.publicKey.toString());
+                feePayer = wallet.publicKey;
+                
+                // Create transaction with wallet as fee payer
+                signedTransaction = new solanaWeb3.Transaction().add(instruction);
+                signedTransaction.recentBlockhash = blockhash;
+                signedTransaction.feePayer = feePayer;
+                
+                // Sign with wallet
+                const { signature } = await wallet.signTransaction(signedTransaction);
+                signedTransaction.addSignature(feePayer, signature);
+            } else {
+                // Fallback to ephemeral keypair for simulation only
+                console.log('🔑 Using ephemeral keypair for simulation (no wallet connected)');
+                const keypair = solanaWeb3.Keypair.generate();
+                feePayer = keypair.publicKey;
+                
+                // Create signed transaction for simulation
+                signedTransaction = new solanaWeb3.Transaction().add(instruction);
+                signedTransaction.recentBlockhash = blockhash;
+                signedTransaction.feePayer = feePayer;
+                signedTransaction.sign(keypair);
+            }
             
             // Try simulation without signature verification to avoid requiring an existing payer
             // If RPC supports it, this prevents AccountNotFound for the ephemeral fee payer
@@ -263,6 +285,7 @@ async function fetchContractVersion() {
             }
 
             // If the fee payer account doesn't exist, request a tiny airdrop and retry once
+            // Only do this for ephemeral keypairs, not connected wallets
             const isAccountNotFound = (res) => {
                 try {
                     if (!res) return false;
@@ -273,10 +296,10 @@ async function fetchContractVersion() {
                 } catch (_) { /* ignore */ }
                 return false;
             };
-            if (isAccountNotFound(result)) {
+            if (isAccountNotFound(result) && !isWalletConnected) {
                 console.log('💧 Fee payer account not found. Requesting small airdrop for ephemeral keypair and retrying simulation...');
                 try {
-                    const airdropSig = await connection.requestAirdrop(keypair.publicKey, 1_000_000); // 0.001 SOL
+                    const airdropSig = await connection.requestAirdrop(feePayer, 1_000_000); // 0.001 SOL
                     if (airdropSig) {
                         await connection.confirmTransaction({ signature: airdropSig, ...(await connection.getLatestBlockhash()) }, CONFIG.commitment || 'confirmed');
                     }
@@ -289,6 +312,8 @@ async function fetchContractVersion() {
                 } catch (airdropErr) {
                     console.log('⚠️ Airdrop attempt failed or unavailable on this cluster:', airdropErr?.message || airdropErr);
                 }
+            } else if (isAccountNotFound(result) && isWalletConnected) {
+                console.log('⚠️ Connected wallet account not found. This may indicate the wallet is not funded or there is a network issue.');
             }
             
             console.log('📋 Smart contract simulation result:');
@@ -1151,5 +1176,107 @@ function handleSecurityError(error, operation) {
 window.validateSecurityConfig = validateSecurityConfig;
 window.blockOwnerOperation = blockOwnerOperation;
 window.handleSecurityError = handleSecurityError;
+
+/**
+ * Connect to Backpack wallet
+ */
+async function connectWallet() {
+    try {
+        if (!window.backpack) {
+            showStatus('error', 'Backpack wallet not installed. Please install the Backpack browser extension.');
+            return;
+        }
+        
+        showStatus('info', 'Connecting to Backpack wallet...');
+        
+        const response = await window.backpack.connect();
+        await handleWalletConnected();
+        
+        console.log('✅ Wallet connected:', response.publicKey.toString());
+    } catch (error) {
+        console.error('❌ Failed to connect wallet:', error);
+        showStatus('error', 'Failed to connect wallet: ' + error.message);
+    }
+}
+
+/**
+ * Handle successful wallet connection
+ */
+async function handleWalletConnected() {
+    try {
+        wallet = window.backpack;
+        isWalletConnected = true;
+        
+        const publicKey = wallet.publicKey.toString();
+        
+        // Update UI if elements exist
+        const walletInfo = document.getElementById('wallet-info');
+        const walletDisconnected = document.getElementById('wallet-disconnected');
+        const walletAddress = document.getElementById('wallet-address');
+        const connectBtn = document.getElementById('connect-wallet-btn');
+        
+        if (walletInfo) walletInfo.style.display = 'flex';
+        if (walletDisconnected) walletDisconnected.style.display = 'none';
+        if (walletAddress) walletAddress.textContent = publicKey;
+        if (connectBtn) {
+            connectBtn.textContent = 'Disconnect';
+            connectBtn.onclick = disconnectWallet;
+        }
+        
+        // Check if this is the expected wallet
+        if (publicKey === CONFIG.expectedWallet) {
+            showStatus('success', `✅ Connected with Backpack deployment wallet: ${publicKey.slice(0, 20)}...`);
+            const walletAvatar = document.getElementById('wallet-avatar');
+            if (walletAvatar) walletAvatar.textContent = '🎯';
+        } else {
+            showStatus('info', `ℹ️ Connected with Backpack wallet: ${publicKey.slice(0, 20)}... (Note: This is not the deployment wallet)`);
+        }
+        
+        // Retry version fetch with connected wallet
+        if (contractVersion === null) {
+            console.log('🔄 Retrying version fetch with connected wallet...');
+            await fetchContractVersion();
+        }
+        
+    } catch (error) {
+        console.error('❌ Error handling wallet connection:', error);
+        showStatus('error', 'Error handling wallet connection: ' + error.message);
+    }
+}
+
+/**
+ * Disconnect wallet
+ */
+async function disconnectWallet() {
+    try {
+        if (wallet && wallet.disconnect) {
+            await wallet.disconnect();
+        }
+        
+        wallet = null;
+        isWalletConnected = false;
+        
+        // Update UI if elements exist
+        const walletInfo = document.getElementById('wallet-info');
+        const walletDisconnected = document.getElementById('wallet-disconnected');
+        const connectBtn = document.getElementById('connect-wallet-btn');
+        
+        if (walletInfo) walletInfo.style.display = 'none';
+        if (walletDisconnected) walletDisconnected.style.display = 'flex';
+        if (connectBtn) {
+            connectBtn.textContent = 'Connect Wallet';
+            connectBtn.onclick = connectWallet;
+        }
+        
+        showStatus('info', 'Wallet disconnected');
+    } catch (error) {
+        console.error('❌ Error disconnecting wallet:', error);
+        showStatus('error', 'Error disconnecting wallet: ' + error.message);
+    }
+}
+
+// Export wallet functions to global scope
+window.connectWallet = connectWallet;
+window.disconnectWallet = disconnectWallet;
 
 console.log('📊 Dashboard JavaScript loaded successfully'); 
