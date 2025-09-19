@@ -401,10 +401,116 @@ function decodeMetaplexMetadataUri($dataBase64) {
 }
 
 /**
+ * Process manual image overrides from local file
+ */
+function processImageOverrides() {
+    $overrideFile = __DIR__ . '/token-image-overrides.txt';
+    
+    if (!file_exists($overrideFile)) {
+        return false;
+    }
+    
+    error_log("Processing image overrides from: $overrideFile");
+    
+    $lines = file($overrideFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!$lines) {
+        error_log("No valid lines found in override file");
+        unlink($overrideFile);
+        return false;
+    }
+    
+    $processedCount = 0;
+    $successCount = 0;
+    
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (empty($line) || strpos($line, '=') === false) {
+            continue;
+        }
+        
+        list($mint, $imageUrl) = explode('=', $line, 2);
+        $mint = trim($mint);
+        $imageUrl = trim($imageUrl);
+        
+        if (empty($mint) || empty($imageUrl)) {
+            continue;
+        }
+        
+        $processedCount++;
+        error_log("Processing override: $mint -> $imageUrl");
+        
+        // Fetch and cache the image
+        $imageResult = fetchImage($imageUrl);
+        if ($imageResult) {
+            // Save to cache
+            $cacheDir = __DIR__ . '/cache/token-images';
+            if (!is_dir($cacheDir)) {
+                mkdir($cacheDir, 0755, true);
+            }
+            
+            $cacheFile = $cacheDir . '/' . $mint . '.img';
+            $metaFile = $cacheDir . '/' . $mint . '.cache';
+            
+            $imageData = $imageResult['data'];
+            if (file_put_contents($cacheFile, $imageData)) {
+                // Save cache metadata
+                $cacheData = [
+                    'url' => $imageUrl,
+                    'timestamp' => time(),
+                    'source' => 'manual_override',
+                    'content_type' => $imageResult['content_type'],
+                    'size' => strlen($imageData)
+                ];
+                file_put_contents($metaFile, json_encode($cacheData));
+                
+                $successCount++;
+                error_log("✅ Successfully cached override image: $mint");
+            } else {
+                error_log("❌ Failed to save override image: $mint");
+            }
+        } else {
+            error_log("❌ Failed to fetch override image: $mint from $imageUrl");
+        }
+    }
+    
+    error_log("Override processing complete: $successCount/$processedCount images cached");
+    
+    // Delete the override file after processing
+    unlink($overrideFile);
+    error_log("Override file deleted: $overrideFile");
+    
+    return $successCount > 0;
+}
+
+/**
  * Fetch token image using the comprehensive fallback strategy
  */
 function fetchTokenImage($mint) {
     global $CHAINSTACK_RPC, $CHAINSTACK_AUTH;
+    
+    // 0. Process manual overrides if file exists (runs once per request cycle)
+    static $overridesProcessed = false;
+    if (!$overridesProcessed) {
+        processImageOverrides();
+        $overridesProcessed = true;
+    }
+    
+    // Check cache first (including newly processed overrides)
+    $cacheDir = __DIR__ . '/cache/token-images';
+    $cacheFile = $cacheDir . '/' . $mint . '.img';
+    $metaFile = $cacheDir . '/' . $mint . '.cache';
+    
+    if (file_exists($cacheFile) && file_exists($metaFile)) {
+        $cacheData = json_decode(file_get_contents($metaFile), true);
+        if ($cacheData && isset($cacheData['timestamp'])) {
+            $age = time() - $cacheData['timestamp'];
+            // Cache for 60 days (5184000 seconds)
+            if ($age < 5184000) {
+                error_log("Found cached image: $mint (source: " . ($cacheData['source'] ?? 'unknown') . ", age: " . round($age/86400, 1) . " days)");
+                return file_get_contents($cacheFile);
+            }
+        }
+    }
     
     // 1. Try DexScreener first (fastest)
     $dexUrl = "https://dd.dexscreener.com/ds-data/tokens/solana/$mint.png";

@@ -9,6 +9,7 @@ A web-based dashboard for interacting with Fixed Ratio Trading pools on Solana.
 - **Liquidity Operations**: Add or remove liquidity from pools
 - **Pool Creation**: Create new fixed ratio trading pools
 - **Real-time Updates**: Live pool data from the Solana blockchain
+- **Token Image Override System**: Manual override capability for token images
 
 ## Quick Start
 
@@ -52,6 +53,46 @@ All token amounts in the smart contract are stored as integers (basis points) to
 Each token has a decimal precision (0-9) that determines how basis points convert to display units. For example:
 - SOL has 9 decimals: 1 SOL = 1,000,000,000 basis points
 - USDC has 6 decimals: 1 USDC = 1,000,000 basis points
+
+### Token Image Override System
+
+The dashboard includes a manual override system for token images, allowing administrators to force specific images for tokens regardless of their on-chain metadata.
+
+#### How It Works
+
+1. **Override File**: Create a file named `token-image-overrides.txt` in the web root directory
+2. **Format**: One entry per line in the format `MINT_ADDRESS=IMAGE_URL`
+3. **Processing**: The system processes all overrides when any token image is requested
+4. **Auto-Cleanup**: The override file is automatically deleted after processing
+
+#### Example Usage
+
+```bash
+# Create override file
+echo "6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU=https://example.com/custom-token-image.png" > token-image-overrides.txt
+
+# Make any token request to trigger processing
+curl "https://your-domain.com/token-image.php?mint=So11111111111111111111111111111111111111112"
+```
+
+#### Features
+
+- **Priority Override**: Manual overrides take precedence over all other image sources
+- **Persistent Caching**: Override images are cached for 60 days
+- **Batch Processing**: All tokens in the override file are processed in a single request
+- **Error Handling**: Comprehensive logging and error handling
+- **Source Tracking**: Cache metadata includes override source information
+
+#### Image Sources Priority
+
+1. **Manual Overrides** (highest priority)
+2. Cached images
+3. DexScreener API
+4. Jupiter Token List API
+5. On-chain Metaplex metadata
+6. Comprehensive URI scanning
+7. IPFS fallback via Pinata gateway
+8. Default placeholder image (lowest priority)
 
 ## Security
 
