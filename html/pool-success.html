@@ -199,6 +199,35 @@
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
         }
         
+        /* Token image styles */
+        .token-image {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        .token-image:hover {
+            border-color: #667eea;
+            transform: scale(1.1);
+            transition: all 0.2s ease;
+        }
+        
+        .token-pair-display {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .token-with-image {
+            display: inline-flex;
+            align-items: center;
+        }
+        
         .error-message {
             background: #fee2e2;
             color: #991b1b;
@@ -308,6 +337,67 @@
     <script src="config.js"></script>
     <script src="utils.js?v=1732061214"></script>
     <script>
+        /**
+         * Create token image HTML using PHP cache
+         */
+        function createTokenImageHTML(mintAddress, symbol) {
+            // Use our PHP cache endpoint for reliable image serving
+            const cacheUrl = `/token-image.php?mint=${mintAddress}`;
+            const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${symbol.charAt(0)}</text></svg>`;
+            
+            // Simple fallback to generated SVG if PHP cache fails
+            const onErrorHandler = `this.src='${fallbackSvg}'; this.onerror=null;`;
+            
+            return `<img class="token-image" src="${cacheUrl}" alt="${symbol}" title="${symbol}" onerror="${onErrorHandler}">`;
+        }
+
+        /**
+         * Get token mint address based on symbol
+         * This maps the token symbols to their mint addresses
+         */
+        function getTokenMintAddress(symbol) {
+            const tokenMints = {
+                // Bitcoin-related tokens
+                'tBTC': '6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU',
+                'tSAT': 'tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu',
+                
+                // Common Solana tokens
+                'SOL': 'So11111111111111111111111111111111111111112',
+                'USDC': 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+                'USDT': 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+                'BONK': 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+                'WIF': 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
+                
+                // Test tokens
+                'TS': 'TokenSample123456789',
+                'MST': 'MicroSampleToken123',
+                'LTS': 'LargeSampleToken123'
+            };
+            
+            // First try exact match
+            if (tokenMints[symbol]) {
+                return tokenMints[symbol];
+            }
+            
+            // If symbol looks like a mint address (long alphanumeric string), use it directly
+            if (symbol && symbol.length > 20 && /^[A-Za-z0-9]+$/.test(symbol)) {
+                return symbol;
+            }
+            
+            // Fallback to symbol
+            return symbol;
+        }
+
+        /**
+         * Create token display with image
+         */
+        function createTokenWithImage(symbol, mintAddress = null) {
+            const finalMintAddress = mintAddress || getTokenMintAddress(symbol);
+            const imageHtml = createTokenImageHTML(finalMintAddress, symbol);
+            return `<span class="token-with-image">${imageHtml}${symbol}</span>`;
+        }
+    </script>
+    <script>
         // Parse URL parameters and display pool details
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -316,6 +406,8 @@
             const poolAddress = urlParams.get('poolAddress');
             const tokenASymbol = urlParams.get('tokenASymbol');
             const tokenBSymbol = urlParams.get('tokenBSymbol');
+            const tokenAMint = urlParams.get('tokenAMint');
+            const tokenBMint = urlParams.get('tokenBMint');
             const ratio = urlParams.get('ratio');
             
             if (!poolAddress || !tokenASymbol || !tokenBSymbol || !ratio) {
@@ -337,29 +429,50 @@
             const createdAt = urlParams.get('createdAt');
             
             // Use corrected display utilities for user-friendly token ordering
+            // Fix: Swap token order to match the actual pool structure
+            // The pool is stored as tSAT/tBTC but URL shows tBTC/tSAT
             const display = window.TokenDisplayUtils.getCorrectTokenDisplay(
-                tokenASymbol, 
-                tokenBSymbol, 
+                tokenBSymbol,  // Use tokenB as tokenA (tSAT)
+                tokenASymbol,  // Use tokenA as tokenB (tBTC)
                 parseFloat(ratio), 
                 1, 
                 6, // tokenAPrecision 
                 6  // tokenBPrecision
             );
             
-            // Update UI elements with proper ordering
-            document.getElementById('pool-title').textContent = `${display.displayPair} Pool`;
-            document.getElementById('ratio-display').textContent = display.rateText;
+            // Update UI elements with proper ordering and token images
+            // Determine mint addresses for base and quote tokens
+            const baseTokenMint = display.baseToken === tokenASymbol ? tokenAMint : tokenBMint;
+            const quoteTokenMint = display.quoteToken === tokenASymbol ? tokenAMint : tokenBMint;
+            
+            const baseTokenWithImage = createTokenWithImage(display.baseToken, baseTokenMint);
+            const quoteTokenWithImage = createTokenWithImage(display.quoteToken, quoteTokenMint);
+            
+            // Update pool title with images: "<image> tBTC/<image> tSAT Pool"
+            document.getElementById('pool-title').innerHTML = `<span class="token-pair-display">${baseTokenWithImage}/${quoteTokenWithImage}</span> Pool`;
+            
+            // Update ratio display with images in the rate text
+            const rateTextWithImages = display.rateText.replace(
+                new RegExp(`(1 ${display.baseToken})`, 'g'), 
+                `1 ${createTokenWithImage(display.baseToken, baseTokenMint)}`
+            ).replace(
+                new RegExp(`(${display.quoteToken})$`, 'g'),
+                createTokenWithImage(display.quoteToken, quoteTokenMint)
+            );
+            document.getElementById('ratio-display').innerHTML = rateTextWithImages;
+            
             document.getElementById('pool-address').textContent = poolAddress;
             document.getElementById('creator-address').textContent = creator.slice(0, 20) + '...';
+            
             // Update token details with display ordering
             const baseTokenName = display.baseToken === tokenASymbol ? tokenAName : tokenBName;
             const quoteTokenName = display.quoteToken === tokenASymbol ? tokenAName : tokenBName;
             
-            // Update labels and details
-            document.getElementById('token-a-label').textContent = `${display.baseToken} (Base)`;
-            document.getElementById('token-b-label').textContent = `${display.quoteToken} (Quote)`;
-            document.getElementById('token-a-details').innerHTML = `<strong>${display.baseToken}</strong><br>${baseTokenName}`;
-            document.getElementById('token-b-details').innerHTML = `<strong>${display.quoteToken}</strong><br>${quoteTokenName}`;
+            // Update labels and details with images
+            document.getElementById('token-a-label').innerHTML = `${baseTokenWithImage} (Base)`;
+            document.getElementById('token-b-label').innerHTML = `${quoteTokenWithImage} (Quote)`;
+            document.getElementById('token-a-details').innerHTML = `<strong>${baseTokenWithImage}</strong><br>${baseTokenName}`;
+            document.getElementById('token-b-details').innerHTML = `<strong>${quoteTokenWithImage}</strong><br>${quoteTokenName}`;
             
             if (createdAt) {
                 const date = new Date(createdAt);

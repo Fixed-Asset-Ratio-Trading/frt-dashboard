@@ -1259,6 +1259,8 @@ async function createPool() {
             tokenBSymbol: selectedTokenB.symbol,
             tokenAName: selectedTokenA.name,
             tokenBName: selectedTokenB.name,
+            tokenAMint: selectedTokenA.mint,
+            tokenBMint: selectedTokenB.mint,
             ratio: currentRatio,
             creator: wallet.publicKey.toString(),
             createdAt: new Date().toISOString()
