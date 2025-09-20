@@ -123,10 +123,10 @@ async function initializeApp() {
         
         console.log('✅ SPL Token library ready');
         
-        // Check if Backpack is installed
+        // Check if Backpack is installed (but don't block interface if not)
         if (!window.backpack) {
-            showStatus('error', 'Backpack wallet not detected. Please install Backpack wallet extension.');
-            return;
+            console.log('⚠️ Backpack wallet not detected - interface will work without wallet connection');
+            // Don't return here - continue with pool loading
         }
         
         // Get pool address from URL params first, then sessionStorage as fallback
@@ -145,8 +145,8 @@ async function initializeApp() {
         
         await loadPoolData();
         
-        // Check if wallet is already connected
-        if (window.backpack.isConnected) {
+        // Check if wallet is already connected (only if Backpack is available)
+        if (window.backpack && window.backpack.isConnected) {
             await handleWalletConnected();
         } else {
             showWalletConnection();
@@ -327,20 +327,13 @@ function formatTokenAmount(amount, decimals) {
 }
 
 /**
- * Show wallet connection UI
+ * Show wallet connection UI (deprecated - interface now works without wallet)
+ * Kept for compatibility but no longer blocks the interface
  */
 function showWalletConnection() {
-    const swapLoading = document.getElementById('swap-loading');
-    swapLoading.style.display = 'block';
-    swapLoading.innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <h3>💼 Connect Your Wallet</h3>
-            <p style="margin: 20px 0; color: #666;">Connect your Backpack wallet to start swapping tokens</p>
-            <button id="connect-wallet-btn" class="swap-btn" onclick="connectWallet()" style="max-width: 300px; margin: 0 auto;">
-                🔗 Connect Backpack Wallet
-            </button>
-        </div>
-    `;
+    // No longer needed - interface works without wallet connection
+    // The swap interface will show "Connect Wallet to Swap" button instead
+    console.log('🔄 Wallet not connected - interface will show connect button when user tries to swap');
 }
 
 /**
@@ -376,8 +369,21 @@ async function handleWalletConnected() {
         // Load user tokens
         await loadUserTokensForPool();
         
-        // Initialize swap interface
+        // Update swap interface with real balances (preserving any existing amounts)
+        const existingFromAmount = document.getElementById('from-amount').value;
+        const existingToAmount = document.getElementById('to-amount').value;
+        
+        // Initialize swap interface with wallet connection
         initializeSwapInterface();
+        
+        // Restore any existing amounts and recalculate
+        if (existingFromAmount) {
+            document.getElementById('from-amount').value = existingFromAmount;
+            calculateSwapOutputEnhanced();
+        } else if (existingToAmount) {
+            document.getElementById('to-amount').value = existingToAmount;
+            calculateSwapInputFromOutput();
+        }
         
         // Start periodic pool status monitoring
         startPoolStatusMonitoring();
@@ -598,18 +604,92 @@ function initializeSwapInterface() {
     const swapLoading = document.getElementById('swap-loading');
     const swapForm = document.getElementById('swap-form');
     
-    if (!isConnected) {
-        showWalletConnection();
-        return;
-    }
-    
-    // Hide loading, show form
+    // Hide loading, show form regardless of wallet connection
     swapLoading.style.display = 'none';
     swapForm.style.display = 'grid';
     
-    // Set initial token symbols and setup
-    updateSwapInterfaceWithRealBalances();
+    if (!isConnected) {
+        // Show interface without wallet - users can see tokens and calculate swaps
+        initializeSwapInterfaceWithoutWallet();
+    } else {
+        // Show interface with real wallet balances
+        updateSwapInterfaceWithRealBalances();
+    }
+    
     updateExchangeRate();
+}
+
+/**
+ * Initialize swap interface without wallet connection
+ * Shows pool tokens, allows calculations, but requires wallet for execution
+ */
+function initializeSwapInterfaceWithoutWallet() {
+    if (!poolData) return;
+    
+    console.log('🔄 Initializing swap interface without wallet connection');
+    
+    // Update token symbols and icons
+    updateTokenDisplayWithoutWallet();
+    
+    // Reset amounts
+    document.getElementById('from-amount').value = '';
+    document.getElementById('to-amount').value = '';
+    
+    // Hide preview initially
+    document.getElementById('transaction-preview').style.display = 'none';
+    
+    // Set up swap button for wallet connection requirement
+    const swapBtn = document.getElementById('swap-btn');
+    swapBtn.disabled = true;
+    swapBtn.textContent = '🔗 Connect Wallet to Swap';
+    swapBtn.style.background = '#3b82f6'; // Blue color to indicate action needed
+    
+    // Add click handler to connect wallet when button is clicked
+    swapBtn.onclick = () => {
+        if (!isConnected) {
+            connectWallet();
+        } else {
+            executeSwap();
+        }
+    };
+    
+    console.log('✅ Swap interface ready without wallet - users can calculate swaps');
+}
+
+/**
+ * Update token display without wallet connection
+ */
+function updateTokenDisplayWithoutWallet() {
+    if (!poolData) return;
+    
+    // Update token symbols and icons based on current swap direction
+    if (swapDirection === 'AtoB') {
+        document.getElementById('from-token-symbol').textContent = poolData.tokenASymbol;
+        document.getElementById('to-token-symbol').textContent = poolData.tokenBSymbol;
+        
+        // Update token icons with images
+        const tokenAMint = poolData.tokenAMint || poolData.token_a_mint;
+        const tokenBMint = poolData.tokenBMint || poolData.token_b_mint;
+        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenAMint, poolData.tokenASymbol);
+        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenBMint, poolData.tokenBSymbol);
+        
+        // Show "Connect wallet to see balance" message
+        document.getElementById('from-token-balance').textContent = 'Connect wallet to see balance';
+        document.getElementById('to-token-balance').textContent = 'Connect wallet to see balance';
+    } else {
+        document.getElementById('from-token-symbol').textContent = poolData.tokenBSymbol;
+        document.getElementById('to-token-symbol').textContent = poolData.tokenASymbol;
+        
+        // Update token icons with images
+        const tokenAMint = poolData.tokenAMint || poolData.token_a_mint;
+        const tokenBMint = poolData.tokenBMint || poolData.token_b_mint;
+        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenBMint, poolData.tokenBSymbol);
+        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenAMint, poolData.tokenASymbol);
+        
+        // Show "Connect wallet to see balance" message
+        document.getElementById('from-token-balance').textContent = 'Connect wallet to see balance';
+        document.getElementById('to-token-balance').textContent = 'Connect wallet to see balance';
+    }
 }
 
 /**
@@ -692,7 +772,14 @@ function updateSwapInterfaceWithRealBalances() {
  */
 function toggleSwapDirection() {
     swapDirection = swapDirection === 'AtoB' ? 'BtoA' : 'AtoB';
-    updateSwapInterfaceWithRealBalances();
+    
+    // Update interface based on wallet connection status
+    if (isConnected) {
+        updateSwapInterfaceWithRealBalances();
+    } else {
+        updateTokenDisplayWithoutWallet();
+    }
+    
     updateExchangeRate();
     calculateSwapOutputEnhanced();
 }
@@ -723,7 +810,13 @@ function updateExchangeRate() {
  * Set maximum amount from wallet balance
  */
 function setMaxAmount() {
-    if (!poolData || !isConnected) return;
+    if (!poolData || !isConnected) {
+        // Show message to connect wallet if not connected
+        if (!isConnected) {
+            showStatus('info', '🔗 Please connect your wallet to use the MAX button');
+        }
+        return;
+    }
     
     const fromToken = swapDirection === 'AtoB' 
         ? userTokens.find(t => t.isTokenA)
@@ -820,28 +913,30 @@ function calculateSwapOutputEnhanced() {
         return;
     }
     
-    // Check if user has sufficient balance
-    const fromToken = swapDirection === 'AtoB' 
-        ? userTokens.find(t => t.isTokenA)
-        : userTokens.find(t => !t.isTokenA);
-    
-    if (!fromToken) {
-        swapBtn.disabled = true;
-        swapBtn.textContent = '❌ Token Not Found';
-        preview.style.display = 'none';
-        return;
-    }
-    
-    // Convert user input to basis points for comparison with stored balance
-    const fromAmountBasisPoints = swapDirection === 'AtoB' 
-        ? tokenPairRatio.ADisplayToBasisPoints(fromAmount)
-        : tokenPairRatio.BDisplayToBasisPoints(fromAmount);
-    
-    if (fromAmountBasisPoints > fromToken.balance) {
-        swapBtn.disabled = true;
-        swapBtn.textContent = '❌ Insufficient Balance';
-        preview.style.display = 'none';
-        return;
+    // Check if user has sufficient balance (only when wallet is connected)
+    if (isConnected) {
+        const fromToken = swapDirection === 'AtoB' 
+            ? userTokens.find(t => t.isTokenA)
+            : userTokens.find(t => !t.isTokenA);
+        
+        if (!fromToken) {
+            swapBtn.disabled = true;
+            swapBtn.textContent = '❌ Token Not Found';
+            preview.style.display = 'none';
+            return;
+        }
+        
+        // Convert user input to basis points for comparison with stored balance
+        const fromAmountBasisPoints = swapDirection === 'AtoB' 
+            ? tokenPairRatio.ADisplayToBasisPoints(fromAmount)
+            : tokenPairRatio.BDisplayToBasisPoints(fromAmount);
+        
+        if (fromAmountBasisPoints > fromToken.balance) {
+            swapBtn.disabled = true;
+            swapBtn.textContent = '❌ Insufficient Balance';
+            preview.style.display = 'none';
+            return;
+        }
     }
     
     try {
@@ -859,21 +954,43 @@ function calculateSwapOutputEnhanced() {
         console.log(`  Output: ${outputAmount} (display units)`);
         console.log(`🔍 TokenPairRatio debug:`, tokenPairRatio.getDebugInfo());
         
-        // Get the output token to determine correct decimal places
-        const toToken = swapDirection === 'AtoB' 
-            ? userTokens.find(t => !t.isTokenA)
-            : userTokens.find(t => t.isTokenA);
+        // Get the output token decimals (use pool data if wallet not connected)
+        let outputDecimals = 6; // Default fallback
         
-        const outputDecimals = toToken?.decimals || 6;
+        if (isConnected) {
+            const toToken = swapDirection === 'AtoB' 
+                ? userTokens.find(t => !t.isTokenA)
+                : userTokens.find(t => t.isTokenA);
+            outputDecimals = toToken?.decimals || 6;
+        } else {
+            // Use pool token decimals when wallet not connected
+            if (swapDirection === 'AtoB') {
+                outputDecimals = poolData.ratioBDecimal || 6;
+            } else {
+                outputDecimals = poolData.ratioADecimal || 6;
+            }
+        }
+        
         toAmountInput.value = formatTokenAmount(outputAmount, outputDecimals);
         
         // Update transaction preview
         updateTransactionPreview(fromAmount, outputAmount);
         
-        // Show preview and enable button
+        // Show preview
         preview.style.display = 'block';
-        swapBtn.disabled = false;
-        swapBtn.textContent = '🔄 Execute Swap';
+        
+        // Set button state based on wallet connection
+        if (!isConnected) {
+            swapBtn.disabled = true;
+            swapBtn.textContent = '🔗 Connect Wallet to Swap';
+            swapBtn.style.background = '#3b82f6'; // Blue color to indicate action needed
+            swapBtn.onclick = () => connectWallet();
+        } else {
+            swapBtn.disabled = false;
+            swapBtn.textContent = '🔄 Execute Swap';
+            swapBtn.style.background = ''; // Reset to default
+            swapBtn.onclick = () => executeSwap();
+        }
         
     } catch (error) {
         console.error('❌ Error calculating swap output:', error);
@@ -893,16 +1010,30 @@ function updateTransactionPreview(fromAmount, toAmount) {
     const fromSymbol = swapDirection === 'AtoB' ? poolData.tokenASymbol : poolData.tokenBSymbol;
     const toSymbol = swapDirection === 'AtoB' ? poolData.tokenBSymbol : poolData.tokenASymbol;
     
-    // Get token decimals for proper formatting
-    const fromToken = swapDirection === 'AtoB' 
-        ? userTokens.find(t => t.isTokenA)
-        : userTokens.find(t => !t.isTokenA);
-    const toToken = swapDirection === 'AtoB' 
-        ? userTokens.find(t => !t.isTokenA)
-        : userTokens.find(t => t.isTokenA);
+    // Get token decimals for proper formatting (use pool data if wallet not connected)
+    let fromDecimals = 6;
+    let toDecimals = 6;
     
-    const fromDecimals = fromToken?.decimals || 6;
-    const toDecimals = toToken?.decimals || 6;
+    if (isConnected) {
+        const fromToken = swapDirection === 'AtoB' 
+            ? userTokens.find(t => t.isTokenA)
+            : userTokens.find(t => !t.isTokenA);
+        const toToken = swapDirection === 'AtoB' 
+            ? userTokens.find(t => !t.isTokenA)
+            : userTokens.find(t => t.isTokenA);
+        
+        fromDecimals = fromToken?.decimals || 6;
+        toDecimals = toToken?.decimals || 6;
+    } else {
+        // Use pool token decimals when wallet not connected
+        if (swapDirection === 'AtoB') {
+            fromDecimals = poolData.ratioADecimal || 6;
+            toDecimals = poolData.ratioBDecimal || 6;
+        } else {
+            fromDecimals = poolData.ratioBDecimal || 6;
+            toDecimals = poolData.ratioADecimal || 6;
+        }
+    }
     
     document.getElementById('preview-from-amount').textContent = `${formatTokenAmount(fromAmount, fromDecimals)} ${fromSymbol}`;
     document.getElementById('preview-to-amount').textContent = `${formatTokenAmount(toAmount, toDecimals)} ${toSymbol}`;
