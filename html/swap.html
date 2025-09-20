@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Swap Tokens - Fixed Ratio Trading</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="shared-styles.css">
     <style>
         * {
             margin: 0;
@@ -676,6 +677,7 @@
     <script src="error-codes.js"></script>
     <script src="utils.js?v=1753358100"></script>
     <script src="swap.js?v=1753358300"></script>
+    <script src="hamburger-menu.js"></script>
     <script>
         // Handle navigation back to dashboard
         function goBackToDashboard() {
@@ -688,7 +690,7 @@
                 sessionStorage.setItem('selectedPoolAddress', poolAddress);
             }
             
-            window.location.href = 'index.html';
+            window.location.href = 'dashboard.html';
         }
         
         // Update page title with pool info if available
