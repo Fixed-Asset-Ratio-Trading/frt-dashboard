@@ -292,6 +292,41 @@ async function getTokenSymbol(tokenMint, tokenLabel) {
 }
 
 /**
+ * Create token image HTML using PHP cache (same pattern as pool-creation.js)
+ */
+function createTokenImageHTML(mintAddress, symbol) {
+    // Use our PHP cache endpoint for reliable image serving
+    const cacheUrl = `/token-image.php?mint=${mintAddress}`;
+    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${symbol.charAt(0)}</text></svg>`;
+    
+    // Simple fallback to generated SVG if PHP cache fails
+    const onErrorHandler = `this.src='${fallbackSvg}'; this.onerror=null;`;
+    
+    return `<img src="${cacheUrl}" alt="${symbol}" onerror="${onErrorHandler}">`;
+}
+
+/**
+ * Format number with appropriate decimal places, removing trailing zeros
+ */
+function formatTokenAmount(amount, decimals) {
+    if (amount === 0) {
+        // For zero amounts, show the appropriate number of decimal places
+        if (decimals === 0) return '0';
+        return '0.' + '0'.repeat(decimals);
+    }
+    
+    // Format with full decimal places first
+    const formatted = amount.toFixed(decimals);
+    
+    // Remove trailing zeros, but keep at least one decimal place if there were decimals
+    if (decimals > 0) {
+        return formatted.replace(/\.?0+$/, '');
+    }
+    
+    return formatted;
+}
+
+/**
  * Show wallet connection UI
  */
 function showWalletConnection() {
@@ -571,8 +606,12 @@ function updateSwapInterfaceWithRealBalances() {
     if (swapDirection === 'AtoB') {
         document.getElementById('from-token-symbol').textContent = poolData.tokenASymbol;
         document.getElementById('to-token-symbol').textContent = poolData.tokenBSymbol;
-        document.getElementById('from-token-icon').textContent = poolData.tokenASymbol.charAt(0);
-        document.getElementById('to-token-icon').textContent = poolData.tokenBSymbol.charAt(0);
+        
+        // Update token icons with images
+        const tokenAMint = poolData.tokenAMint || poolData.token_a_mint;
+        const tokenBMint = poolData.tokenBMint || poolData.token_b_mint;
+        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenAMint, poolData.tokenASymbol);
+        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenBMint, poolData.tokenBSymbol);
         
         // Set real balances - convert from basis points to display units
         const tokenA = userTokens.find(t => t.isTokenA);
@@ -581,13 +620,17 @@ function updateSwapInterfaceWithRealBalances() {
         const tokenADisplayBalance = tokenA ? window.TokenDisplayUtils.basisPointsToDisplay(tokenA.balance, tokenA.decimals) : 0;
         const tokenBDisplayBalance = tokenB ? window.TokenDisplayUtils.basisPointsToDisplay(tokenB.balance, tokenB.decimals) : 0;
         
-        document.getElementById('from-token-balance').textContent = tokenADisplayBalance.toFixed(tokenA?.decimals || 6);
-        document.getElementById('to-token-balance').textContent = tokenBDisplayBalance.toFixed(tokenB?.decimals || 6);
+        document.getElementById('from-token-balance').textContent = formatTokenAmount(tokenADisplayBalance, tokenA?.decimals || 6);
+        document.getElementById('to-token-balance').textContent = formatTokenAmount(tokenBDisplayBalance, tokenB?.decimals || 6);
     } else {
         document.getElementById('from-token-symbol').textContent = poolData.tokenBSymbol;
         document.getElementById('to-token-symbol').textContent = poolData.tokenASymbol;
-        document.getElementById('from-token-icon').textContent = poolData.tokenBSymbol.charAt(0);
-        document.getElementById('to-token-icon').textContent = poolData.tokenASymbol.charAt(0);
+        
+        // Update token icons with images
+        const tokenAMint = poolData.tokenAMint || poolData.token_a_mint;
+        const tokenBMint = poolData.tokenBMint || poolData.token_b_mint;
+        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenBMint, poolData.tokenBSymbol);
+        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenAMint, poolData.tokenASymbol);
         
         // Set real balances - convert from basis points to display units
         const tokenA = userTokens.find(t => t.isTokenA);
@@ -596,8 +639,8 @@ function updateSwapInterfaceWithRealBalances() {
         const tokenADisplayBalance = tokenA ? window.TokenDisplayUtils.basisPointsToDisplay(tokenA.balance, tokenA.decimals) : 0;
         const tokenBDisplayBalance = tokenB ? window.TokenDisplayUtils.basisPointsToDisplay(tokenB.balance, tokenB.decimals) : 0;
         
-        document.getElementById('from-token-balance').textContent = tokenBDisplayBalance.toFixed(tokenB?.decimals || 6);
-        document.getElementById('to-token-balance').textContent = tokenADisplayBalance.toFixed(tokenA?.decimals || 6);
+        document.getElementById('from-token-balance').textContent = formatTokenAmount(tokenBDisplayBalance, tokenB?.decimals || 6);
+        document.getElementById('to-token-balance').textContent = formatTokenAmount(tokenADisplayBalance, tokenA?.decimals || 6);
     }
     
     // Reset amounts
@@ -705,7 +748,7 @@ function setMaxAmount() {
         console.log(`  Display amount: ${maxAmount}`);
         console.log(`  Fixed display: ${maxAmount.toFixed(fromToken.decimals)}`);
         
-        document.getElementById('from-amount').value = maxAmount.toFixed(fromToken.decimals);
+        document.getElementById('from-amount').value = formatTokenAmount(maxAmount, fromToken.decimals);
         calculateSwapOutputEnhanced();
     }
 }
@@ -800,7 +843,13 @@ function calculateSwapOutputEnhanced() {
         console.log(`  Output: ${outputAmount} (display units)`);
         console.log(`🔍 TokenPairRatio debug:`, tokenPairRatio.getDebugInfo());
         
-        toAmountInput.value = outputAmount.toFixed(6);
+        // Get the output token to determine correct decimal places
+        const toToken = swapDirection === 'AtoB' 
+            ? userTokens.find(t => !t.isTokenA)
+            : userTokens.find(t => t.isTokenA);
+        
+        const outputDecimals = toToken?.decimals || 6;
+        toAmountInput.value = formatTokenAmount(outputAmount, outputDecimals);
         
         // Update transaction preview
         updateTransactionPreview(fromAmount, outputAmount);
@@ -828,13 +877,24 @@ function updateTransactionPreview(fromAmount, toAmount) {
     const fromSymbol = swapDirection === 'AtoB' ? poolData.tokenASymbol : poolData.tokenBSymbol;
     const toSymbol = swapDirection === 'AtoB' ? poolData.tokenBSymbol : poolData.tokenASymbol;
     
-    document.getElementById('preview-from-amount').textContent = `${fromAmount.toFixed(6)} ${fromSymbol}`;
-    document.getElementById('preview-to-amount').textContent = `${toAmount.toFixed(6)} ${toSymbol}`;
+    // Get token decimals for proper formatting
+    const fromToken = swapDirection === 'AtoB' 
+        ? userTokens.find(t => t.isTokenA)
+        : userTokens.find(t => !t.isTokenA);
+    const toToken = swapDirection === 'AtoB' 
+        ? userTokens.find(t => !t.isTokenA)
+        : userTokens.find(t => t.isTokenA);
+    
+    const fromDecimals = fromToken?.decimals || 6;
+    const toDecimals = toToken?.decimals || 6;
+    
+    document.getElementById('preview-from-amount').textContent = `${formatTokenAmount(fromAmount, fromDecimals)} ${fromSymbol}`;
+    document.getElementById('preview-to-amount').textContent = `${formatTokenAmount(toAmount, toDecimals)} ${toSymbol}`;
             // No minimum received needed - fixed ratio guarantees exact amount
     
     // Exchange rate
     const rate = toAmount / fromAmount;
-    document.getElementById('preview-rate').textContent = `1 ${fromSymbol} = ${rate.toFixed(6)} ${toSymbol}`;
+    document.getElementById('preview-rate').textContent = `1 ${fromSymbol} = ${formatTokenAmount(rate, toDecimals)} ${toSymbol}`;
 }
 
 /**
@@ -1456,16 +1516,18 @@ function calculateSwapInputFromOutput() {
             denominator         // Ratio denominator (basis points)
         );
         
-        fromAmountInput.value = requiredInput.toFixed(6);
-        
-        // Update transaction preview
-        updateTransactionPreview(requiredInput, toAmount);
-        
-        // Check if user has sufficient balance
+        // Get the input token to determine correct decimal places
         const fromToken = swapDirection === 'AtoB' 
             ? userTokens.find(t => t.isTokenA)
             : userTokens.find(t => !t.isTokenA);
         
+        const fromTokenDecimals = fromToken?.decimals || 6;
+        fromAmountInput.value = formatTokenAmount(requiredInput, fromTokenDecimals);
+        
+        // Update transaction preview
+        updateTransactionPreview(requiredInput, toAmount);
+        
+        // Check if user has sufficient balance (reuse fromToken defined above)
         if (fromToken) {
             const fromAmountBasisPoints = window.TokenDisplayUtils.displayToBasisPoints(requiredInput, fromToken.decimals);
             
@@ -1564,10 +1626,10 @@ function startPoolStatusMonitoring() {
     
     console.log('🔄 Starting pool status monitoring...');
     
-    // Check pool status every 30 seconds
+    // Check pool status every 5 minutes (pool status doesn't change often)
     poolStatusCheckInterval = setInterval(async () => {
         await checkPoolStatusUpdate();
-    }, 30000); // 30 seconds
+    }, 300000); // 5 minutes
 }
 
 /**
