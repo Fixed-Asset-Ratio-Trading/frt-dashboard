@@ -15,6 +15,21 @@ let userTokens = [];
 let selectedToken = null;
 
 /**
+ * Create token image HTML using PHP cache (server-side)
+ * Pattern from pool-creation.js for consistency
+ */
+function createTokenImageHTML(mintAddress, symbol) {
+    // Use our PHP cache endpoint for reliable image serving
+    const cacheUrl = `token-image.php?mint=${mintAddress}`;
+    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${symbol.charAt(0)}</text></svg>`;
+    
+    // Simple fallback to generated SVG if PHP cache fails
+    const onErrorHandler = `this.src='${fallbackSvg}'; this.onerror=null;`;
+    
+    return `<img class="token-image" src="${cacheUrl}" alt="${symbol}" title="${symbol}" onerror="${onErrorHandler}">`;
+}
+
+/**
  * Initialize section visibility based on radio button state
  */
 function initializeSectionVisibility() {
@@ -409,12 +424,21 @@ async function updatePoolDisplay() {
             <div class="metric-label">Pool Address</div>
             <div class="metric-value address-container">
                 <span class="address-text">${window.CopyUtils?.formatAddressForDisplay(poolAddress) || poolAddress.slice(0, 8) + '...'}</span>
-                ${window.CopyUtils ? window.CopyUtils.createCopyButton(poolAddress, '📋').outerHTML : ''}
+                <span class="pool-copy-button-placeholder"></span>
             </div>
         </div>
         
         ${flagsSection}
     `;
+    
+    // Add the pool address copy button with proper event listeners after HTML is inserted
+    if (window.CopyUtils) {
+        const poolCopyButtonPlaceholder = poolDetails.querySelector('.pool-copy-button-placeholder');
+        if (poolCopyButtonPlaceholder) {
+            const poolCopyButton = window.CopyUtils.createCopyButton(poolAddress, '📋');
+            poolCopyButtonPlaceholder.replaceWith(poolCopyButton);
+        }
+    }
     
     // Phase 2.1: Add expandable Pool State display section
     addExpandablePoolStateDisplay();
@@ -639,11 +663,27 @@ function updateTokenSelection() {
         const balanceColor = balance === 0 ? '#999' : '#333';
         
         tokenOption.innerHTML = `
-            <div class="token-symbol">${poolToken.symbol}</div>
+            <div class="token-symbol">
+                ${createTokenImageHTML(poolToken.mint, poolToken.symbol)}
+                ${poolToken.symbol}
+            </div>
             <div class="token-balance" style="color: ${balanceColor};">Balance: ${balanceText}</div>
+            <div class="token-address">
+                <div class="token-address-container">
+                    <span class="token-address-text">${window.CopyUtils?.formatAddressForDisplay(poolToken.mint) || poolToken.mint.slice(0, 8) + '...'}</span>
+                    <span class="copy-button-placeholder"></span>
+                </div>
+            </div>
         `;
         
         tokenChoice.appendChild(tokenOption);
+        
+        // Add the copy button with proper event listeners after HTML is inserted
+        if (window.CopyUtils) {
+            const copyButtonPlaceholder = tokenOption.querySelector('.copy-button-placeholder');
+            const copyButton = window.CopyUtils.createCopyButton(poolToken.mint, '📋');
+            copyButtonPlaceholder.replaceWith(copyButton);
+        }
         
         // Auto-select first token (Token A) by default
         if (index === 0) {
