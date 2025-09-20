@@ -537,40 +537,56 @@ function updatePoolDisplay() {
         `;
     }
     
+    // Get specific pool flags for display
+    const specificFlags = window.TokenDisplayUtils.getSpecificPoolFlags(poolData);
+    const flagsHtml = specificFlags.length > 0 
+        ? `<div style="margin-top: 8px; font-size: 12px;">${specificFlags.map(flag => 
+            `<span style="background: #dc2626; color: white; padding: 2px 6px; border-radius: 4px; margin-right: 4px; font-size: 10px;">${flag.name}</span>`
+          ).join('')}</div>`
+        : '';
+
     poolDetails.innerHTML = pauseWarningHtml + `
-        <div class="pool-metric">
-            <div class="metric-label">Pool Pair</div>
-            <div class="metric-value">${display.displayPair} ${display.isOneToManyRatio ? '<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 8px;">🎯 1:Many</span>' : ''}</div>
-        </div>
-        
-        <div class="pool-metric">
-            <div class="metric-label">Exchange Rate</div>
-            <div class="metric-value">${display.rateText}</div>
-        </div>
-        
-        <div class="pool-metric">
-            <div class="metric-label">${display.baseToken} Liquidity</div>
-            <div class="metric-value">${window.TokenDisplayUtils.formatLargeNumber(display.baseLiquidity)}</div>
-        </div>
-        
-        <div class="pool-metric">
-            <div class="metric-label">${display.quoteToken} Liquidity</div>
-            <div class="metric-value">${window.TokenDisplayUtils.formatLargeNumber(display.quoteLiquidity)}</div>
-        </div>
-        
         <div class="pool-metric">
             <div class="metric-label">Pool Status</div>
             <div class="metric-value" style="${flags.liquidityPaused || flags.swapsPaused ? 'color: #dc2626; font-weight: bold;' : 'color: #10b981;'}">${flags.liquidityPaused ? '⏸️ Liquidity Paused' : flags.swapsPaused ? '🚫 Swaps Paused' : '✅ Active'}</div>
         </div>
         
         <div class="pool-metric">
+            <div class="metric-label">Pool Pair</div>
+            <div class="metric-value">
+                ${display.displayPair}
+                ${flagsHtml}
+            </div>
+        </div>
+        
+        <div class="pool-metric">
+            <div class="metric-label">Exchange Rate</div>
+            <div class="metric-value">${display.rateText.replace(/[\d,]+/g, match => window.TokenDisplayUtils.formatExchangeRateNumber(parseFloat(match.replace(/,/g, ''))))}</div>
+        </div>
+        
+        <div class="pool-metric">
+            <div class="metric-label">${display.baseToken} Liquidity</div>
+            <div class="metric-value">${window.TokenDisplayUtils.formatLiquidityNumber(display.baseLiquidity)}</div>
+        </div>
+        
+        <div class="pool-metric">
+            <div class="metric-label">${display.quoteToken} Liquidity</div>
+            <div class="metric-value">${window.TokenDisplayUtils.formatLiquidityNumber(display.quoteLiquidity)}</div>
+        </div>
+        
+        <div class="pool-metric">
             <div class="metric-label">Pool Address</div>
-            <div class="metric-value" style="font-size: 12px; font-family: monospace;">${poolAddress.slice(0, 20)}...</div>
+            <div class="metric-value" style="font-size: 12px; font-family: monospace; display: flex; align-items: center; gap: 8px; justify-content: center;">
+                <span>${poolAddress.slice(0, 8)}...${poolAddress.slice(-8)}</span>
+                <button id="copy-pool-address" onclick="window.TokenDisplayUtils.copyToClipboard('${poolAddress}', 'copy-pool-address')" 
+                        style="background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;">
+                    📋 Copy
+                </button>
+            </div>
         </div>
     `;
     
-    // Add expandable Pool State display section
-    addExpandablePoolStateDisplay();
+    // Debug section removed as requested
 }
 
 /**
@@ -895,6 +911,20 @@ function updateTransactionPreview(fromAmount, toAmount) {
     // Exchange rate
     const rate = toAmount / fromAmount;
     document.getElementById('preview-rate').textContent = `1 ${fromSymbol} = ${formatTokenAmount(rate, toDecimals)} ${toSymbol}`;
+    
+    // Calculate total estimated fee (network + contract)
+    const networkFee = 0.000005; // Base network fee estimate
+    const maxCU = 200000; // Estimated max compute units for swap
+    const cuPriceLamports = 1; // Estimated compute unit price in lamports
+    const priorityFee = (maxCU * cuPriceLamports) / 1000000000; // Convert to SOL
+    
+    // Get contract fee from pool data (in lamports)
+    const contractFeeLamports = poolData.swap_contract_fee || poolData.swapContractFee || 0;
+    const contractFee = contractFeeLamports / 1000000000; // Convert lamports to SOL
+    
+    const totalFee = networkFee + priorityFee + contractFee;
+    
+    document.getElementById('preview-fee').textContent = `~${formatTokenAmount(totalFee, 9)} SOL`;
 }
 
 /**
@@ -1129,7 +1159,13 @@ async function executeSwap() {
         
         showStatus('info', '📝 Requesting wallet signature...');
         
-        // Sign and send transaction
+        // Ensure the wallet fills a fresh recent blockhash to avoid mismatches
+        try { delete transaction.recentBlockhash; } catch (_) {}
+        try { delete transaction.lastValidBlockHeight; } catch (_) {}
+        try { transaction.feePayer = wallet.publicKey; } catch (_) {}
+        console.log('🧼 Preparing transaction for wallet: cleared recentBlockhash so wallet fetches a fresh one');
+
+        // Sign and send transaction (wallet will simulate with its own fresh blockhash)
         const signatureResult = await wallet.signAndSendTransaction(transaction);
         console.log('✅ Swap transaction sent:', signatureResult);
         
@@ -1158,7 +1194,19 @@ async function executeSwap() {
         
     } catch (error) {
         console.error('❌ Swap failed:', error);
-        showStatus('error', `Swap failed: ${error.message}`);
+        // Surface wallet/cluster logs if available
+        try {
+            if (typeof error.getLogs === 'function') {
+                const logs = await error.getLogs();
+                console.error('🧾 Transaction logs from wallet error:', logs);
+            } else if (error.logs) {
+                console.error('🧾 Transaction logs:', error.logs);
+            }
+        } catch (logErr) {
+            console.warn('⚠️ Failed to retrieve logs from error:', logErr?.message);
+        }
+        const msg = error?.message || 'Unknown error';
+        showStatus('error', `Swap failed: ${msg}. Check console for logs.`);
     } finally {
         // Re-enable swap button
         const swapBtn = document.getElementById('swap-btn');

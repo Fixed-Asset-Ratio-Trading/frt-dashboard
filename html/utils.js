@@ -290,6 +290,119 @@ function formatLargeNumber(num) {
 }
 
 /**
+ * Format exchange rate numbers with smart k/M notation
+ * Only shows k/M if all trailing digits are zeros
+ * @param {number} num - Number to format
+ * @returns {string} Formatted number string
+ */
+function formatExchangeRateNumber(num) {
+    if (num >= 1000000) {
+        // Check if it's a clean million (no significant digits after millions)
+        const millions = num / 1000000;
+        if (millions === Math.floor(millions) || (millions * 1000) === Math.floor(millions * 1000)) {
+            return millions % 1 === 0 ? millions + 'M' : millions.toFixed(3).replace(/\.?0+$/, '') + 'M';
+        }
+        return num.toLocaleString('en-US');
+    } else if (num >= 1000) {
+        // Check if it's a clean thousand
+        const thousands = num / 1000;
+        if (thousands === Math.floor(thousands) || (thousands * 1000) === Math.floor(thousands * 1000)) {
+            return thousands % 1 === 0 ? thousands + 'k' : thousands.toFixed(3).replace(/\.?0+$/, '') + 'k';
+        }
+        return num.toLocaleString('en-US');
+    } else {
+        return num.toLocaleString('en-US');
+    }
+}
+
+/**
+ * Format liquidity numbers with B/T/M notation, full numbers below 10k
+ * @param {number} num - Number to format
+ * @returns {string} Formatted number string
+ */
+function formatLiquidityNumber(num) {
+    if (num >= 1000000000000) {
+        return (num / 1000000000000).toFixed(1) + 'T';
+    } else if (num >= 1000000000) {
+        return (num / 1000000000).toFixed(1) + 'B';
+    } else if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 10000) {
+        return (num / 1000).toFixed(1) + 'k';
+    } else {
+        return num.toLocaleString('en-US');
+    }
+}
+
+/**
+ * Get specific pool flags for display (POOL_FLAG_SWAP_FOR_OWNERS_ONLY = 32, POOL_FLAG_EXACT_EXCHANGE_REQUIRED = 64)
+ * @param {Object} poolData - Pool data object
+ * @returns {Array} Array of flag objects with name and description
+ */
+function getSpecificPoolFlags(poolData) {
+    const flags = [];
+    const poolFlags = poolData.flags || 0;
+    
+    // POOL_FLAG_SWAP_FOR_OWNERS_ONLY = 32
+    if (poolFlags & 32) {
+        flags.push({
+            name: "Owner-Only Swaps",
+            description: "Only pool owners can perform swaps",
+            value: 32
+        });
+    }
+    
+    // POOL_FLAG_EXACT_EXCHANGE_REQUIRED = 64
+    if (poolFlags & 64) {
+        flags.push({
+            name: "Exact Exchange Required",
+            description: "Exact exchange amounts required",
+            value: 64
+        });
+    }
+    
+    return flags;
+}
+
+/**
+ * Copy text to clipboard with visual feedback
+ * @param {string} text - Text to copy
+ * @param {string} buttonId - ID of the button element for feedback
+ */
+function copyToClipboard(text, buttonId) {
+    navigator.clipboard.writeText(text).then(() => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            const originalText = button.innerHTML;
+            button.innerHTML = '✅ Copied!';
+            button.style.background = '#10b981';
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.style.background = '';
+            }, 2000);
+        }
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        const button = document.getElementById(buttonId);
+        if (button) {
+            const originalText = button.innerHTML;
+            button.innerHTML = '✅ Copied!';
+            setTimeout(() => {
+                button.innerHTML = originalText;
+            }, 2000);
+        }
+    });
+}
+
+/**
  * Format liquidity amounts accounting for token decimal precision
  * 
  * @param {number} rawAmount - Raw amount from blockchain (in smallest units)
@@ -1212,6 +1325,10 @@ if (typeof window !== 'undefined') {
         formatExchangeRateStandard,
         getSimpleDisplayOrder,
         formatLargeNumber,
+        formatExchangeRateNumber,
+        formatLiquidityNumber,
+        getSpecificPoolFlags,
+        copyToClipboard,
         formatLiquidityAmount,
         getTokenDecimals,
         formatNumberWithCommas,
@@ -1332,6 +1449,10 @@ if (typeof module !== 'undefined' && module.exports) {
         formatExchangeRateStandard,
         getSimpleDisplayOrder,
         formatLargeNumber,
+        formatExchangeRateNumber,
+        formatLiquidityNumber,
+        getSpecificPoolFlags,
+        copyToClipboard,
         formatLiquidityAmount,
         getTokenDecimals,
         formatNumberWithCommas,

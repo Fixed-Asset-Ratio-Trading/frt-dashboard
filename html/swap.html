@@ -127,16 +127,20 @@
         
         .pool-details {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 20px;
             margin-top: 15px;
         }
         
         .pool-metric {
             background: #f8f9fa;
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
             text-align: center;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
         .metric-label {
@@ -256,28 +260,40 @@
         
         .swap-btn {
             width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            padding: 18px 32px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             border: none;
             border-radius: 12px;
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-top: 20px;
+            margin: 25px 0;
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            position: relative;
+            overflow: hidden;
         }
         
         .swap-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+        }
+        
+        .swap-btn:active:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
         
         .swap-btn:disabled {
-            background: #9ca3af;
+            background: #d1d5db;
+            color: #9ca3af;
             cursor: not-allowed;
             transform: none;
-            box-shadow: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
         /* Phase 4.1: Enhanced Token Selection */
@@ -540,7 +556,7 @@
         <!-- Swap Interface Section -->
         <div class="swap-interface-section">
             <h2 style="color: #333; margin-bottom: 15px;">🔄 Token Swap Interface</h2>
-            <p style="color: #666; margin-bottom: 20px;">Click the token in the From box to choose a token, then enter the amount you want to swap. The To box updates automatically. When ready, click Swap.</p>
+            <p style="color: #666; margin-bottom: 20px;">Click the token in the "From" box to choose a token, then enter the amount you want to swap. The To box updates automatically. When ready, click "🔄 Execute Swap".</p>
             
             <div id="swap-loading" class="loading">
                 <h3>🔍 Please load pool information first...</h3>
@@ -624,7 +640,7 @@
                         <span class="preview-value" id="preview-rate">-</span>
                     </div>
                     <div class="preview-item">
-                        <span class="preview-label">Network Fee:</span>
+                        <span class="preview-label">Total estimated Fee:</span>
                         <span class="preview-value" id="preview-fee">~0.000005 SOL</span>
                     </div>
                     <div class="preview-info" style="color: #10b981; font-size: 12px; margin-top: 8px; text-align: center;">
