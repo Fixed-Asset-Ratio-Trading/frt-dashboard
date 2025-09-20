@@ -194,14 +194,14 @@ async function enrichPoolsWithTokenSymbols(poolsToEnrich) {
  * Start periodic updates
  */
 function startPeriodicUpdates() {
-    // Update every 10 seconds
+    // Update every 2 minutes (120 seconds)
     setInterval(async () => {
         try {
             await loadPoolsData();
         } catch (error) {
             console.error('❌ Periodic update failed:', error);
         }
-    }, 10000);
+    }, 120000);
 }
 
 /**
@@ -229,6 +229,16 @@ async function refreshPools() {
         refreshBtn.disabled = false;
         refreshBtn.textContent = '🔄 Refresh';
     }
+}
+
+/**
+ * Create token image HTML using PHP cache (server-side)
+ */
+function createTokenImageHTML(mintAddress, symbol) {
+    const cacheUrl = `token-image.php?mint=${mintAddress}`;
+    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${(symbol||'T').charAt(0)}</text></svg>`;
+    const onErrorHandler = `this.src='${fallbackSvg}'; this.onerror=null;`;
+    return `<img class="token-image" src="${cacheUrl}" alt="${symbol}" title="${symbol}" onerror="${onErrorHandler}">`;
 }
 
 /**
@@ -313,9 +323,30 @@ function renderPools() {
         addressSection.appendChild(addressText);
         addressSection.appendChild(copyButton);
         
+        // Build inline pair with images and ratio, ensuring the token with whole number 1 is first
+        const tokenAMint = pool.tokenAMint || pool.token_a_mint;
+        const tokenBMint = pool.tokenBMint || pool.token_b_mint;
+        const order = window.TokenDisplayUtils?.getDisplayTokenOrder(pool);
+        const isReversed = !!order?.isReversed;
+        const baseSymbol = order?.baseToken || pool.tokenASymbol || 'Token A';
+        const quoteSymbol = order?.quoteToken || pool.tokenBSymbol || 'Token B';
+        const baseMint = isReversed ? tokenBMint : tokenAMint;
+        const quoteMint = isReversed ? tokenAMint : tokenBMint;
+        const ratioDisplay = window.TokenDisplayUtils?.getCentralizedRatioDisplay(pool) || ratioText;
+
         item.innerHTML = `
-            <div class="pair">${pairName}</div>
-            <div class="ratio">ratio ${ratioText}</div>
+            <div class="pair-inline">
+                <span class="token-inline">
+                    ${baseMint ? createTokenImageHTML(baseMint, baseSymbol) : ''}
+                    <span class="pair-symbol">${baseSymbol}</span>
+                </span>
+                <span class="slash">/</span>
+                <span class="token-inline">
+                    ${quoteMint ? createTokenImageHTML(quoteMint, quoteSymbol) : ''}
+                    <span class="pair-symbol">${quoteSymbol}</span>
+                </span>
+                <span class="ratio-inline">ratio ${ratioDisplay}</span>
+            </div>
         `;
         item.appendChild(addressSection);
         list.appendChild(item);

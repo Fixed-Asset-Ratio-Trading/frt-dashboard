@@ -201,6 +201,7 @@
             border-bottom: 1px solid #f1f5f9;
             cursor: pointer;
             transition: background 0.15s ease;
+            gap: 12px;
         }
         
         .pool-item:last-child { 
@@ -215,14 +216,51 @@
             background: #eef2ff; 
         }
         
-        .pool-item .pair {
+        .token-images {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        
+        .token-image {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e5e7eb;
+            background: #f9fafb;
+        }
+        
+        .token-image:hover {
+            border-color: #667eea;
+            transform: scale(1.1);
+            transition: all 0.2s ease;
+        }
+        
+        .pair-inline {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .token-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .slash {
+            color: #9ca3af;
+        }
+
+        .pair-symbol {
             font-size: 18px;
             font-weight: 700;
             color: #1f2937;
-            margin-right: 12px;
         }
-        
-        .pool-item .ratio {
+
+        .ratio-inline {
             font-size: 13px;
             color: #6b7280;
             white-space: nowrap;
