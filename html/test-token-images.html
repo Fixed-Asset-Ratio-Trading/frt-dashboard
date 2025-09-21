@@ -357,24 +357,59 @@
             const costBadge = source.cost ? `<span class="cost-badge" style="background: #e74c3c; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">${source.cost}</span>` : '';
             const description = source.description || (source.url && source.url.startsWith('http') ? source.url : 'API Method');
             
-            div.innerHTML = `
-                <h4>${source.name} ${costBadge}</h4>
-                <img id="img-${index}" src="" alt="${TOKEN_SYMBOL}">
-                <div class="status loading" id="status-${index}">⏳ Loading...</div>
-                <div class="source-url">${description}</div>
-                <details>
-                    <summary>Metadata details</summary>
-                    <div class="meta-box">
-                        <div class="meta-content">
-                            <div class="kv"><strong>PDA:</strong> <code id="pda-${index}"></code></div>
-                            <div class="kv"><strong>Raw URI:</strong> <code id="raw-uri-${index}"></code></div>
-                            <div class="kv"><strong>HTTP URI:</strong> <code id="http-uri-${index}"></code></div>
-                            <div class="kv"><strong>JSON:</strong></div>
-                            <pre class="json" id="json-${index}"></pre>
-                        </div>
-                    </div>
-                </details>
-            `;
+            // 🛡️ SECURITY: Build via DOM
+            const h4 = document.createElement('h4');
+            h4.textContent = source.name + (source.cost ? ' ' + source.cost : '');
+            div.appendChild(h4);
+
+            const img = document.createElement('img');
+            img.id = `img-${index}`;
+            img.alt = TOKEN_SYMBOL;
+            img.src = '';
+            div.appendChild(img);
+
+            const status = document.createElement('div');
+            status.className = 'status loading';
+            status.id = `status-${index}`;
+            status.textContent = '⏳ Loading...';
+            div.appendChild(status);
+
+            const sourceUrl = document.createElement('div');
+            sourceUrl.className = 'source-url';
+            sourceUrl.textContent = description;
+            div.appendChild(sourceUrl);
+
+            const details = document.createElement('details');
+            const summary = document.createElement('summary');
+            summary.textContent = 'Metadata details';
+            details.appendChild(summary);
+            const metaBox = document.createElement('div');
+            metaBox.className = 'meta-box';
+            const metaContent = document.createElement('div');
+            metaContent.className = 'meta-content';
+            metaBox.appendChild(metaContent);
+            const pda = document.createElement('div');
+            pda.className = 'kv';
+            pda.innerHTML = '<strong>PDA:</strong> <code id="pda-${index}"></code>';
+            metaContent.appendChild(pda);
+            const raw = document.createElement('div');
+            raw.className = 'kv';
+            raw.innerHTML = '<strong>Raw URI:</strong> <code id="raw-uri-${index}"></code>';
+            metaContent.appendChild(raw);
+            const http = document.createElement('div');
+            http.className = 'kv';
+            http.innerHTML = '<strong>HTTP URI:</strong> <code id="http-uri-${index}"></code>';
+            metaContent.appendChild(http);
+            const json = document.createElement('div');
+            json.className = 'kv';
+            json.innerHTML = '<strong>JSON:</strong>';
+            metaContent.appendChild(json);
+            const pre = document.createElement('pre');
+            pre.className = 'json';
+            pre.id = `json-${index}`;
+            metaContent.appendChild(pre);
+            details.appendChild(metaBox);
+            div.appendChild(details);
             
             return div;
         }

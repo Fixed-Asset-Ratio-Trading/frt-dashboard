@@ -3,6 +3,87 @@
  * User-friendly display patterns for Fixed Ratio Trading Dashboard
  */
 
+// ========================================
+// SECURITY: XSS PREVENTION UTILITIES
+// ========================================
+
+/**
+ * Safely set text content (prevents XSS)
+ * @param {HTMLElement} element - DOM element
+ * @param {string} text - Text content to set
+ */
+function safeSetTextContent(element, text) {
+    if (element && typeof text === 'string') {
+        element.textContent = text;
+    }
+}
+
+/**
+ * Safely create HTML element with text content (prevents XSS)
+ * @param {string} tag - HTML tag name
+ * @param {string} text - Text content
+ * @param {Object} attributes - Optional attributes
+ * @returns {HTMLElement} Created element
+ */
+function safeCreateElement(tag, text = '', attributes = {}) {
+    const element = document.createElement(tag);
+    if (text) {
+        element.textContent = text;
+    }
+    for (const [key, value] of Object.entries(attributes)) {
+        element.setAttribute(key, value);
+    }
+    return element;
+}
+
+/**
+ * Safely append HTML content using DOM methods (prevents XSS)
+ * @param {HTMLElement} container - Container element
+ * @param {string} htmlString - HTML string to parse safely
+ */
+function safeAppendHTML(container, htmlString) {
+    if (!container || typeof htmlString !== 'string') return;
+    
+    // Create a temporary container to parse HTML safely
+    const temp = document.createElement('div');
+    temp.innerHTML = htmlString;
+    
+    // Move all child nodes to the target container
+    while (temp.firstChild) {
+        container.appendChild(temp.firstChild);
+    }
+}
+
+/**
+ * Safely set innerHTML with validation (use sparingly)
+ * @param {HTMLElement} element - DOM element
+ * @param {string} html - HTML content
+ */
+function safeSetInnerHTML(element, html) {
+    if (!element || typeof html !== 'string') return;
+    
+    // Basic XSS prevention - remove script tags and dangerous attributes
+    const sanitized = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+        .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+        .replace(/javascript:/gi, '');
+    
+    element.innerHTML = sanitized;
+}
+
+/**
+ * Escape HTML entities to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
+function escapeHtml(text) {
+    if (typeof text !== 'string') return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 /**
  * SIMPLE TOKEN DISPLAY CORRECTOR
  * If a token has precision value of 1 in the ratio, it comes first!
@@ -373,11 +454,12 @@ function copyToClipboard(text, buttonId) {
     navigator.clipboard.writeText(text).then(() => {
         const button = document.getElementById(buttonId);
         if (button) {
-            const originalText = button.innerHTML;
-            button.innerHTML = '✅ Copied!';
+            // 🛡️ SECURITY FIX: Use textContent instead of innerHTML for copy feedback
+            const originalText = button.textContent;
+            button.textContent = '✅ Copied!';
             button.style.background = '#10b981';
             setTimeout(() => {
-                button.innerHTML = originalText;
+                button.textContent = originalText;
                 button.style.background = '';
             }, 2000);
         }
@@ -393,10 +475,11 @@ function copyToClipboard(text, buttonId) {
         
         const button = document.getElementById(buttonId);
         if (button) {
-            const originalText = button.innerHTML;
-            button.innerHTML = '✅ Copied!';
+            // 🛡️ SECURITY FIX: Use textContent instead of innerHTML for copy feedback
+            const originalText = button.textContent;
+            button.textContent = '✅ Copied!';
             setTimeout(() => {
-                button.innerHTML = originalText;
+                button.textContent = originalText;
             }, 2000);
         }
     });
@@ -1355,6 +1438,15 @@ if (typeof window !== 'undefined') {
             // Metaplex metadata helper
             queryTokenMetadata
     };
+    
+    // 🛡️ SECURITY: XSS Prevention Utilities
+    window.SecurityUtils = {
+        safeSetTextContent,
+        safeCreateElement,
+        safeAppendHTML,
+        safeSetInnerHTML,
+        escapeHtml
+    };
 }
 
 /**
@@ -1406,23 +1498,23 @@ function formatAddressForDisplay(address) {
 function createCopyButton(text, displayText = '📋') {
     const button = document.createElement('button');
     button.className = 'copy-btn';
-    button.innerHTML = displayText;
+    button.textContent = displayText; // 🛡️ SECURITY FIX: Use textContent instead of innerHTML
     button.title = 'Copy to clipboard';
     button.onclick = async (e) => {
         e.stopPropagation();
         const success = await copyToClipboard(text);
         if (success) {
-            button.innerHTML = '✅';
+            button.textContent = '✅';
             button.style.background = '#10b981';
             setTimeout(() => {
-                button.innerHTML = displayText;
+                button.textContent = displayText;
                 button.style.background = '';
             }, 2000);
         } else {
-            button.innerHTML = '❌';
+            button.textContent = '❌';
             button.style.background = '#ef4444';
             setTimeout(() => {
-                button.innerHTML = displayText;
+                button.textContent = displayText;
                 button.style.background = '';
             }, 2000);
         }

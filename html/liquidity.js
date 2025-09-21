@@ -19,14 +19,15 @@ let selectedToken = null;
  * Pattern from pool-creation.js for consistency
  */
 function createTokenImageHTML(mintAddress, symbol) {
+    const safeSymbol = (symbol || 'T').toString().replace(/["'<>]/g, '');
     // Use our PHP cache endpoint for reliable image serving
-    const cacheUrl = `token-image.php?mint=${mintAddress}`;
-    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${symbol.charAt(0)}</text></svg>`;
+    const cacheUrl = `token-image.php?mint=${encodeURIComponent(mintAddress)}`;
+    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${safeSymbol.charAt(0)}</text></svg>`;
     
     // Simple fallback to generated SVG if PHP cache fails
     const onErrorHandler = `this.src='${fallbackSvg}'; this.onerror=null;`;
     
-    return `<img class="token-image" src="${cacheUrl}" alt="${symbol}" title="${symbol}" onerror="${onErrorHandler}">`;
+    return `<img class="token-image" src="${cacheUrl}" alt="${safeSymbol}" title="${safeSymbol}" onerror="${onErrorHandler}">`;
 }
 
 /**
@@ -394,42 +395,113 @@ async function updatePoolDisplay() {
     // Generate pool flags section
     const flagsSection = generatePoolFlagsDisplay(flags, poolData);
     
-    poolDetails.innerHTML = `
-        <div class="pool-metric">
-            <div class="metric-label">Pool Pair</div>
-            <div class="metric-value">${display.displayPair} ${display.isOneToManyRatio ? '<span style="background: #3b82f6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 8px;">🎯 1:Many</span>' : ''}</div>
-        </div>
-        
-        <div class="pool-metric">
-            <div class="metric-label">Exchange Rate</div>
-            <div class="metric-value">${display.rateText}</div>
-        </div>
-        
-        <div class="pool-metric">
-            <div class="metric-label">${display.baseToken} Liquidity</div>
-            <div class="metric-value">${display.baseLiquidity}</div>
-        </div>
-        
-        <div class="pool-metric">
-            <div class="metric-label">${display.quoteToken} Liquidity</div>
-            <div class="metric-value">${display.quoteLiquidity}</div>
-        </div>
-        
-        <div class="pool-metric">
-            <div class="metric-label">Pool Status</div>
-            <div class="metric-value">${flags.liquidityPaused ? '⏸️ Liquidity Paused' : flags.swapsPaused ? '🚫 Swaps Paused' : '✅ Active'}</div>
-        </div>
-        
-        <div class="pool-metric">
-            <div class="metric-label">Pool Address</div>
-            <div class="metric-value address-container">
-                <span class="address-text">${window.CopyUtils?.formatAddressForDisplay(poolAddress) || poolAddress.slice(0, 8) + '...'}</span>
-                <span class="pool-copy-button-placeholder"></span>
-            </div>
-        </div>
-        
-        ${flagsSection}
-    `;
+    // 🛡️ SECURITY FIX: Use safe DOM manipulation instead of innerHTML
+    poolDetails.innerHTML = ''; // Clear existing content
+    
+    // Pool Pair metric
+    const pairMetric = document.createElement('div');
+    pairMetric.className = 'pool-metric';
+    const pairLabel = document.createElement('div');
+    pairLabel.className = 'metric-label';
+    pairLabel.textContent = 'Pool Pair';
+    const pairValue = document.createElement('div');
+    pairValue.className = 'metric-value';
+    pairValue.textContent = display.displayPair;
+    if (display.isOneToManyRatio) {
+        const span = document.createElement('span');
+        span.style.background = '#3b82f6';
+        span.style.color = 'white';
+        span.style.padding = '2px 6px';
+        span.style.borderRadius = '4px';
+        span.style.fontSize = '10px';
+        span.style.marginLeft = '8px';
+        span.textContent = '🎯 1:Many';
+        pairValue.appendChild(span);
+    }
+    pairMetric.appendChild(pairLabel);
+    pairMetric.appendChild(pairValue);
+    poolDetails.appendChild(pairMetric);
+    
+    // Exchange Rate metric
+    const rateMetric = document.createElement('div');
+    rateMetric.className = 'pool-metric';
+    const rateLabel = document.createElement('div');
+    rateLabel.className = 'metric-label';
+    rateLabel.textContent = 'Exchange Rate';
+    const rateValue = document.createElement('div');
+    rateValue.className = 'metric-value';
+    rateValue.textContent = display.rateText;
+    rateMetric.appendChild(rateLabel);
+    rateMetric.appendChild(rateValue);
+    poolDetails.appendChild(rateMetric);
+    
+    // Base Token Liquidity metric
+    const baseMetric = document.createElement('div');
+    baseMetric.className = 'pool-metric';
+    const baseLabel = document.createElement('div');
+    baseLabel.className = 'metric-label';
+    baseLabel.textContent = `${display.baseToken} Liquidity`;
+    const baseValue = document.createElement('div');
+    baseValue.className = 'metric-value';
+    baseValue.textContent = display.baseLiquidity;
+    baseMetric.appendChild(baseLabel);
+    baseMetric.appendChild(baseValue);
+    poolDetails.appendChild(baseMetric);
+    
+    // Quote Token Liquidity metric
+    const quoteMetric = document.createElement('div');
+    quoteMetric.className = 'pool-metric';
+    const quoteLabel = document.createElement('div');
+    quoteLabel.className = 'metric-label';
+    quoteLabel.textContent = `${display.quoteToken} Liquidity`;
+    const quoteValue = document.createElement('div');
+    quoteValue.className = 'metric-value';
+    quoteValue.textContent = display.quoteLiquidity;
+    quoteMetric.appendChild(quoteLabel);
+    quoteMetric.appendChild(quoteValue);
+    poolDetails.appendChild(quoteMetric);
+    
+    // Pool Status metric
+    const statusMetric = document.createElement('div');
+    statusMetric.className = 'pool-metric';
+    const statusLabel = document.createElement('div');
+    statusLabel.className = 'metric-label';
+    statusLabel.textContent = 'Pool Status';
+    const statusValue = document.createElement('div');
+    statusValue.className = 'metric-value';
+    statusValue.textContent = flags.liquidityPaused ? '⏸️ Liquidity Paused' : flags.swapsPaused ? '🚫 Swaps Paused' : '✅ Active';
+    statusMetric.appendChild(statusLabel);
+    statusMetric.appendChild(statusValue);
+    poolDetails.appendChild(statusMetric);
+    
+    // Pool Address metric
+    const addressMetric = document.createElement('div');
+    addressMetric.className = 'pool-metric';
+    const addressLabel = document.createElement('div');
+    addressLabel.className = 'metric-label';
+    addressLabel.textContent = 'Pool Address';
+    const addressValue = document.createElement('div');
+    addressValue.className = 'metric-value address-container';
+    
+    const addressText = document.createElement('span');
+    addressText.className = 'address-text';
+    addressText.textContent = window.CopyUtils?.formatAddressForDisplay(poolAddress) || poolAddress.slice(0, 8) + '...';
+    addressValue.appendChild(addressText);
+    
+    const copyPlaceholder = document.createElement('span');
+    copyPlaceholder.className = 'pool-copy-button-placeholder';
+    addressValue.appendChild(copyPlaceholder);
+    
+    addressMetric.appendChild(addressLabel);
+    addressMetric.appendChild(addressValue);
+    poolDetails.appendChild(addressMetric);
+    
+    // Add flags section if available
+    if (flagsSection) {
+        const flagsDiv = document.createElement('div');
+        flagsDiv.innerHTML = flagsSection; // Safe - controlled content
+        poolDetails.appendChild(flagsDiv);
+    }
     
     // Add the pool address copy button with proper event listeners after HTML is inserted
     if (window.CopyUtils) {
@@ -599,10 +671,14 @@ function updateTokenSelection() {
     if (!poolData) {
         tokenLoading.style.display = 'block';
         tokenChoice.style.display = 'none';
-        tokenLoading.innerHTML = `
-            <h3>📭 Pool data not loaded</h3>
-            <p>Please wait for pool information to load.</p>
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation for token loading
+        tokenLoading.innerHTML = ''; // Clear existing content
+        const h3 = document.createElement('h3');
+        h3.textContent = '📭 Pool data not loaded';
+        const p = document.createElement('p');
+        p.textContent = 'Please wait for pool information to load.';
+        tokenLoading.appendChild(h3);
+        tokenLoading.appendChild(p);
         return;
     }
     
@@ -662,19 +738,37 @@ function updateTokenSelection() {
         const balanceText = balance === 0 ? '0' : finalDisplayBalance.toLocaleString();
         const balanceColor = balance === 0 ? '#999' : '#333';
         
-        tokenOption.innerHTML = `
-            <div class="token-symbol">
-                ${createTokenImageHTML(poolToken.mint, poolToken.symbol)}
-                ${poolToken.symbol}
-            </div>
-            <div class="token-balance" style="color: ${balanceColor};">Balance: ${balanceText}</div>
-            <div class="token-address">
-                <div class="token-address-container">
-                    <span class="token-address-text">${window.CopyUtils?.formatAddressForDisplay(poolToken.mint) || poolToken.mint.slice(0, 8) + '...'}</span>
-                    <span class="copy-button-placeholder"></span>
-                </div>
-            </div>
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation for token options
+        tokenOption.innerHTML = ''; // Clear existing content
+        
+        const symbolDiv = document.createElement('div');
+        symbolDiv.className = 'token-symbol';
+        symbolDiv.innerHTML = createTokenImageHTML(poolToken.mint, poolToken.symbol); // Safe - controlled content
+        symbolDiv.appendChild(document.createTextNode(poolToken.symbol));
+        tokenOption.appendChild(symbolDiv);
+        
+        const balanceDiv = document.createElement('div');
+        balanceDiv.className = 'token-balance';
+        balanceDiv.style.color = balanceColor;
+        balanceDiv.textContent = `Balance: ${balanceText}`;
+        tokenOption.appendChild(balanceDiv);
+        
+        const addressDiv = document.createElement('div');
+        addressDiv.className = 'token-address';
+        const addressContainer = document.createElement('div');
+        addressContainer.className = 'token-address-container';
+        
+        const addressText = document.createElement('span');
+        addressText.className = 'token-address-text';
+        addressText.textContent = window.CopyUtils?.formatAddressForDisplay(poolToken.mint) || poolToken.mint.slice(0, 8) + '...';
+        addressContainer.appendChild(addressText);
+        
+        const copyPlaceholder = document.createElement('span');
+        copyPlaceholder.className = 'copy-button-placeholder';
+        addressContainer.appendChild(copyPlaceholder);
+        
+        addressDiv.appendChild(addressContainer);
+        tokenOption.appendChild(addressDiv);
         
         tokenChoice.appendChild(tokenOption);
         
@@ -752,10 +846,14 @@ function resetTokenSelection() {
     
     tokenLoading.style.display = 'block';
     tokenChoice.style.display = 'none';
-    tokenLoading.innerHTML = `
-        <h3>🔍 Loading pool tokens...</h3>
-        <p>Please connect your wallet and load pool information</p>
-    `;
+    // 🛡️ SECURITY FIX: Use safe DOM manipulation for token loading
+    tokenLoading.innerHTML = ''; // Clear existing content
+    const h3 = document.createElement('h3');
+    h3.textContent = '🔍 Loading pool tokens...';
+    const p = document.createElement('p');
+    p.textContent = 'Please connect your wallet and load pool information';
+    tokenLoading.appendChild(h3);
+    tokenLoading.appendChild(p);
     
     // Only hide sections if no token is selected, but maintain radio button state
     const addRadio = document.querySelector('input[name="operation"][value="add"]');
@@ -1082,7 +1180,12 @@ async function addLiquidity() {
  */
 function showStatus(type, message) {
     const container = document.getElementById('status-container');
-    container.innerHTML = `<div class="status-message ${type}">${message}</div>`;
+    // 🛡️ SECURITY FIX: Use safe DOM manipulation for status messages
+    container.innerHTML = ''; // Clear existing content
+    const statusDiv = document.createElement('div');
+    statusDiv.className = `status-message ${type}`;
+    statusDiv.textContent = message; // Use textContent to prevent XSS
+    container.appendChild(statusDiv);
 }
 
 /**
@@ -1256,20 +1359,64 @@ function addExpandablePoolStateDisplay() {
     
     const flags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
     
-    expandableSection.innerHTML = `
-        <div style="padding: 20px; cursor: pointer; background: #f8f9fa; border-bottom: 1px solid #e5e7eb;" onclick="togglePoolStateDetails()">
-            <h3 style="margin: 0; color: #333; display: flex; align-items: center; justify-content: between;">
-                🔍 Pool State Details (Expandable Debug Section)
-                <span id="expand-indicator" style="margin-left: auto; font-size: 20px;">▼</span>
-            </h3>
-            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Click to view all PoolState struct fields</p>
-        </div>
-        <div id="pool-state-details" style="display: none; padding: 25px;">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                ${generatePoolStateFields()}
-            </div>
-        </div>
-    `;
+    // 🛡️ SECURITY FIX: Use safe DOM manipulation for expandable section
+    expandableSection.innerHTML = ''; // Clear existing content
+    
+    // Create header div
+    const headerDiv = document.createElement('div');
+    headerDiv.style.padding = '20px';
+    headerDiv.style.cursor = 'pointer';
+    headerDiv.style.background = '#f8f9fa';
+    headerDiv.style.borderBottom = '1px solid #e5e7eb';
+    headerDiv.onclick = togglePoolStateDetails;
+    
+    // Create header h3
+    const headerH3 = document.createElement('h3');
+    headerH3.style.margin = '0';
+    headerH3.style.color = '#333';
+    headerH3.style.display = 'flex';
+    headerH3.style.alignItems = 'center';
+    headerH3.style.justifyContent = 'space-between';
+    headerH3.textContent = '🔍 Pool State Details (Expandable Debug Section)';
+    
+    // Create expand indicator
+    const expandIndicator = document.createElement('span');
+    expandIndicator.id = 'expand-indicator';
+    expandIndicator.style.marginLeft = 'auto';
+    expandIndicator.style.fontSize = '20px';
+    expandIndicator.textContent = '▼';
+    headerH3.appendChild(expandIndicator);
+    
+    // Create description paragraph
+    const descP = document.createElement('p');
+    descP.style.margin = '5px 0 0 0';
+    descP.style.color = '#666';
+    descP.style.fontSize = '14px';
+    descP.textContent = 'Click to view all PoolState struct fields';
+    
+    headerDiv.appendChild(headerH3);
+    headerDiv.appendChild(descP);
+    
+    // Create details div
+    const detailsDiv = document.createElement('div');
+    detailsDiv.id = 'pool-state-details';
+    detailsDiv.style.display = 'none';
+    detailsDiv.style.padding = '25px';
+    
+    const gridDiv = document.createElement('div');
+    gridDiv.style.display = 'grid';
+    gridDiv.style.gridTemplateColumns = 'repeat(auto-fit, minmax(300px, 1fr))';
+    gridDiv.style.gap = '20px';
+    
+    // Generate pool state fields safely
+    const poolStateFields = generatePoolStateFields();
+    if (poolStateFields) {
+        gridDiv.innerHTML = poolStateFields; // Safe - controlled content
+    }
+    
+    detailsDiv.appendChild(gridDiv);
+    expandableSection.appendChild(headerDiv);
+    expandableSection.appendChild(detailsDiv);
     
     poolInfoSection.insertAdjacentElement('afterend', expandableSection);
 }

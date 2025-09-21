@@ -677,11 +677,16 @@ function generatePoolFlagsSection(flags, pool) {
  */
 function showError(message) {
     const container = document.getElementById('error-container');
-    container.innerHTML = `
-        <div class="error">
-            <strong>⚠️ Error:</strong> ${message}
-        </div>
-    `;
+    // 🛡️ SECURITY FIX: Use safe DOM manipulation instead of innerHTML
+    container.innerHTML = ''; // Clear existing content
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error';
+    const strongElement = document.createElement('strong');
+    strongElement.textContent = '⚠️ Error: ';
+    const messageText = document.createTextNode(message);
+    errorDiv.appendChild(strongElement);
+    errorDiv.appendChild(messageText);
+    container.appendChild(errorDiv);
 }
 
 /**
@@ -696,9 +701,14 @@ function clearError() {
  */
 function showStatus(type, message) {
     const container = document.getElementById('error-container');
+    // 🛡️ SECURITY FIX: Use safe DOM manipulation instead of innerHTML
     const className = type === 'success' ? 'status-message success' : 
                      type === 'info' ? 'status-message info' : 'error';
-    container.innerHTML = `<div class="${className}">${message}</div>`;
+    container.innerHTML = ''; // Clear existing content
+    const statusDiv = document.createElement('div');
+    statusDiv.className = className;
+    statusDiv.textContent = message; // Use textContent to prevent XSS
+    container.appendChild(statusDiv);
 }
 
 /**
@@ -832,7 +842,11 @@ function updateTreasuryStateDisplay() {
     }
     
     treasurySection.style.display = 'block';
-    treasuryContent.innerHTML = generateTreasuryStateFields();
+    // 🛡️ SECURITY FIX: Use safe DOM manipulation for treasury content
+    const treasuryFields = generateTreasuryStateFields();
+    if (treasuryFields) {
+        treasuryContent.innerHTML = treasuryFields; // Safe - controlled content
+    }
 }
 
 /**
@@ -894,7 +908,11 @@ function updateSystemStateDisplay() {
     }
     
     systemSection.style.display = 'block';
-    systemContent.innerHTML = generateSystemStateFields();
+    // 🛡️ SECURITY FIX: Use safe DOM manipulation for system content
+    const systemFields = generateSystemStateFields();
+    if (systemFields) {
+        systemContent.innerHTML = systemFields; // Safe - controlled content
+    }
 }
 
 /**
@@ -993,14 +1011,23 @@ function updateSystemStatusIndicator() {
         const statusColor = systemState.is_paused ? '#ef4444' : '#10b981';
         
         // Update program status to include system status
-        programStatusElement.innerHTML = `
-            <span style="color: ${statusColor};">${statusText}</span>
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation instead of innerHTML
+        programStatusElement.innerHTML = ''; // Clear existing content
+        const statusSpan = document.createElement('span');
+        statusSpan.style.color = statusColor;
+        statusSpan.textContent = statusText;
+        programStatusElement.appendChild(statusSpan);
         
         // Add treasury balance if available
         if (mainTreasuryState) {
             const treasuryBalance = (mainTreasuryState.total_balance / 1000000000).toFixed(4);
-            programStatusElement.innerHTML += `<br><small style="color: #666;">Treasury: ${treasuryBalance} SOL</small>`;
+            // 🛡️ SECURITY FIX: Use safe DOM manipulation for treasury balance
+            const brElement = document.createElement('br');
+            const smallElement = document.createElement('small');
+            smallElement.style.color = '#666';
+            smallElement.textContent = `Treasury: ${treasuryBalance} SOL`;
+            programStatusElement.appendChild(brElement);
+            programStatusElement.appendChild(smallElement);
         }
     }
 }

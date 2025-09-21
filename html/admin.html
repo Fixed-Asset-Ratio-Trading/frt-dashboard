@@ -582,7 +582,12 @@
             const container = document.getElementById('status-container');
             const className = type === 'success' ? 'status-message success' : 
                              type === 'info' ? 'status-message info' : 'status-message error';
-            container.innerHTML = `<div class="${className}">${message}</div>`;
+            // 🛡️ SECURITY FIX: Use safe DOM manipulation instead of innerHTML
+            container.innerHTML = ''; // Clear existing content
+            const messageDiv = document.createElement('div');
+            messageDiv.className = className;
+            messageDiv.textContent = message; // Use textContent to prevent XSS
+            container.appendChild(messageDiv);
             
             // Auto-hide success messages after 5 seconds
             if (type === 'success') {

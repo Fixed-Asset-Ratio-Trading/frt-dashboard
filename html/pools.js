@@ -235,10 +235,11 @@ async function refreshPools() {
  * Create token image HTML using PHP cache (server-side)
  */
 function createTokenImageHTML(mintAddress, symbol) {
-    const cacheUrl = `token-image.php?mint=${mintAddress}`;
-    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${(symbol||'T').charAt(0)}</text></svg>`;
+    const safeSymbol = (symbol || 'T').toString().replace(/["'<>]/g, '');
+    const cacheUrl = `token-image.php?mint=${encodeURIComponent(mintAddress)}`;
+    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${safeSymbol.charAt(0)}</text></svg>`;
     const onErrorHandler = `this.src='${fallbackSvg}'; this.onerror=null;`;
-    return `<img class="token-image" src="${cacheUrl}" alt="${symbol}" title="${symbol}" onerror="${onErrorHandler}">`;
+    return `<img class="token-image" src="${cacheUrl}" alt="${safeSymbol}" title="${safeSymbol}" onerror="${onErrorHandler}">`;
 }
 
 /**
@@ -253,28 +254,52 @@ function renderPools() {
         connection.getAccountInfo(new solanaWeb3.PublicKey(CONFIG.programId))
             .then(programAccount => {
                 if (!programAccount) {
-                    container.innerHTML = `
-                        <div class="loading">
-                            <h3>🚧 Program Not Deployed</h3>
-                            <p>The Fixed Ratio Trading program is not deployed on this testnet.</p>
-                        </div>
-                    `;
+                    // 🛡️ SECURITY FIX: Use safe DOM manipulation for program not deployed message
+                    container.innerHTML = ''; // Clear existing content
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.className = 'loading';
+                    
+                    const h3 = document.createElement('h3');
+                    h3.textContent = '🚧 Program Not Deployed';
+                    loadingDiv.appendChild(h3);
+                    
+                    const p = document.createElement('p');
+                    p.textContent = 'The Fixed Ratio Trading program is not deployed on this testnet.';
+                    loadingDiv.appendChild(p);
+                    
+                    container.appendChild(loadingDiv);
                 } else {
-                    container.innerHTML = `
-                        <div class="loading">
-                            <h3>📭 No pools found</h3>
-                            <p>No Fixed Ratio Trading pools detected on this network.</p>
-                        </div>
-                    `;
+                    // 🛡️ SECURITY FIX: Use safe DOM manipulation for no pools message
+                    container.innerHTML = ''; // Clear existing content
+                    const loadingDiv = document.createElement('div');
+                    loadingDiv.className = 'loading';
+                    
+                    const h3 = document.createElement('h3');
+                    h3.textContent = '📭 No pools found';
+                    loadingDiv.appendChild(h3);
+                    
+                    const p = document.createElement('p');
+                    p.textContent = 'No Fixed Ratio Trading pools detected on this network.';
+                    loadingDiv.appendChild(p);
+                    
+                    container.appendChild(loadingDiv);
                 }
             })
             .catch(() => {
-                container.innerHTML = `
-                    <div class="loading">
-                        <h3>📭 No pools found</h3>
-                        <p>No Fixed Ratio Trading pools detected on this network.</p>
-                    </div>
-                `;
+                // 🛡️ SECURITY FIX: Use safe DOM manipulation for no pools message (catch)
+                container.innerHTML = ''; // Clear existing content
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'loading';
+                
+                const h3 = document.createElement('h3');
+                h3.textContent = '📭 No pools found';
+                loadingDiv.appendChild(h3);
+                
+                const p = document.createElement('p');
+                p.textContent = 'No Fixed Ratio Trading pools detected on this network.';
+                loadingDiv.appendChild(p);
+                
+                container.appendChild(loadingDiv);
             });
         
         // Disable action bar when no pools
@@ -334,20 +359,48 @@ function renderPools() {
         const quoteMint = isReversed ? tokenAMint : tokenBMint;
         const ratioDisplay = window.TokenDisplayUtils?.getCentralizedRatioDisplay(pool) || ratioText;
 
-        item.innerHTML = `
-            <div class="pair-inline">
-                <span class="token-inline">
-                    ${baseMint ? createTokenImageHTML(baseMint, baseSymbol) : ''}
-                    <span class="pair-symbol">${baseSymbol}</span>
-                </span>
-                <span class="slash">/</span>
-                <span class="token-inline">
-                    ${quoteMint ? createTokenImageHTML(quoteMint, quoteSymbol) : ''}
-                    <span class="pair-symbol">${quoteSymbol}</span>
-                </span>
-                <span class="ratio-inline">ratio ${ratioDisplay}</span>
-            </div>
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation for pool list item
+        item.innerHTML = '';
+        const pairInline = document.createElement('div');
+        pairInline.className = 'pair-inline';
+
+        const baseSpan = document.createElement('span');
+        baseSpan.className = 'token-inline';
+        if (baseMint) {
+            const imgWrapper = document.createElement('span');
+            imgWrapper.innerHTML = createTokenImageHTML(baseMint, baseSymbol); // Controlled HTML
+            baseSpan.appendChild(imgWrapper);
+        }
+        const baseSymbolSpan = document.createElement('span');
+        baseSymbolSpan.className = 'pair-symbol';
+        baseSymbolSpan.textContent = baseSymbol;
+        baseSpan.appendChild(baseSymbolSpan);
+        pairInline.appendChild(baseSpan);
+
+        const slash = document.createElement('span');
+        slash.className = 'slash';
+        slash.textContent = '/';
+        pairInline.appendChild(slash);
+
+        const quoteSpan = document.createElement('span');
+        quoteSpan.className = 'token-inline';
+        if (quoteMint) {
+            const imgWrapper2 = document.createElement('span');
+            imgWrapper2.innerHTML = createTokenImageHTML(quoteMint, quoteSymbol); // Controlled HTML
+            quoteSpan.appendChild(imgWrapper2);
+        }
+        const quoteSymbolSpan = document.createElement('span');
+        quoteSymbolSpan.className = 'pair-symbol';
+        quoteSymbolSpan.textContent = quoteSymbol;
+        quoteSpan.appendChild(quoteSymbolSpan);
+        pairInline.appendChild(quoteSpan);
+
+        const ratioSpan = document.createElement('span');
+        ratioSpan.className = 'ratio-inline';
+        ratioSpan.textContent = `ratio ${ratioDisplay}`;
+        pairInline.appendChild(ratioSpan);
+
+        item.appendChild(pairInline);
         item.appendChild(addressSection);
         list.appendChild(item);
     });
@@ -450,18 +503,23 @@ function updateLastUpdated() {
 function showError(message) {
     const container = document.getElementById('error-container');
     if (container) {
-        container.innerHTML = `
-            <div style="
-                background: #fee2e2;
-                color: #991b1b;
-                padding: 15px;
-                border-radius: 6px;
-                margin-bottom: 20px;
-                border: 1px solid #fecaca;
-            ">
-                <strong>Error:</strong> ${message}
-            </div>
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation for error messages
+        container.innerHTML = ''; // Clear existing content
+        const errorDiv = document.createElement('div');
+        errorDiv.style.background = '#fee2e2';
+        errorDiv.style.color = '#991b1b';
+        errorDiv.style.padding = '15px';
+        errorDiv.style.borderRadius = '6px';
+        errorDiv.style.marginBottom = '20px';
+        errorDiv.style.border = '1px solid #fecaca';
+        
+        const strong = document.createElement('strong');
+        strong.textContent = 'Error: ';
+        const messageText = document.createTextNode(message);
+        errorDiv.appendChild(strong);
+        errorDiv.appendChild(messageText);
+        
+        container.appendChild(errorDiv);
     }
     console.error('❌ Error:', message);
 }
@@ -476,23 +534,23 @@ function showStatusMessage(message, type = 'info') {
         const textColor = type === 'success' ? '#166534' : '#1e40af';
         const borderColor = type === 'success' ? '#bbf7d0' : '#bfdbfe';
         
-        container.innerHTML = `
-            <div style="
-                background: ${bgColor};
-                color: ${textColor};
-                padding: 15px;
-                border-radius: 6px;
-                margin-bottom: 20px;
-                border: 1px solid ${borderColor};
-            ">
-                ${message}
-            </div>
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation for status messages
+        container.innerHTML = ''; // Clear existing content
+        const statusDiv = document.createElement('div');
+        statusDiv.style.background = bgColor;
+        statusDiv.style.color = textColor;
+        statusDiv.style.padding = '15px';
+        statusDiv.style.borderRadius = '6px';
+        statusDiv.style.marginBottom = '20px';
+        statusDiv.style.border = `1px solid ${borderColor}`;
+        statusDiv.textContent = message; // Use textContent to prevent XSS
+        
+        container.appendChild(statusDiv);
         
         // Auto-hide after 3 seconds
         setTimeout(() => {
-            if (container.innerHTML.includes(message)) {
-                container.innerHTML = '';
+            if (container.contains(statusDiv)) {
+                container.removeChild(statusDiv);
             }
         }, 3000);
     }

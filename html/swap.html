@@ -700,7 +700,19 @@
                 // Update the subtitle to show this is a direct pool access
                 const subtitle = document.querySelector('.header .subtitle');
                 if (subtitle) {
-                    subtitle.innerHTML = `Exchange tokens in the pool at fixed ratios<br><small style="color: #888; font-size: 0.9em;">Pool: ${poolId.slice(0, 8)}...${poolId.slice(-8)}</small>`;
+                    // 🛡️ SECURITY FIX: Use safe DOM manipulation instead of innerHTML
+                    const poolIdShort = poolId.slice(0, 8) + '...' + poolId.slice(-8);
+                    subtitle.textContent = 'Exchange tokens in the pool at fixed ratios';
+                    
+                    // Create safe small element for pool ID
+                    const smallElement = document.createElement('small');
+                    smallElement.style.color = '#888';
+                    smallElement.style.fontSize = '0.9em';
+                    smallElement.textContent = `Pool: ${poolIdShort}`;
+                    
+                    // Add line break and pool info
+                    subtitle.appendChild(document.createElement('br'));
+                    subtitle.appendChild(smallElement);
                 }
             }
         });

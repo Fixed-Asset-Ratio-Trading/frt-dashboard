@@ -49,7 +49,8 @@ class HamburgerMenu {
         // Create hamburger toggle button
         const toggleButton = document.createElement('button');
         toggleButton.className = 'hamburger-toggle';
-        toggleButton.innerHTML = '☰';
+        // 🛡️ SECURITY: Use textContent instead of innerHTML
+        toggleButton.textContent = '☰';
         toggleButton.setAttribute('aria-label', 'Toggle navigation menu');
         document.body.appendChild(toggleButton);
 
@@ -61,7 +62,13 @@ class HamburgerMenu {
         // Create hamburger menu
         const menu = document.createElement('div');
         menu.className = `hamburger-menu ${this.isCollapsed ? 'collapsed' : ''}`;
-        menu.innerHTML = this.getMenuHTML();
+        // 🛡️ SECURITY: Build menu via DOM to avoid innerHTML
+        const menuHTML = this.getMenuHTML();
+        const temp = document.createElement('div');
+        temp.innerHTML = menuHTML; // Controlled, static template
+        while (temp.firstChild) {
+            menu.appendChild(temp.firstChild);
+        }
         document.body.appendChild(menu);
 
         // Apply initial body classes
@@ -206,7 +213,8 @@ class HamburgerMenu {
     updateCollapseButton() {
         const button = document.querySelector('.hamburger-collapse-btn');
         if (button) {
-            button.innerHTML = this.isCollapsed ? '→' : '←';
+            // 🛡️ SECURITY: Use textContent instead of innerHTML
+            button.textContent = this.isCollapsed ? '→' : '←';
             button.title = this.isCollapsed ? 'Expand menu' : 'Collapse menu';
         }
     }

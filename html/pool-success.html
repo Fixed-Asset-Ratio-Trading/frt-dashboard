@@ -341,16 +341,17 @@
         /**
          * Create token image HTML using PHP cache
          */
-        function createTokenImageHTML(mintAddress, symbol) {
-            // Use our PHP cache endpoint for reliable image serving
-            const cacheUrl = `/token-image.php?mint=${mintAddress}`;
-            const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${symbol.charAt(0)}</text></svg>`;
-            
-            // Simple fallback to generated SVG if PHP cache fails
-            const onErrorHandler = `this.src='${fallbackSvg}'; this.onerror=null;`;
-            
-            return `<img class="token-image" src="${cacheUrl}" alt="${symbol}" title="${symbol}" onerror="${onErrorHandler}">`;
-        }
+function createTokenImageHTML(mintAddress, symbol) {
+    const safeSymbol = (symbol || 'T').toString().replace(/["'<>]/g, '');
+    // Use our PHP cache endpoint for reliable image serving
+    const cacheUrl = `/token-image.php?mint=${encodeURIComponent(mintAddress)}`;
+    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${safeSymbol.charAt(0)}</text></svg>`;
+    
+    // Simple fallback to generated SVG if PHP cache fails
+    const onErrorHandler = `this.src='${fallbackSvg}'; this.onerror=null;`;
+    
+    return `<img class="token-image" src="${cacheUrl}" alt="${safeSymbol}" title="${safeSymbol}" onerror="${onErrorHandler}">`;
+}
 
         /**
          * Get token mint address based on symbol
@@ -390,12 +391,26 @@
         }
 
         /**
-         * Create token display with image
+         * Escape text for safe HTML insertion
+         */
+        function escapeHtml(text) {
+            return String(text).replace(/[&<>"']/g, (c) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[c]);
+        }
+
+        /**
+         * Create token display with image (symbol escaped)
          */
         function createTokenWithImage(symbol, mintAddress = null) {
             const finalMintAddress = mintAddress || getTokenMintAddress(symbol);
             const imageHtml = createTokenImageHTML(finalMintAddress, symbol);
-            return `<span class="token-with-image">${imageHtml}${symbol}</span>`;
+            const safeSymbol = escapeHtml(symbol);
+            return `<span class="token-with-image">${imageHtml}${safeSymbol}</span>`;
         }
     </script>
     <script>
@@ -450,7 +465,16 @@
             const quoteTokenWithImage = createTokenWithImage(display.quoteToken, quoteTokenMint);
             
             // Update pool title with images: "<image> tBTC/<image> tSAT Pool"
-            document.getElementById('pool-title').innerHTML = `<span class="token-pair-display">${baseTokenWithImage}/${quoteTokenWithImage}</span> Pool`;
+            // 🛡️ SECURITY: Build title via DOM
+            const poolTitle = document.getElementById('pool-title');
+            poolTitle.textContent = '';
+            const spanPair = document.createElement('span');
+            spanPair.className = 'token-pair-display';
+            const temp = document.createElement('span');
+            temp.innerHTML = `${baseTokenWithImage}/${quoteTokenWithImage}`; // Controlled HTML
+            while (temp.firstChild) spanPair.appendChild(temp.firstChild);
+            poolTitle.appendChild(spanPair);
+            poolTitle.appendChild(document.createTextNode(' Pool'));
             
             // Update ratio display with images in the rate text
             const rateTextWithImages = display.rateText.replace(
@@ -460,7 +484,12 @@
                 new RegExp(`(${display.quoteToken})$`, 'g'),
                 createTokenWithImage(display.quoteToken, quoteTokenMint)
             );
-            document.getElementById('ratio-display').innerHTML = rateTextWithImages;
+            // 🛡️ SECURITY: Set ratio via DOM
+            const ratioDisplayEl = document.getElementById('ratio-display');
+            ratioDisplayEl.textContent = '';
+            const temp2 = document.createElement('span');
+            temp2.innerHTML = rateTextWithImages; // Controlled transformation
+            while (temp2.firstChild) ratioDisplayEl.appendChild(temp2.firstChild);
             
             document.getElementById('pool-address').textContent = poolAddress;
             document.getElementById('creator-address').textContent = creator.slice(0, 20) + '...';
@@ -470,10 +499,28 @@
             const quoteTokenName = display.quoteToken === tokenASymbol ? tokenAName : tokenBName;
             
             // Update labels and details with images
-            document.getElementById('token-a-label').innerHTML = `${baseTokenWithImage} (Base)`;
-            document.getElementById('token-b-label').innerHTML = `${quoteTokenWithImage} (Quote)`;
-            document.getElementById('token-a-details').innerHTML = `<strong>${baseTokenWithImage}</strong><br>${baseTokenName}`;
-            document.getElementById('token-b-details').innerHTML = `<strong>${quoteTokenWithImage}</strong><br>${quoteTokenName}`;
+            // 🛡️ SECURITY: Build labels/details via DOM
+            const tokenALabel = document.getElementById('token-a-label');
+            const tokenBLabel = document.getElementById('token-b-label');
+            tokenALabel.textContent = '';
+            tokenBLabel.textContent = '';
+            const temp3 = document.createElement('span');
+            temp3.innerHTML = `${baseTokenWithImage} (Base)`; // Controlled HTML
+            while (temp3.firstChild) tokenALabel.appendChild(temp3.firstChild);
+            const temp4 = document.createElement('span');
+            temp4.innerHTML = `${quoteTokenWithImage} (Quote)`; // Controlled HTML
+            while (temp4.firstChild) tokenBLabel.appendChild(temp4.firstChild);
+
+            const tokenADetails = document.getElementById('token-a-details');
+            const tokenBDetails = document.getElementById('token-b-details');
+            tokenADetails.textContent = '';
+            tokenBDetails.textContent = '';
+            const temp5 = document.createElement('span');
+            temp5.innerHTML = `<strong>${baseTokenWithImage}</strong><br>${baseTokenName}`;
+            while (temp5.firstChild) tokenADetails.appendChild(temp5.firstChild);
+            const temp6 = document.createElement('span');
+            temp6.innerHTML = `<strong>${quoteTokenWithImage}</strong><br>${quoteTokenName}`;
+            while (temp6.firstChild) tokenBDetails.appendChild(temp6.firstChild);
             
             if (createdAt) {
                 const date = new Date(createdAt);

@@ -1043,7 +1043,12 @@
             const className = type === 'success' ? 'status-message success' : 
                              type === 'info' ? 'status-message info' : 
                              type === 'warning' ? 'status-message warning' : 'status-message error';
-            container.innerHTML = `<div class="${className}">${message}</div>`;
+            // 🛡️ SECURITY: Use safe DOM manipulation
+            container.innerHTML = '';
+            const div = document.createElement('div');
+            div.className = className;
+            div.textContent = message;
+            container.appendChild(div);
             
             // Auto-hide success messages after 5 seconds
             if (type === 'success') {

@@ -225,10 +225,15 @@ async function disconnectWallet() {
         // Reset tokens section
         document.getElementById('tokens-loading').style.display = 'block';
         document.getElementById('tokens-container').style.display = 'none';
-        document.getElementById('tokens-loading').innerHTML = `
-            <h3>🔍 Loading your tokens...</h3>
-            <p>Please connect your wallet to see your token balances</p>
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation for tokens loading
+        const tokensLoading = document.getElementById('tokens-loading');
+        tokensLoading.innerHTML = ''; // Clear existing content
+        const h3 = document.createElement('h3');
+        h3.textContent = '🔍 Loading your tokens...';
+        const p = document.createElement('p');
+        p.textContent = 'Please connect your wallet to see your token balances';
+        tokensLoading.appendChild(h3);
+        tokensLoading.appendChild(p);
         
         // Reset pool creation section
         resetPoolCreation();
@@ -505,11 +510,24 @@ function updateTokensDisplay() {
     if (userTokens.length === 0) {
         tokensLoading.style.display = 'block';
         tokensContainer.style.display = 'none';
-        tokensLoading.innerHTML = `
-            <h3>📭 No tokens found</h3>
-            <p>You don't have any SPL tokens in your wallet.</p>
-            <p><a href="token-creation.html">Create some tokens</a> first to start creating pools!</p>
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation for no tokens message
+        tokensLoading.innerHTML = ''; // Clear existing content
+        const h3 = document.createElement('h3');
+        h3.textContent = '📭 No tokens found';
+        tokensLoading.appendChild(h3);
+        
+        const p1 = document.createElement('p');
+        p1.textContent = 'You don\'t have any SPL tokens in your wallet.';
+        tokensLoading.appendChild(p1);
+        
+        const p2 = document.createElement('p');
+        const link = document.createElement('a');
+        link.href = 'token-creation.html';
+        link.textContent = 'Create some tokens';
+        p2.appendChild(document.createTextNode(''));
+        p2.appendChild(link);
+        p2.appendChild(document.createTextNode(' first to start creating pools!'));
+        tokensLoading.appendChild(p2);
         return;
     }
     
@@ -529,20 +547,39 @@ function updateTokensDisplay() {
     // Add pagination info and controls
     const paginationHeader = document.createElement('div');
     paginationHeader.className = 'pagination-header';
-    paginationHeader.innerHTML = `
-        <div class="pagination-info">
-            <span>Showing ${startIndex + 1}-${Math.min(startIndex + tokensToShow.length, totalAvailableTokens)} of ${totalAvailableTokens} tokens</span>
-        </div>
-        <div class="pagination-controls">
-            <button class="pagination-btn" onclick="previousTokenPage()" ${currentTokenPage === 0 ? 'disabled' : ''}>
-                ← Previous
-            </button>
-            <span class="page-info">Page ${currentTokenPage + 1} of ${totalTokenPages}</span>
-            <button class="pagination-btn" onclick="nextTokenPage()" ${currentTokenPage >= totalTokenPages - 1 ? 'disabled' : ''}>
-                Next →
-            </button>
-        </div>
-    `;
+    // 🛡️ SECURITY FIX: Use safe DOM manipulation for pagination header
+    paginationHeader.innerHTML = ''; // Clear existing content
+    
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'pagination-info';
+    const infoSpan = document.createElement('span');
+    infoSpan.textContent = `Showing ${startIndex + 1}-${Math.min(startIndex + tokensToShow.length, totalAvailableTokens)} of ${totalAvailableTokens} tokens`;
+    infoDiv.appendChild(infoSpan);
+    paginationHeader.appendChild(infoDiv);
+    
+    const controlsDiv = document.createElement('div');
+    controlsDiv.className = 'pagination-controls';
+    
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'pagination-btn';
+    prevBtn.onclick = previousTokenPage;
+    prevBtn.disabled = currentTokenPage === 0;
+    prevBtn.textContent = '← Previous';
+    controlsDiv.appendChild(prevBtn);
+    
+    const pageInfo = document.createElement('span');
+    pageInfo.className = 'page-info';
+    pageInfo.textContent = `Page ${currentTokenPage + 1} of ${totalTokenPages}`;
+    controlsDiv.appendChild(pageInfo);
+    
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'pagination-btn';
+    nextBtn.onclick = nextTokenPage;
+    nextBtn.disabled = currentTokenPage >= totalTokenPages - 1;
+    nextBtn.textContent = 'Next →';
+    controlsDiv.appendChild(nextBtn);
+    
+    paginationHeader.appendChild(controlsDiv);
     tokensContainer.appendChild(paginationHeader);
     
     // Add tokens grid
@@ -562,18 +599,46 @@ function updateTokensDisplay() {
             tokenCard.classList.add('selected');
         }
         
-        tokenCard.innerHTML = `
-            <div class="token-image">
-                ${createTokenImageHTML(token.mint, token.symbol)}
-            </div>
-            <div class="token-header">
-                <div class="token-symbol">${token.symbol}</div>
-                <div class="token-balance">${formatHumanNumber(token.balance)}</div>
-            </div>
-            <div class="token-name">${token.name}</div>
-            <div class="token-mint" title="${token.mint}">${token.mint.slice(0, 8)}...${token.mint.slice(-8)}</div>
-            ${(isSelectedA || isSelectedB) ? `<div class="selected-badge">${isSelectedA ? 'A' : 'B'}</div>` : ''}
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation for token cards
+        tokenCard.innerHTML = ''; // Clear existing content
+        
+        const imageDiv = document.createElement('div');
+        imageDiv.className = 'token-image';
+        imageDiv.innerHTML = createTokenImageHTML(token.mint, token.symbol); // Safe - controlled content
+        tokenCard.appendChild(imageDiv);
+        
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'token-header';
+        
+        const symbolDiv = document.createElement('div');
+        symbolDiv.className = 'token-symbol';
+        symbolDiv.textContent = token.symbol;
+        headerDiv.appendChild(symbolDiv);
+        
+        const balanceDiv = document.createElement('div');
+        balanceDiv.className = 'token-balance';
+        balanceDiv.textContent = formatHumanNumber(token.balance);
+        headerDiv.appendChild(balanceDiv);
+        
+        tokenCard.appendChild(headerDiv);
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'token-name';
+        nameDiv.textContent = token.name;
+        tokenCard.appendChild(nameDiv);
+        
+        const mintDiv = document.createElement('div');
+        mintDiv.className = 'token-mint';
+        mintDiv.title = token.mint;
+        mintDiv.textContent = `${token.mint.slice(0, 8)}...${token.mint.slice(-8)}`;
+        tokenCard.appendChild(mintDiv);
+        
+        if (isSelectedA || isSelectedB) {
+            const badgeDiv = document.createElement('div');
+            badgeDiv.className = 'selected-badge';
+            badgeDiv.textContent = isSelectedA ? 'A' : 'B';
+            tokenCard.appendChild(badgeDiv);
+        }
         
         tokensGrid.appendChild(tokenCard);
     });
@@ -666,14 +731,15 @@ function createTokenImageElement(mintAddress, symbol, className = '') {
  * Create token image HTML using PHP cache
  */
 function createTokenImageHTML(mintAddress, symbol) {
+    const safeSymbol = (symbol || 'T').toString().replace(/["'<>]/g, '');
     // Use our PHP cache endpoint for reliable image serving
-    const cacheUrl = `/token-image.php?mint=${mintAddress}`;
-    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${symbol.charAt(0)}</text></svg>`;
+    const cacheUrl = `/token-image.php?mint=${encodeURIComponent(mintAddress)}`;
+    const fallbackSvg = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23667eea'/><text x='50' y='60' text-anchor='middle' fill='white' font-size='30'>${safeSymbol.charAt(0)}</text></svg>`;
     
     // Simple fallback to generated SVG if PHP cache fails
     const onErrorHandler = `this.src='${fallbackSvg}'; this.onerror=null;`;
     
-    return `<img src="${cacheUrl}" alt="${symbol}" onerror="${onErrorHandler}">`;
+    return `<img src="${cacheUrl}" alt="${safeSymbol}" onerror="${onErrorHandler}">`;
 }
 
 /**
@@ -893,39 +959,90 @@ function updatePoolCreationDisplay() {
     // Update Token A display
     if (selectedTokenA) {
         tokenASelection.className = 'token-selection active';
-        tokenASelection.innerHTML = `
-            <div class="selected-token-image">
-                ${createTokenImageHTML(selectedTokenA.mint, selectedTokenA.symbol)}
-            </div>
-            <div class="selected-token-content">
-                <div class="selected-token-symbol">${selectedTokenA.symbol}</div>
-                <div class="selected-token-name">${selectedTokenA.name}</div>
-                <div class="selected-token-balance">Balance: ${formatHumanNumber(selectedTokenA.balance)}</div>
-            </div>
-            <button class="clear-token-btn" onclick="clearTokenA()" title="Clear Token A">×</button>
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation for token A selection
+        tokenASelection.innerHTML = ''; // Clear existing content
+        
+        const imageDiv = document.createElement('div');
+        imageDiv.className = 'selected-token-image';
+        imageDiv.innerHTML = createTokenImageHTML(selectedTokenA.mint, selectedTokenA.symbol); // Safe - controlled content
+        tokenASelection.appendChild(imageDiv);
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'selected-token-content';
+        
+        const symbolDiv = document.createElement('div');
+        symbolDiv.className = 'selected-token-symbol';
+        symbolDiv.textContent = selectedTokenA.symbol;
+        contentDiv.appendChild(symbolDiv);
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'selected-token-name';
+        nameDiv.textContent = selectedTokenA.name;
+        contentDiv.appendChild(nameDiv);
+        
+        const balanceDiv = document.createElement('div');
+        balanceDiv.className = 'selected-token-balance';
+        balanceDiv.textContent = `Balance: ${formatHumanNumber(selectedTokenA.balance)}`;
+        contentDiv.appendChild(balanceDiv);
+        
+        tokenASelection.appendChild(contentDiv);
+        
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'clear-token-btn';
+        clearBtn.onclick = clearTokenA;
+        clearBtn.title = 'Clear Token A';
+        clearBtn.textContent = '×';
+        tokenASelection.appendChild(clearBtn);
     } else {
         tokenASelection.className = 'token-selection empty';
-        tokenASelection.innerHTML = '<div class="empty-selection">Select Token A</div>';
+        // 🛡️ SECURITY FIX: Avoid innerHTML for empty selection A
+        tokenASelection.textContent = '';
+        const emptyA = document.createElement('div');
+        emptyA.className = 'empty-selection';
+        emptyA.textContent = 'Select Token A';
+        tokenASelection.appendChild(emptyA);
     }
     
     // Update Token B display
     if (selectedTokenB) {
         tokenBSelection.className = 'token-selection active';
-        tokenBSelection.innerHTML = `
-            <div class="selected-token-image">
-                ${createTokenImageHTML(selectedTokenB.mint, selectedTokenB.symbol)}
-            </div>
-            <div class="selected-token-content">
-                <div class="selected-token-symbol">${selectedTokenB.symbol}</div>
-                <div class="selected-token-name">${selectedTokenB.name}</div>
-                <div class="selected-token-balance">Balance: ${formatHumanNumber(selectedTokenB.balance)}</div>
-            </div>
-            <button class="clear-token-btn" onclick="clearTokenB()" title="Clear Token B">×</button>
-        `;
+        // 🛡️ SECURITY FIX: Use safe DOM manipulation for token B selection
+        tokenBSelection.innerHTML = '';
+        const imageDivB = document.createElement('div');
+        imageDivB.className = 'selected-token-image';
+        imageDivB.innerHTML = createTokenImageHTML(selectedTokenB.mint, selectedTokenB.symbol); // Controlled HTML
+        tokenBSelection.appendChild(imageDivB);
+
+        const contentDivB = document.createElement('div');
+        contentDivB.className = 'selected-token-content';
+        const symbolDivB = document.createElement('div');
+        symbolDivB.className = 'selected-token-symbol';
+        symbolDivB.textContent = selectedTokenB.symbol;
+        const nameDivB = document.createElement('div');
+        nameDivB.className = 'selected-token-name';
+        nameDivB.textContent = selectedTokenB.name;
+        const balanceDivB = document.createElement('div');
+        balanceDivB.className = 'selected-token-balance';
+        balanceDivB.textContent = `Balance: ${formatHumanNumber(selectedTokenB.balance)}`;
+        contentDivB.appendChild(symbolDivB);
+        contentDivB.appendChild(nameDivB);
+        contentDivB.appendChild(balanceDivB);
+        tokenBSelection.appendChild(contentDivB);
+
+        const clearBtnB = document.createElement('button');
+        clearBtnB.className = 'clear-token-btn';
+        clearBtnB.onclick = clearTokenB;
+        clearBtnB.title = 'Clear Token B';
+        clearBtnB.textContent = '×';
+        tokenBSelection.appendChild(clearBtnB);
     } else {
         tokenBSelection.className = 'token-selection empty';
-        tokenBSelection.innerHTML = '<div class="empty-selection">Select Token B</div>';
+        // 🛡️ SECURITY FIX: Avoid innerHTML for empty selection B
+        tokenBSelection.textContent = '';
+        const emptyB = document.createElement('div');
+        emptyB.className = 'empty-selection';
+        emptyB.textContent = 'Select Token B';
+        tokenBSelection.appendChild(emptyB);
     }
     
     // Enable swap button if both tokens are selected
@@ -1056,11 +1173,21 @@ function updatePoolFlags() {
     // Show active flags if any are selected
     if (activeFlags.length > 0) {
         activeFlagsDisplay.style.display = 'block';
-        activeFlagsList.innerHTML = activeFlags.map(flag => 
-            `<span style="background: ${flag.color}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
-                ${flag.icon} ${flag.name}
-            </span>`
-        ).join('');
+        // 🛡️ SECURITY: Build flags via DOM
+        activeFlagsList.textContent = '';
+        activeFlags.forEach(flag => {
+            const span = document.createElement('span');
+            span.style.background = flag.color;
+            span.style.color = 'white';
+            span.style.padding = '3px 8px';
+            span.style.borderRadius = '4px';
+            span.style.fontSize = '12px';
+            span.style.fontWeight = '600';
+            span.textContent = `${flag.icon} ${flag.name}`;
+            activeFlagsList.appendChild(span);
+            const spacer = document.createTextNode(' ');
+            activeFlagsList.appendChild(spacer);
+        });
     } else {
         activeFlagsDisplay.style.display = 'none';
     }
@@ -1137,11 +1264,21 @@ function updatePoolSummary() {
     const activeFlags = getSelectedFlags();
     if (activeFlags.length > 0) {
         summaryFlags.style.display = 'block';
-        summaryFlagsList.innerHTML = activeFlags.map(flag => 
-            `<span style="background: ${flag.color}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">
-                ${flag.icon} ${flag.name}
-            </span>`
-        ).join('');
+        // 🛡️ SECURITY: Build summary flags via DOM
+        summaryFlagsList.textContent = '';
+        activeFlags.forEach(flag => {
+            const span = document.createElement('span');
+            span.style.background = flag.color;
+            span.style.color = 'white';
+            span.style.padding = '2px 6px';
+            span.style.borderRadius = '4px';
+            span.style.fontSize = '11px';
+            span.style.fontWeight = '600';
+            span.textContent = `${flag.icon} ${flag.name}`;
+            summaryFlagsList.appendChild(span);
+            const spacer = document.createTextNode(' ');
+            summaryFlagsList.appendChild(spacer);
+        });
     } else {
         summaryFlags.style.display = 'none';
     }
@@ -2081,7 +2218,12 @@ function generateMockPoolAddress(tokenAMint, tokenBMint, ratio) {
  */
 function showStatus(type, message) {
     const container = document.getElementById('status-container');
-    container.innerHTML = `<div class="status-message ${type}">${message}</div>`;
+    // 🛡️ SECURITY FIX: Use safe DOM manipulation for status messages
+    container.innerHTML = ''; // Clear existing content
+    const statusDiv = document.createElement('div');
+    statusDiv.className = `status-message ${type}`;
+    statusDiv.textContent = message; // Use textContent to prevent XSS
+    container.appendChild(statusDiv);
 }
 
 /**
