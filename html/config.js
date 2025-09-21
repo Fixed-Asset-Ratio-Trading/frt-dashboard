@@ -95,6 +95,17 @@ async function initializeConfig() {
     if (window.TRADING_CONFIG && window.TRADING_CONFIG.rpcUrl) {
         console.log('✅ Trading configuration loaded:', window.TRADING_CONFIG.rpcUrl);
     }
+
+    // Notify listeners that configuration is ready
+    try {
+        const event = new CustomEvent('config-ready', { detail: window.CONFIG });
+        window.dispatchEvent(event);
+    } catch (e) {
+        // Fallback for environments without CustomEvent
+        const evt = document.createEvent('Event');
+        evt.initEvent('config-ready', true, true);
+        window.dispatchEvent(evt);
+    }
 }
 
 // Connection helper function with fallback support

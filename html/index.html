@@ -174,6 +174,7 @@
     <script>
         let countdown = 3;
         let redirected = false;
+        const MAINNET_PROGRAM_ID = 'quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD';
         
         // Update countdown display
         function updateCountdown() {
@@ -212,27 +213,17 @@
                 if (typeof window.CONFIG !== 'undefined' && window.CONFIG) {
                     const networkStatus = document.getElementById('network-status');
                     
-                    // Check RPC endpoint to determine network
-                    const rpcUrl = window.CONFIG.RPC_URL || '';
-                    const isMainnetRPC = rpcUrl.includes('mainnet') || 
-                                       rpcUrl.includes('api.mainnet') ||
-                                       rpcUrl.includes('mainnet-beta');
+                    // Check program ID to determine if we're on mainnet
+                    const programId = window.CONFIG.programId || window.CONFIG.PROGRAM_ID || '';
+                    const isMainnetProgram = programId === MAINNET_PROGRAM_ID;
                     
-                    if (isMainnetRPC) {
-                        networkStatus.textContent = 'Mainnet detected';
+                    if (isMainnetProgram) {
+                        networkStatus.textContent = 'Mainnet detected (Program ID)';
                         networkStatus.style.color = '#10b981';
                         return true;
-                    } else if (rpcUrl.includes('devnet')) {
-                        networkStatus.textContent = 'Devnet detected';
+                    } else {
+                        networkStatus.textContent = 'Development/Testnet detected (Program ID)';
                         networkStatus.style.color = '#f59e0b';
-                        return false;
-                    } else if (rpcUrl.includes('testnet')) {
-                        networkStatus.textContent = 'Testnet detected';
-                        networkStatus.style.color = '#f59e0b';
-                        return false;
-                    } else if (rpcUrl.includes('localhost') || rpcUrl.includes('127.0.0.1')) {
-                        networkStatus.textContent = 'Local development detected';
-                        networkStatus.style.color = '#6b7280';
                         return false;
                     }
                 }
@@ -255,21 +246,41 @@
             }
         }
         
-        // Start countdown immediately
+        // Start countdown or immediate redirect when config is ready
         document.addEventListener('DOMContentLoaded', () => {
-            // Initial network check
-            checkIfMainnet();
-            
-            // Start countdown timer
-            const timer = setInterval(() => {
-                updateCountdown();
-                if (countdown < 0) {
-                    clearInterval(timer);
+            // If config already loaded, redirect immediately
+            const tryImmediate = () => {
+                if (redirected) return;
+                if (typeof window.CONFIG !== 'undefined' && window.CONFIG) {
+                    const programId = window.CONFIG.programId || window.CONFIG.PROGRAM_ID || '';
+                    if (programId === MAINNET_PROGRAM_ID) {
+                        redirected = true;
+                        window.location.replace('/swap.html?pool=AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj');
+                        return;
+                    }
+                    redirected = true;
+                    window.location.replace('admin.html');
                 }
-            }, 1000);
-            
-            // Also update immediately
-            updateCountdown();
+            };
+
+            // Listen for config-ready and redirect immediately
+            window.addEventListener('config-ready', tryImmediate, { once: true });
+
+            // Attempt immediate redirect in case config was synchronous
+            tryImmediate();
+
+            // Fallback: start countdown if still not redirected after short delay
+            setTimeout(() => {
+                if (!redirected) {
+                    const timer = setInterval(() => {
+                        updateCountdown();
+                        if (countdown < 0) {
+                            clearInterval(timer);
+                        }
+                    }, 1000);
+                    updateCountdown();
+                }
+            }, 200);
         });
         
         // Allow manual override by clicking anywhere
