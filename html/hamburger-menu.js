@@ -71,10 +71,7 @@ class HamburgerMenu {
         }
         document.body.appendChild(menu);
 
-        // Apply initial body classes
-        if (this.isCollapsed) {
-            document.body.classList.add('menu-collapsed');
-        }
+        // No longer applying body classes to prevent content shifting
     }
 
     getMenuHTML() {
@@ -187,27 +184,18 @@ class HamburgerMenu {
     updateMenuState() {
         const menu = document.querySelector('.hamburger-menu');
         const overlay = document.querySelector('.hamburger-overlay');
-        const body = document.body;
 
         // Update menu classes
         menu.className = `hamburger-menu ${this.isCollapsed ? 'collapsed' : ''} ${this.isOpen ? 'open' : ''}`;
 
-        // Update overlay
+        // Update overlay - show on mobile when menu is open
         if (this.isOpen && window.innerWidth <= 768) {
             overlay.classList.add('active');
         } else {
             overlay.classList.remove('active');
         }
 
-        // Update body classes
-        body.classList.remove('menu-open', 'menu-collapsed');
-        if (this.isOpen && window.innerWidth > 768) {
-            if (this.isCollapsed) {
-                body.classList.add('menu-collapsed');
-            } else {
-                body.classList.add('menu-open');
-            }
-        }
+        // No longer updating body classes to prevent content shifting
     }
 
     updateCollapseButton() {
