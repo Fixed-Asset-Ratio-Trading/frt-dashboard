@@ -55,17 +55,17 @@ fi
 # Step 2: Validate secure version exists
 echo ""
 echo "Step 2: Validating secure version..."
-if [ ! -f "$HTML_DIR/token-image-secure.php" ]; then
-    print_error "token-image-secure.php not found!"
+if [ ! -f "$HTML_DIR/token-image-secure-complete.php" ]; then
+    print_error "token-image-secure-complete.php not found!"
     exit 1
 fi
-print_status "Secure version found"
+print_status "Complete secure version found"
 
 # Step 3: Test secure version
 echo ""
 echo "Step 3: Testing secure version..."
 if command -v php &> /dev/null; then
-    php -l "$HTML_DIR/token-image-secure.php" &> /dev/null
+    php -l "$HTML_DIR/token-image-secure-complete.php" &> /dev/null
     if [ $? -eq 0 ]; then
         print_status "PHP syntax check passed"
     else
@@ -123,7 +123,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     if [ -f "$HTML_DIR/token-image.php" ]; then
         mv "$HTML_DIR/token-image.php" "$HTML_DIR/token-image-old.php"
     fi
-    ln -sf "token-image-secure.php" "$HTML_DIR/token-image.php"
+    ln -sf "token-image-secure-complete.php" "$HTML_DIR/token-image.php"
     print_status "Created compatibility symlink"
 else
     print_warning "No symlink created - update references manually"
@@ -143,13 +143,13 @@ echo ""
 echo "Test these URLs after deployment:"
 echo "----------------------------------------"
 echo "1. Valid token (should show image):"
-echo "   /token-image-secure.php?mint=So11111111111111111111111111111111111111112"
+echo "   /token-image-secure-complete.php?mint=So11111111111111111111111111111111111111112"
 echo ""
 echo "2. Invalid mint (should show default '?'):"
-echo "   /token-image-secure.php?mint=invalid"
+echo "   /token-image-secure-complete.php?mint=invalid"
 echo ""
 echo "3. Check security headers with:"
-echo "   curl -I https://yourdomain.com/token-image-secure.php?mint=YOUR_MINT"
+echo "   curl -I https://yourdomain.com/token-image-secure-complete.php?mint=YOUR_MINT"
 echo ""
 
 # Summary
