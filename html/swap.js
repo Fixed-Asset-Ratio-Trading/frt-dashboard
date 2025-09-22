@@ -127,24 +127,30 @@ async function initializeApp() {
             }
         } catch (_) {}
 
-        // Initialize Solana connection (defer WS if fast-render)
-        console.log('🔌 Connecting to Solana RPC...');
+        // Initialize Solana connection (defer entirely if gate not reached)
+        const gate = (typeof window.FRT_RPC_ALLOWED_AT === 'number') ? window.FRT_RPC_ALLOWED_AT : 0;
+        if (fastRender && Date.now() < gate) {
+            console.log(`[${new Date().toISOString()}] ⏳ Deferring RPC connection until gate`);
+            connection = null; // allow cached render without creating a connection
+        } else {
+            console.log(`[${new Date().toISOString()}] 🔌 Connecting to Solana RPC...`);
         const connectionConfig = {
             commitment: CONFIG.commitment,
             disableRetryOnRateLimit: CONFIG.disableRetryOnRateLimit || true
         };
-        if (fastRender) {
-            console.log('📡 Using HTTP polling (WS deferred until idle)');
-            connectionConfig.wsEndpoint = false;
-            connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig);
-        } else {
-            if (CONFIG.wsUrl) {
-                console.log('📡 Using WebSocket endpoint:', CONFIG.wsUrl);
-                connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig, CONFIG.wsUrl);
-            } else {
-                console.log('📡 Using HTTP polling (WebSocket disabled)');
+            if (fastRender) {
+                console.log('📡 Using HTTP polling (WS deferred until idle)');
                 connectionConfig.wsEndpoint = false;
                 connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig);
+            } else {
+        if (CONFIG.wsUrl) {
+            console.log('📡 Using WebSocket endpoint:', CONFIG.wsUrl);
+            connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig, CONFIG.wsUrl);
+        } else {
+            console.log('📡 Using HTTP polling (WebSocket disabled)');
+            connectionConfig.wsEndpoint = false;
+            connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig);
+                }
             }
         }
         
@@ -192,9 +198,9 @@ async function initializeApp() {
                     }
                 }
                 // Connect wallet only after page is rendered
-                if (window.backpack && window.backpack.isConnected) {
-                    await handleWalletConnected();
-                }
+        if (window.backpack && window.backpack.isConnected) {
+            await handleWalletConnected();
+        }
             } catch (_) {}
         });
         
@@ -251,10 +257,10 @@ async function loadPoolData() {
         
         if (cacheResult && cacheResult.data) {
             // Parse the raw RPC data using existing TradingDataService parser
-            if (!window.TradingDataService.connection) {
-                await window.TradingDataService.initialize(window.TRADING_CONFIG, connection);
-            }
-            
+        if (!window.TradingDataService.connection) {
+            await window.TradingDataService.initialize(window.TRADING_CONFIG, connection);
+        }
+        
             try {
                 // Convert cached RPC response to parsed pool data
                 // The cached data is base64 encoded, so we need to decode it first
@@ -333,19 +339,21 @@ async function loadPoolData() {
 async function enrichPoolData() {
     if (!poolData) return;
     
+    // Hoist cachedExtras so it's visible throughout this function
+    let cachedExtras = null;
     try {
         // Try cached extras first for performance
-        const cachedExtras = window.PoolCacheManager?.getLocalExtras?.(poolData.address || poolAddress) || null;
+        cachedExtras = window.PoolCacheManager?.getLocalExtras?.(poolData.address || poolAddress) || null;
         if (cachedExtras?.tokenASymbol && cachedExtras?.tokenBSymbol) {
             poolData.tokenASymbol = cachedExtras.tokenASymbol;
             poolData.tokenBSymbol = cachedExtras.tokenBSymbol;
         } else {
-            const symbols = await getTokenSymbols(
-                poolData.tokenAMint || poolData.token_a_mint, 
-                poolData.tokenBMint || poolData.token_b_mint
-            );
-            poolData.tokenASymbol = symbols.tokenA;
-            poolData.tokenBSymbol = symbols.tokenB;
+        const symbols = await getTokenSymbols(
+            poolData.tokenAMint || poolData.token_a_mint, 
+            poolData.tokenBMint || poolData.token_b_mint
+        );
+        poolData.tokenASymbol = symbols.tokenA;
+        poolData.tokenBSymbol = symbols.tokenB;
             // Persist symbols for future instant renders
             window.PoolCacheManager?.setLocalExtras?.(poolData.address || poolAddress, {
                 ...(cachedExtras || {}),
@@ -363,33 +371,58 @@ async function enrichPoolData() {
     
     // 🎯 CENTRALIZED: Create TokenPairRatio instance for all calculations
     try {
-        // If decimals are not present, try cached extras, else compute async
+        // If decimals are not present, try cached extras and per-mint decimals cache, else compute after RPC gate/connection
         if (typeof poolData.ratioADecimal !== 'number' || typeof poolData.ratioBDecimal !== 'number') {
-            if (cachedExtras?.ratioADecimal != null && cachedExtras?.ratioBDecimal != null) {
+            const cachedDecA = cachedExtras?.ratioADecimal ?? window.PoolCacheManager?.getTokenDecimalFromCache?.(poolData.tokenAMint || poolData.token_a_mint);
+            const cachedDecB = cachedExtras?.ratioBDecimal ?? window.PoolCacheManager?.getTokenDecimalFromCache?.(poolData.tokenBMint || poolData.token_b_mint);
+            if (cachedDecA != null && cachedDecB != null) {
+                poolData.ratioADecimal = cachedDecA;
+                poolData.ratioBDecimal = cachedDecB;
+                poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, poolData.ratioADecimal);
+                poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, poolData.ratioBDecimal);
+                // Persist into extras if missing
+                window.PoolCacheManager?.setLocalExtras?.(poolData.address || poolAddress, {
+                    ...(cachedExtras || {}),
+                    ratioADecimal: cachedDecA,
+                    ratioBDecimal: cachedDecB
+                });
+            } else if (cachedExtras?.ratioADecimal != null && cachedExtras?.ratioBDecimal != null) {
                 poolData.ratioADecimal = cachedExtras.ratioADecimal;
                 poolData.ratioBDecimal = cachedExtras.ratioBDecimal;
                 poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, poolData.ratioADecimal);
                 poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, poolData.ratioBDecimal);
             } else if (window.TokenDisplayUtils?.getTokenDecimals) {
-                // Fetch decimal info in the background, then persist and patch UI
-                (async () => {
-                    try {
-                        const [decA, decB] = await Promise.all([
-                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenAMint || poolData.token_a_mint, connection),
-                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenBMint || poolData.token_b_mint, connection)
-                        ]);
-                        poolData.ratioADecimal = decA;
-                        poolData.ratioBDecimal = decB;
-                        poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, decA);
-                        poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, decB);
-                        window.PoolCacheManager?.setLocalExtras?.(poolData.address || poolAddress, {
-                            ...(cachedExtras || {}),
-                            ratioADecimal: decA,
-                            ratioBDecimal: decB
-                        });
-                        try { updatePoolDisplay(); } catch (_) {}
-                    } catch (_) {}
-                })();
+                // Fetch decimals only when RPC connection is available and gate passed
+                const canFetchDecimals = !!connection && (typeof window.FRT_RPC_ALLOWED_AT !== 'number' || Date.now() >= window.FRT_RPC_ALLOWED_AT);
+                if (canFetchDecimals) {
+                    (async () => {
+                        try {
+                            const [decA, decB] = await Promise.all([
+                                window.TokenDisplayUtils.getTokenDecimals(poolData.tokenAMint || poolData.token_a_mint, connection),
+                                window.TokenDisplayUtils.getTokenDecimals(poolData.tokenBMint || poolData.token_b_mint, connection)
+                            ]);
+                            poolData.ratioADecimal = decA;
+                            poolData.ratioBDecimal = decB;
+                            poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, decA);
+                            poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, decB);
+                            window.PoolCacheManager?.setLocalExtras?.(poolData.address || poolAddress, {
+                                ...(cachedExtras || {}),
+                                ratioADecimal: decA,
+                                ratioBDecimal: decB
+                            });
+                            // Also store in per-mint decimals cache for cross-pool reuse
+                            window.PoolCacheManager?.setTokenDecimalInCache?.(poolData.tokenAMint || poolData.token_a_mint, decA);
+                            window.PoolCacheManager?.setTokenDecimalInCache?.(poolData.tokenBMint || poolData.token_b_mint, decB);
+                            try { updatePoolDisplay(); } catch (_) {}
+                        } catch (e) {
+                            console.warn('⚠️ Failed to fetch token decimals for cached pool:', e?.message);
+                        }
+                    })();
+                } else {
+                    // Schedule a retry shortly after gate
+                    const delay = Math.max(0, (window.FRT_RPC_ALLOWED_AT || Date.now()) - Date.now() + 100);
+                    setTimeout(() => { try { enrichPoolData(); } catch (_) {} }, delay);
+                }
             }
         }
 
@@ -610,9 +643,9 @@ async function loadUserTokensForPool() {
         if (!tokenAccounts) {
             try {
                 tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-                    wallet.publicKey,
-                    { programId: window.splToken.TOKEN_PROGRAM_ID }
-                );
+            wallet.publicKey,
+            { programId: window.splToken.TOKEN_PROGRAM_ID }
+        );
             } catch (e) {
                 console.warn('⚠️ Primary RPC token fetch failed:', e?.message);
                 await new Promise(r => setTimeout(r, 300));
@@ -2425,7 +2458,399 @@ function updateCacheStatusDisplay(cacheResult) {
 }
 
 // Initialize when page loads
-document.addEventListener('DOMContentLoaded', initializeSwapPage);
+// Render-first bootstrap: instant localStorage UI, then background init
+let SOLANA_RPC_ALLOWED_AT = 0;
+
+async function instantRenderFromCacheOnly() {
+    const startTime = performance.now();
+    console.log(`[${new Date().toISOString()}] ⚡ Starting instant render from localStorage only`);
+    
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        poolAddress = urlParams.get('pool') || sessionStorage.getItem('selectedPoolAddress');
+        if (poolAddress) { sessionStorage.setItem('selectedPoolAddress', poolAddress); }
+
+        // Load DIRECTLY from localStorage - NO PoolCacheManager calls to avoid delays
+        let local = null;
+        let cachedExtras = null;
+        let parsedPoolData = null;
+        
+        try {
+            const cacheData = JSON.parse(localStorage.getItem('frt_pool_cache') || '{}');
+            if (cacheData.pools && cacheData.pools[poolAddress]) {
+                local = cacheData.pools[poolAddress];
+                cachedExtras = local.extras;
+                console.log(`⚡ Found cached pool data for instant render (direct localStorage access)`);
+                
+                // Skip parsing during instant render to avoid any delays
+                // Parsing will happen later during full initialization
+                console.log(`⚡ Skipping pool data parsing during instant render for maximum speed`);
+            } else {
+                console.log(`⚡ No cached pool data found for instant render - will show placeholder`);
+            }
+        } catch (e) {
+            console.warn('⚠️ Error loading from localStorage during instant render:', e);
+        }
+
+        // FULL UI RENDER FROM CACHE - just like testswap.html
+        if (local && cachedExtras) {
+            console.log(`⚡ Rendering complete UI from cache`);
+            
+            // Update token symbols and icons
+            const fromSymbol = cachedExtras.tokenASymbol || 'TOKEN A';
+            const toSymbol = cachedExtras.tokenBSymbol || 'TOKEN B';
+            
+            // From token
+            const fromTokenSymbol = document.getElementById('from-token-symbol');
+            const fromTokenIcon = document.getElementById('from-token-icon');
+            if (fromTokenSymbol) fromTokenSymbol.textContent = fromSymbol;
+            if (fromTokenIcon) fromTokenIcon.textContent = fromSymbol.charAt(0);
+            
+            // To token  
+            const toTokenSymbol = document.getElementById('to-token-symbol');
+            const toTokenIcon = document.getElementById('to-token-icon');
+            if (toTokenSymbol) toTokenSymbol.textContent = toSymbol;
+            if (toTokenIcon) toTokenIcon.textContent = toSymbol.charAt(0);
+
+            // Calculate and display exchange rate
+            if (typeof cachedExtras.ratioADecimal === 'number' && typeof cachedExtras.ratioBDecimal === 'number' &&
+                typeof cachedExtras.ratioANumerator === 'number' && typeof cachedExtras.ratioBDenominator === 'number') {
+                
+                const ratioAActual = cachedExtras.ratioANumerator / Math.pow(10, cachedExtras.ratioADecimal);
+                const ratioBActual = cachedExtras.ratioBDenominator / Math.pow(10, cachedExtras.ratioBDecimal);
+                const exchangeRate = ratioAActual / (ratioBActual || 1);
+                const rateText = `1 ${toSymbol} = ${Number.isFinite(exchangeRate) ? exchangeRate.toLocaleString('en-US') : '-'} ${fromSymbol}`;
+                
+                const previewRate = document.getElementById('preview-rate');
+                if (previewRate) previewRate.textContent = rateText;
+                
+                // Store exchange rate for calculations
+                window.instantRenderExchangeRate = exchangeRate;
+                window.instantRenderTokenA = fromSymbol;
+                window.instantRenderTokenB = toSymbol;
+                
+                console.log(`⚡ Exchange rate set: ${rateText}`);
+            }
+
+            // Show cache status
+            const cacheAge = local.generated_at ? 
+                Math.round((Date.now() - new Date(local.generated_at).getTime()) / 1000) : 'unknown';
+            
+            const cacheSource = document.getElementById('cache-source');
+            if (cacheSource) {
+                cacheSource.textContent = `🗄️ localStorage (${cacheAge}s old)`;
+            }
+
+            // Render complete pool info
+            const poolDetails = document.getElementById('pool-details');
+            if (poolDetails) {
+                let poolInfoHtml = `
+                    <div class="pool-metric">
+                        <div class="metric-label">Pool Address</div>
+                        <div class="metric-value">${poolAddress.slice(0,8)}...${poolAddress.slice(-8)}</div>
+                    </div>
+                    <div class="pool-metric">
+                        <div class="metric-label">Token Pair</div>
+                        <div class="metric-value">${fromSymbol}/${toSymbol}</div>
+                    </div>
+                    <div class="pool-metric">
+                        <div class="metric-label">Cache Age</div>
+                        <div class="metric-value">${cacheAge}s old</div>
+                    </div>
+                    <div class="pool-metric">
+                        <div class="metric-label">Render Source</div>
+                        <div class="metric-value">localStorage instant</div>
+                    </div>
+                `;
+                
+                // Add basic cached data if available (no parsing needed)
+                if (cachedExtras) {
+                    poolInfoHtml += `
+                        <div class="pool-metric">
+                            <div class="metric-label">Token A Decimals</div>
+                            <div class="metric-value">${cachedExtras.ratioADecimal || 'N/A'}</div>
+                        </div>
+                        <div class="pool-metric">
+                            <div class="metric-label">Token B Decimals</div>
+                            <div class="metric-value">${cachedExtras.ratioBDecimal || 'N/A'}</div>
+                        </div>
+                        <div class="pool-metric">
+                            <div class="metric-label">Status</div>
+                            <div class="metric-value">Instant Render Ready</div>
+                        </div>
+                    `;
+                }
+                
+                poolDetails.innerHTML = poolInfoHtml;
+                poolDetails.style.display = 'grid';
+            }
+
+            // Enable swap calculations with cached data
+            window.enableInstantSwapCalculations = true;
+        }
+
+        // Show swap interface immediately 
+        const loadingEl = document.getElementById('swap-loading');
+        const formEl = document.getElementById('swap-form');
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (formEl) formEl.style.display = 'grid';
+
+        // Enable inputs for instant calculations, but keep swap button disabled
+        const fromAmt = document.getElementById('from-amount');
+        const toAmt = document.getElementById('to-amount');
+        const swapBtn = document.getElementById('swap-btn');
+        
+        if (fromAmt) {
+            fromAmt.disabled = false;
+            fromAmt.placeholder = '0.000000';
+        }
+        if (toAmt) {
+            toAmt.disabled = false; 
+            toAmt.placeholder = '0.000000';
+        }
+        if (swapBtn) { 
+            swapBtn.disabled = true; 
+            swapBtn.textContent = '🔄 Connect Wallet to Swap'; 
+        }
+
+        const renderTime = performance.now() - startTime;
+        console.log(`[${new Date().toISOString()}] ⚡ Instant render completed in ${renderTime.toFixed(2)}ms`);
+        
+        // Attach instant calculation handlers
+        attachInstantCalculationHandlers();
+        
+        // Show success message
+        const statusEl = document.getElementById('status-message');
+        if (statusEl) {
+            statusEl.innerHTML = `<div class="status-success">⚡ Page rendered instantly in ${renderTime.toFixed(0)}ms from localStorage cache</div>`;
+            statusEl.style.display = 'block';
+        }
+    } catch (error) {
+        console.warn('⚠️ Error in instant render:', error);
+    }
+}
+
+// Instant swap calculations using cached data (no heavy libs needed)
+function calculateSwapOutputInstant() {
+    if (!window.enableInstantSwapCalculations || !window.instantRenderExchangeRate) return;
+    
+    const fromAmount = parseFloat(document.getElementById('from-amount').value) || 0;
+    if (fromAmount <= 0) {
+        document.getElementById('to-amount').value = '';
+        updatePreviewInstant();
+        return;
+    }
+    
+    const toAmount = fromAmount / window.instantRenderExchangeRate;
+    document.getElementById('to-amount').value = toAmount.toFixed(8);
+    updatePreviewInstant();
+}
+
+function calculateSwapInputFromOutputInstant() {
+    if (!window.enableInstantSwapCalculations || !window.instantRenderExchangeRate) return;
+    
+    const toAmount = parseFloat(document.getElementById('to-amount').value) || 0;
+    if (toAmount <= 0) {
+        document.getElementById('from-amount').value = '';
+        updatePreviewInstant();
+        return;
+    }
+    
+    const fromAmount = toAmount * window.instantRenderExchangeRate;
+    document.getElementById('from-amount').value = fromAmount.toFixed(8);
+    updatePreviewInstant();
+}
+
+function updatePreviewInstant() {
+    const fromAmount = document.getElementById('from-amount').value;
+    const toAmount = document.getElementById('to-amount').value;
+    
+    const previewFromAmount = document.getElementById('preview-from-amount');
+    const previewToAmount = document.getElementById('preview-to-amount');
+    
+    if (previewFromAmount) previewFromAmount.textContent = fromAmount || '-';
+    if (previewToAmount) previewToAmount.textContent = toAmount || '-';
+}
+
+// Attach instant calculation handlers
+function attachInstantCalculationHandlers() {
+    const fromAmountInput = document.getElementById('from-amount');
+    const toAmountInput = document.getElementById('to-amount');
+    
+    if (fromAmountInput) {
+        fromAmountInput.addEventListener('input', calculateSwapOutputInstant);
+    }
+    if (toAmountInput) {
+        toAmountInput.addEventListener('input', calculateSwapInputFromOutputInstant);
+    }
+    
+    console.log('⚡ Instant calculation handlers attached');
+}
+
+function loadScriptDeferred(src) {
+    return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = (e) => reject(e);
+        document.body.appendChild(s);
+    });
+}
+
+async function deferredLoadHeavyLibraries() {
+    // Load config first (lightweight) if not already present
+    if (!window.TRADING_CONFIG && !document.querySelector('script[src*="config.js"]')) {
+        try { await loadScriptDeferred('config.js'); } catch (_) {}
+    }
+    const loads = [];
+    if (!window.solanaWeb3 && !document.querySelector('script[src*="solana-web3.min.js"]')) {
+        loads.push(loadScriptDeferred('libs/solana-web3.min.js'));
+    }
+    if (!window.SPL_TOKEN_LOADED && !document.querySelector('script[src*="spl-token.min.js"]')) {
+        loads.push(loadScriptDeferred('libs/spl-token.min.js'));
+    }
+    if (!window.TradingDataService && !document.querySelector('script[src*="data-service.js"]')) {
+        loads.push(loadScriptDeferred('data-service.js'));
+    }
+    if (!window.ERROR_CODES && !document.querySelector('script[src*="error-codes.js"]')) {
+        loads.push(loadScriptDeferred('error-codes.js'));
+    }
+    if (!window.TokenPairRatio && !document.querySelector('script[src*="utils.js"]')) {
+        loads.push(loadScriptDeferred('utils.js'));
+    }
+    await Promise.allSettled(loads);
+}
+
+async function fetchFromServerCacheOnly() {
+    try {
+        if (!poolAddress) return null;
+        if (!window.PoolCacheManager?.fetchFromServerCache) return null;
+        // Bound server fetch to 500ms to avoid blocking perception
+        const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 500));
+        const result = await window.PoolCacheManager.fetchFromServerCache(poolAddress);
+        const bounded = await Promise.race([Promise.resolve(result), timeout]);
+        if (bounded?.data) {
+            // Persist into local cache for next instant render
+            await window.PoolCacheManager.updateLocalStorageCache(poolAddress, bounded);
+            const cacheSource = document.getElementById('cache-source');
+            if (cacheSource) cacheSource.textContent = '🗄️ server-cache (saved to localStorage)';
+        }
+        return bounded;
+    } catch (e) {
+        console.warn('⚠️ Server cache fetch failed:', e?.message);
+        return null;
+    }
+}
+
+async function triggerSolanaRefresh() {
+    try {
+        if (!poolAddress) return;
+        if (!window.TRADING_CONFIG) { try { await loadScriptDeferred('config.js'); } catch (_) {} }
+        if (!window.PoolCacheManager?.connection) {
+            // Safe connection creation; will be replaced by initializeSwapPage flow
+            try {
+                const connection = (window.solanaWeb3) ? new window.solanaWeb3.Connection(window.TRADING_CONFIG?.rpcUrl || '', { commitment: (window.TRADING_CONFIG?.commitment || 'confirmed'), disableRetryOnRateLimit: true }) : null;
+                await window.PoolCacheManager.initialize(window.TRADING_CONFIG || {}, connection);
+            } catch (_) {}
+        }
+        const rpcResult = await window.PoolCacheManager.fetchFromSolanaRPC(poolAddress);
+        if (rpcResult?.data) {
+            await window.PoolCacheManager.updateLocalStorageCache(poolAddress, rpcResult);
+            const cacheSource = document.getElementById('cache-source');
+            if (cacheSource) cacheSource.textContent = '📡 solana (refreshed)';
+        }
+        // If app not fully initialized, do full init now (but don't block UI)
+        setTimeout(async () => {
+            if (typeof initializeSwapPage === 'function') {
+                try { await initializeSwapPage(); } catch (_) {}
+            }
+        }, 0);
+    } catch (e) {
+        console.warn('⚠️ Solana refresh failed:', e?.message);
+    }
+}
+
+function bootstrapRenderFirst() {
+    console.log(`[${new Date().toISOString()}] 🚀 Bootstrap: Starting render-first approach`);
+    
+    // Step 1: IMMEDIATE instant cache render (no delays, no heavy libs)
+    instantRenderFromCacheOnly();
+
+    // Step 2: Delay ALL heavy operations to ensure instant render completes first
+    const runAfterIdle = (fn) => {
+        if ('requestIdleCallback' in window) { 
+            window.requestIdleCallback(() => fn(), { timeout: 2000 }); 
+        } else { 
+            setTimeout(fn, 100); // Increased delay to ensure render completes
+        }
+    };
+    
+    // Wait for multiple frames to ensure DOM is fully rendered
+    const afterMultipleFrames = (fn) => {
+        requestAnimationFrame(() => 
+            requestAnimationFrame(() => 
+                requestAnimationFrame(() => fn())
+            )
+        );
+    };
+
+    // Delay heavy operations by 500ms to ensure instant render shows first
+    setTimeout(() => {
+        afterMultipleFrames(async () => {
+            console.log(`[${new Date().toISOString()}] 📚 Starting background heavy library loading...`);
+            
+            // Set RPC gate to prevent any RPC calls during render
+            if (typeof window.FRT_RPC_ALLOWED_AT !== 'number') {
+                window.FRT_RPC_ALLOWED_AT = Date.now() + 10000; // 10 second delay
+            }
+            
+            const t0 = performance.now();
+            await deferredLoadHeavyLibraries();
+            console.log(`[${new Date().toISOString()}] ⬇️ Heavy libraries loaded in ${Math.round(performance.now() - t0)}ms`);
+
+            // Further delay full app init to avoid competing with user interaction
+            runAfterIdle(async () => {
+                try {
+                    console.log(`[${new Date().toISOString()}] 🚀 Starting full initializeSwapPage (background)`);
+                    await initializeSwapPage();
+                } catch (e) {
+                    console.warn('⚠️ initializeSwapPage error (will continue):', e?.message);
+                }
+            });
+
+            // Allow Solana RPC after 10 seconds (much longer delay)
+            SOLANA_RPC_ALLOWED_AT = Date.now() + 10000;
+            window.FRT_RPC_ALLOWED_AT = SOLANA_RPC_ALLOWED_AT;
+
+            // Background server cache check (non-blocking)
+            const urlParams = new URLSearchParams(window.location.search);
+            const backgroundPoolAddress = urlParams.get('pool') || sessionStorage.getItem('selectedPoolAddress');
+            if (backgroundPoolAddress) {
+                try {
+                    const local = await window.PoolCacheManager?.fetchFromLocalStorage?.(backgroundPoolAddress);
+                    if (!local && typeof fetchFromServerCacheOnly === 'function') { 
+                        await fetchFromServerCacheOnly(); 
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Background server cache check failed:', e?.message);
+                }
+            }
+
+            // Schedule Solana fetch after delay (non-blocking)
+            setTimeout(() => { 
+                try { triggerSolanaRefresh(); } catch (_) {}
+            }, Math.max(0, SOLANA_RPC_ALLOWED_AT - Date.now()));
+
+            // Schedule periodic 5-minute refreshes (non-blocking)
+            setInterval(() => { 
+                try { triggerSolanaRefresh(); } catch (_) {}
+            }, 5 * 60 * 1000);
+        });
+    }, 500); // 500ms delay before starting any heavy operations
+}
+
+document.addEventListener('DOMContentLoaded', bootstrapRenderFirst);
 
 // Cleanup when page unloads
 window.addEventListener('beforeunload', () => {

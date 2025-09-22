@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Swap - LocalStorage Only</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="shared-styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        
+        .header-title {
+            color: #333;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .page-title {
+            color: #333;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .nav-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-btn.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .nav-btn.secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .nav-btn.primary {
+            background: #667eea;
+            color: white;
+            border: 2px solid #667eea;
+        }
+        
+        .nav-btn.primary:hover {
+            background: #5a6fd8;
+            border-color: #5a6fd8;
+        }
+        
+        .swap-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .swap-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .swap-title {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .swap-subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .swap-interface {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .token-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+        }
+        
+        .token-section.from {
+            border-color: #667eea;
+        }
+        
+        .token-section.to {
+            border-color: #28a745;
+        }
+        
+        .token-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .token-label {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+        }
+        
+        .token-display {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .token-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            color: white;
+        }
+        
+        .token-icon.from {
+            background: #667eea;
+        }
+        
+        .token-icon.to {
+            background: #28a745;
+        }
+        
+        .token-details {
+            flex-grow: 1;
+        }
+        
+        .token-name {
+            font-weight: 600;
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .token-balance-enhanced {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .amount-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: right;
+            background: white;
+            transition: border-color 0.3s ease;
+        }
+        
+        .amount-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .swap-btn {
+            width: 100%;
+            padding: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.3em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+        
+        .swap-btn:hover:not(:disabled) {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .swap-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .transaction-preview {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .preview-header {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .preview-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .preview-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .preview-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .preview-value {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .preview-info {
+            color: #10b981;
+            font-size: 12px;
+            margin-top: 8px;
+            text-align: center;
+        }
+        
+        .pool-info-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .pool-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .pool-info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .pool-info-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .pool-info-value {
+            color: #666;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .test-info {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <img src="images/Fixedratio_64x64.png" alt="Fixed Ratio Trading" class="logo">
+                <div class="header-title">Fixed Ratio Trading</div>
+            </div>
+            <div class="header-center">
+                <div class="page-title">🔄 Test Swap (LocalStorage Only)</div>
+                <div class="header .subtitle">Testing render performance with cached data only</div>
+            </div>
+            <div class="nav-buttons">
+                <button class="nav-btn secondary" onclick="goBackToDashboard()">
+                    🏠 Back to Dashboard
+                </button>
+                <button class="nav-btn primary" onclick="refreshFromCache()">
+                    🔄 Refresh from Cache
+                </button>
+            </div>
+        </div>
+
+        <!-- Test Info -->
+        <div class="test-info">
+            <strong>🧪 TEST MODE:</strong> This page only uses localStorage data - no blockchain calls, no wallet connection, no server requests.
+            <br>Testing if rendering performance is the bottleneck.
+        </div>
+
+        <!-- Status Messages -->
+        <div id="status-messages"></div>
+
+        <!-- Swap Interface -->
+        <div class="swap-container">
+            <div class="swap-header">
+                <div class="swap-title">🔄 Token Swap</div>
+                <div class="swap-subtitle">Exchange tokens at fixed ratios</div>
+            </div>
+            
+            <div class="swap-interface">
+                <!-- From Token Section -->
+                <div class="token-section from">
+                    <div class="token-header">
+                        <div class="token-label">From Token</div>
+                    </div>
+                    <div class="token-display">
+                        <div class="token-icon from" id="from-token-icon">A</div>
+                        <div class="token-details">
+                            <div class="token-name" id="from-token-symbol">TOKEN A</div>
+                            <div class="token-balance-enhanced">Balance: <span id="from-token-balance">0.000000</span></div>
+                        </div>
+                    </div>
+                    <input type="number" 
+                           class="amount-input" 
+                           id="from-amount" 
+                           placeholder="0.000000" 
+                           min="0" 
+                           step="0.000001"
+                           oninput="calculateSwapOutput()">
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px; text-align: right;">
+                        Input amount
+                    </div>
+                </div>
+                
+                <!-- Swap Arrow -->
+                <div style="text-align: center; margin: 10px 0;">
+                    <div style="font-size: 2em;">⬇️</div>
+                </div>
+                
+                <!-- To Token Section -->
+                <div class="token-section to">
+                    <div class="token-header">
+                        <div class="token-label">To Token</div>
+                    </div>
+                    <div class="token-display">
+                        <div class="token-icon to" id="to-token-icon">B</div>
+                        <div class="token-details">
+                            <div class="token-name" id="to-token-symbol">TOKEN B</div>
+                            <div class="token-balance-enhanced">Balance: <span id="to-token-balance">0.000000</span></div>
+                        </div>
+                    </div>
+                    <input type="number" 
+                           class="amount-input" 
+                           id="to-amount" 
+                           placeholder="0.000000" 
+                           min="0" 
+                           step="0.000001"
+                           oninput="calculateSwapInputFromOutput()">
+                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px; text-align: right;">
+                        Output amount
+                    </div>
+                </div>
+                
+                <!-- Execute Swap Button -->
+                <button class="swap-btn" id="swap-btn" onclick="executeSwap()" disabled>
+                    🔄 Execute Swap (Disabled in Test Mode)
+                </button>
+                
+                <!-- Transaction Preview -->
+                <div class="transaction-preview" id="transaction-preview">
+                    <div class="preview-header">
+                        📋 Transaction Preview
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">You Pay:</span>
+                        <span class="preview-value" id="preview-from-amount">-</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">You Receive:</span>
+                        <span class="preview-value" id="preview-to-amount">-</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Exchange Rate:</span>
+                        <span class="preview-value" id="preview-rate">-</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Total estimated Fee:</span>
+                        <span class="preview-value" id="preview-fee">~0.000005 SOL</span>
+                    </div>
+                    <div class="preview-info" style="color: #10b981; font-size: 12px; margin-top: 8px; text-align: center;">
+                        🎯 Fixed ratio - you receive exactly the calculated amount
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pool Info Section -->
+        <div class="pool-info-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="color: #333; margin: 0;">🏊‍♂️ Pool Information (From Cache)</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div id="cache-status" style="font-size: 12px; color: #666;">
+                        <span id="cache-source">🗄️ Loading from localStorage...</span>
+                    </div>
+                </div>
+            </div>
+            <div id="pool-loading" class="loading">
+                <h3>🔍 Loading pool information from cache...</h3>
+            </div>
+            <div id="pool-details" class="pool-details" style="display: none;">
+                <!-- Pool details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Include minimal scripts for parsing -->
+    <script src="libs/solana-web3.min.js"></script>
+    <script src="data-service.js"></script>
+    
+    <script>
+        // Test mode - localStorage only
+        let poolData = null;
+        let parsedPoolData = null;
+        let startTime = performance.now();
+        
+        console.log('🧪 TEST MODE: Starting localStorage-only render test');
+        console.log('⏱️ Start time:', startTime);
+        
+        // Simple status display
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('status-messages');
+            const statusClass = `status-${type}`;
+            statusDiv.innerHTML = `<div class="${statusClass}">${message}</div>`;
+        }
+        
+        // Load data from localStorage only
+        function loadFromLocalStorage() {
+            console.log('🗄️ Loading data from localStorage only...');
+            
+            try {
+                // Get the pool address from URL or default
+                const urlParams = new URLSearchParams(window.location.search);
+                const poolAddress = urlParams.get('pool') || 'AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj';
+                
+                // Try to get cached pool data using the correct cache structure
+                const cacheData = localStorage.getItem('frt_pool_cache');
+                if (cacheData) {
+                    const parsed = JSON.parse(cacheData);
+                    console.log('✅ Found cache structure:', parsed);
+                    
+                    // Check if our specific pool is cached
+                    if (parsed.pools && parsed.pools[poolAddress]) {
+                        poolData = parsed.pools[poolAddress];
+                        console.log('✅ Found cached pool data for:', poolAddress, poolData);
+                        return true;
+                    } else {
+                        console.log('❌ Pool not found in cache. Available pools:', Object.keys(parsed.pools || {}));
+                        return false;
+                    }
+                } else {
+                    console.log('❌ No frt_pool_cache found in localStorage');
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Error loading from localStorage:', error);
+                return false;
+            }
+        }
+        
+        // Render pool information from cached data
+        function renderPoolInfo() {
+            if (!poolData) {
+                document.getElementById('pool-loading').innerHTML = '<h3>❌ No cached data available</h3>';
+                return;
+            }
+            
+            console.log('🎨 Rendering pool info from cache...');
+            
+            try {
+                // Get the pool address from URL or default
+                const urlParams = new URLSearchParams(window.location.search);
+                const poolAddress = urlParams.get('pool') || 'AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj';
+                
+                // Calculate cache age
+                const cacheAge = poolData.generated_at ? 
+                    Math.round((Date.now() - new Date(poolData.generated_at).getTime()) / 1000) : 'unknown';
+                
+                // Try to parse the raw pool data if TradingDataService is available
+                if (window.TradingDataService && poolData.data?.value?.data?.[0]) {
+                    try {
+                        const base64Data = poolData.data.value.data[0];
+                        const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+                        parsedPoolData = window.TradingDataService.parsePoolState(binaryData, poolAddress);
+                        console.log('✅ Successfully parsed pool data:', parsedPoolData);
+                    } catch (parseError) {
+                        console.warn('⚠️ Could not parse pool data:', parseError);
+                        parsedPoolData = null;
+                    }
+                }
+                
+                // Build pool info display
+                const poolDetails = document.getElementById('pool-details');
+                let poolInfoHtml = `
+                    <div class="pool-info-item">
+                        <div class="pool-info-label">Pool Address</div>
+                        <div class="pool-info-value">${poolAddress}</div>
+                    </div>
+                    <div class="pool-info-item">
+                        <div class="pool-info-label">Cache Source</div>
+                        <div class="pool-info-value">localStorage (${poolData.source || 'unknown'})</div>
+                    </div>
+                    <div class="pool-info-item">
+                        <div class="pool-info-label">Cache Age</div>
+                        <div class="pool-info-value">${cacheAge}s old</div>
+                    </div>
+                    <div class="pool-info-item">
+                        <div class="pool-info-label">Data Size</div>
+                        <div class="pool-info-value">${JSON.stringify(poolData).length} bytes</div>
+                    </div>
+                    <div class="pool-info-item">
+                        <div class="pool-info-label">Generated At</div>
+                        <div class="pool-info-value">${poolData.generated_at ? new Date(poolData.generated_at).toLocaleString() : 'unknown'}</div>
+                    </div>
+                    <div class="pool-info-item">
+                        <div class="pool-info-label">Last Accessed</div>
+                        <div class="pool-info-value">${poolData.last_accessed ? new Date(poolData.last_accessed).toLocaleString() : 'unknown'}</div>
+                    </div>
+                    <div class="pool-info-item">
+                        <div class="pool-info-label">Schema Version</div>
+                        <div class="pool-info-value">${poolData.schema_version || 'unknown'}</div>
+                    </div>
+                `;
+                
+                // Show parsed pool data if available
+                if (parsedPoolData) {
+                    poolInfoHtml += `
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Token A Mint</div>
+                            <div class="pool-info-value">${parsedPoolData.tokenAMint}</div>
+                        </div>
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Token B Mint</div>
+                            <div class="pool-info-value">${parsedPoolData.tokenBMint}</div>
+                        </div>
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Ratio A Numerator</div>
+                            <div class="pool-info-value">${parsedPoolData.ratioANumerator?.toLocaleString()}</div>
+                        </div>
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Ratio B Denominator</div>
+                            <div class="pool-info-value">${parsedPoolData.ratioBDenominator?.toLocaleString()}</div>
+                        </div>
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Token A Liquidity</div>
+                            <div class="pool-info-value">${parsedPoolData.tokenALiquidity?.toLocaleString()}</div>
+                        </div>
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Token B Liquidity</div>
+                            <div class="pool-info-value">${parsedPoolData.tokenBLiquidity?.toLocaleString()}</div>
+                        </div>
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Pool Flags</div>
+                            <div class="pool-info-value">${parsedPoolData.flags}</div>
+                        </div>
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Swap Contract Fee</div>
+                            <div class="pool-info-value">${parsedPoolData.swapContractFee?.toLocaleString()} lamports</div>
+                        </div>
+                    `;
+                }
+                
+                // Show token symbols if available in extras
+                if (poolData.extras) {
+                    poolInfoHtml += `
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Token A Symbol</div>
+                            <div class="pool-info-value">${poolData.extras.tokenASymbol || 'N/A'}</div>
+                        </div>
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Token B Symbol</div>
+                            <div class="pool-info-value">${poolData.extras.tokenBSymbol || 'N/A'}</div>
+                        </div>
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Token A Decimals</div>
+                            <div class="pool-info-value">${poolData.extras.ratioADecimal || 'N/A'}</div>
+                        </div>
+                        <div class="pool-info-item">
+                            <div class="pool-info-label">Token B Decimals</div>
+                            <div class="pool-info-value">${poolData.extras.ratioBDecimal || 'N/A'}</div>
+                        </div>
+                    `;
+                }
+                
+                poolDetails.innerHTML = poolInfoHtml;
+                document.getElementById('pool-loading').style.display = 'none';
+                poolDetails.style.display = 'grid';
+                
+                // Update cache status
+                document.getElementById('cache-source').textContent = `🗄️ localStorage (${poolData.source || 'cached'}, ${cacheAge}s old)`;
+                
+                // Update token symbols in UI if parsed data is available
+                if (parsedPoolData && poolData.extras) {
+                    document.getElementById('from-token-symbol').textContent = poolData.extras.tokenASymbol || 'TOKEN A';
+                    document.getElementById('to-token-symbol').textContent = poolData.extras.tokenBSymbol || 'TOKEN B';
+                    document.getElementById('from-token-icon').textContent = (poolData.extras.tokenASymbol || 'A').charAt(0);
+                    document.getElementById('to-token-icon').textContent = (poolData.extras.tokenBSymbol || 'B').charAt(0);
+                }
+                
+                console.log('✅ Pool info rendered from cache');
+                
+            } catch (error) {
+                console.error('❌ Error rendering pool info:', error);
+                document.getElementById('pool-loading').innerHTML = `<h3>❌ Error rendering cached data: ${error.message}</h3>`;
+            }
+        }
+        
+        // Simple swap calculations (mock)
+        function calculateSwapOutput() {
+            const fromAmount = parseFloat(document.getElementById('from-amount').value) || 0;
+            const toAmount = fromAmount * 100000000; // Mock 1:100M ratio
+            document.getElementById('to-amount').value = toAmount.toFixed(6);
+            updatePreview();
+        }
+        
+        function calculateSwapInputFromOutput() {
+            const toAmount = parseFloat(document.getElementById('to-amount').value) || 0;
+            const fromAmount = toAmount / 100000000; // Mock 1:100M ratio
+            document.getElementById('from-amount').value = fromAmount.toFixed(6);
+            updatePreview();
+        }
+        
+        function updatePreview() {
+            const fromAmount = document.getElementById('from-amount').value;
+            const toAmount = document.getElementById('to-amount').value;
+            
+            document.getElementById('preview-from-amount').textContent = fromAmount || '-';
+            document.getElementById('preview-to-amount').textContent = toAmount || '-';
+            document.getElementById('preview-rate').textContent = '1:100,000,000 (Mock)';
+        }
+        
+        function executeSwap() {
+            alert('Swap disabled in test mode - this is a render performance test only');
+        }
+        
+        function refreshFromCache() {
+            console.log('🔄 Refreshing from cache...');
+            if (loadFromLocalStorage()) {
+                renderPoolInfo();
+                showStatus('success', '✅ Data refreshed from localStorage cache');
+            } else {
+                showStatus('error', '❌ No cached data available in localStorage');
+            }
+        }
+        
+        function goBackToDashboard() {
+            window.location.href = 'dashboard.html';
+        }
+        
+        // Initialize the test page
+        function initializeTest() {
+            console.log('🧪 Initializing test swap page...');
+            
+            const endTime = performance.now();
+            const renderTime = endTime - startTime;
+            
+            console.log(`⏱️ Initial render time: ${renderTime.toFixed(2)}ms`);
+            
+            // Try to load from cache
+            if (loadFromLocalStorage()) {
+                renderPoolInfo();
+                showStatus('success', `✅ Page rendered in ${renderTime.toFixed(2)}ms using localStorage cache`);
+            } else {
+                showStatus('error', `❌ No cached data found. Page rendered in ${renderTime.toFixed(2)}ms but no data to display.`);
+            }
+            
+            // Update cache status
+            document.getElementById('cache-source').textContent = `🗄️ localStorage test (${renderTime.toFixed(0)}ms render)`;
+        }
+        
+        // Start the test when page loads
+        document.addEventListener('DOMContentLoaded', initializeTest);
+    </script>
+</body>
+</html>

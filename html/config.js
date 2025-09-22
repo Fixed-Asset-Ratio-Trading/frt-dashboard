@@ -43,7 +43,7 @@ async function loadConfig() {
             upgradeAuthorityRequired: true
         };
         
-        console.log('✅ Configuration loaded:', sharedConfig.solana.rpcUrl);
+        console.log(`[${new Date().toISOString()}] ✅ Configuration loaded:`, sharedConfig.solana.rpcUrl);
         return true;
     } catch (error) {
         console.error('❌ Failed to load configuration:', error);
@@ -80,7 +80,7 @@ async function loadConfig() {
             upgradeAuthorityRequired: true
         };
         
-        console.warn('⚠️ Using fallback configuration');
+        console.warn(`[${new Date().toISOString()}] ⚠️ Using fallback configuration`);
         return false;
     }
 }
@@ -93,7 +93,7 @@ async function initializeConfig() {
     window.CONFIG = window.TRADING_CONFIG;
     
     if (window.TRADING_CONFIG && window.TRADING_CONFIG.rpcUrl) {
-        console.log('✅ Trading configuration loaded:', window.TRADING_CONFIG.rpcUrl);
+        console.log(`[${new Date().toISOString()}] ✅ Trading configuration loaded:`, window.TRADING_CONFIG.rpcUrl);
     }
 
     // Notify listeners that configuration is ready
@@ -126,12 +126,12 @@ async function createRobustConnection() {
         ...(config.fallbackRpcUrls || [])
     ].filter(Boolean);
     
-    console.log(`🔄 Attempting to connect to ${rpcEndpoints.length} RPC endpoints...`);
+    console.log(`[${new Date().toISOString()}] 🔄 Attempting to connect to ${rpcEndpoints.length} RPC endpoints...`);
     
     for (let i = 0; i < rpcEndpoints.length; i++) {
         const rpcUrl = rpcEndpoints[i];
         try {
-            console.log(`🔌 Trying RPC endpoint ${i + 1}/${rpcEndpoints.length}: ${rpcUrl}`);
+            console.log(`[${new Date().toISOString()}] 🔌 Trying RPC endpoint ${i + 1}/${rpcEndpoints.length}: ${rpcUrl}`);
             
             // Create connection without WebSocket first to test basic connectivity
             const testConnection = new solanaWeb3.Connection(rpcUrl, {
@@ -141,19 +141,19 @@ async function createRobustConnection() {
             
             // Test the connection with a simple call
             const version = await testConnection.getVersion();
-            console.log(`✅ RPC endpoint ${i + 1} working, Solana version:`, version['solana-core']);
+            console.log(`[${new Date().toISOString()}] ✅ RPC endpoint ${i + 1} working, Solana version:`, version['solana-core']);
             
             // If primary endpoint and WebSocket is configured, try with WebSocket
             if (i === 0 && config.wsUrl) {
                 try {
-                    console.log('📡 Attempting WebSocket connection:', config.wsUrl);
+                    console.log(`[${new Date().toISOString()}] 📡 Attempting WebSocket connection:`, config.wsUrl);
                     const wsConnection = new solanaWeb3.Connection(rpcUrl, connectionConfig, config.wsUrl);
                     // Test WebSocket connection
                     await wsConnection.getVersion();
-                    console.log('✅ WebSocket connection successful');
+                    console.log(`[${new Date().toISOString()}] ✅ WebSocket connection successful`);
                     return wsConnection;
                 } catch (wsError) {
-                    console.warn('⚠️ WebSocket failed, falling back to HTTP polling:', wsError.message);
+                    console.warn(`[${new Date().toISOString()}] ⚠️ WebSocket failed, falling back to HTTP polling:`, wsError.message);
                     return testConnection;
                 }
             }
@@ -162,7 +162,7 @@ async function createRobustConnection() {
             return testConnection;
             
         } catch (error) {
-            console.warn(`❌ RPC endpoint ${i + 1} failed:`, error.message);
+            console.warn(`[${new Date().toISOString()}] ❌ RPC endpoint ${i + 1} failed:`, error.message);
             if (i === rpcEndpoints.length - 1) {
                 throw new Error(`All RPC endpoints failed. Last error: ${error.message}`);
             }

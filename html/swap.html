@@ -674,15 +674,13 @@
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="libs/solana-web3.min.js"></script>
-    <script src="libs/spl-token.min.js"></script>
-    <script src="config.js"></script>
-    <script src="data-service.js"></script>
+    <!-- Scripts (render-first): load only essentials here; heavy libs load in swap.js -->
+    <script>
+        // Defer any Solana RPC for at least 5 seconds from page load
+        window.FRT_RPC_ALLOWED_AT = Date.now() + 5000;
+    </script>
     <script src="pool-cache-manager.js"></script>
-    <script src="error-codes.js"></script>
-    <script src="utils.js?v=1753358100"></script>
-    <script src="swap.js?v=1753358300"></script>
+    <script src="swap.js"></script>
     <script src="hamburger-menu.js"></script>
     <script>
         // Handle navigation back to dashboard

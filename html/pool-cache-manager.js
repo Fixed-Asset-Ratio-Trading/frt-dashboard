@@ -17,6 +17,7 @@ class PoolCacheManager {
     constructor() {
         this.SCHEMA_VERSION = '1.0.0';
         this.LOCALSTORAGE_KEY = 'frt_pool_cache';
+        this.TOKEN_DECIMALS_KEY = 'frt_token_decimals';
         this.MAX_POOLS = 5;
         this.CACHE_TIMEOUT = 10000; // 10 seconds timeout per source
         this.connection = null;
@@ -29,14 +30,14 @@ class PoolCacheManager {
     async initialize(config, connection) {
         this.config = config;
         this.connection = connection;
-        console.log('🗄️ PoolCacheManager initialized');
+        console.log(`[${new Date().toISOString()}] 🗄️ PoolCacheManager initialized`);
     }
 
     /**
      * Get pool data prioritizing instant render from localStorage if available
      */
     async getPoolData(poolAddress) {
-        console.log(`🔄 Loading pool data for: ${poolAddress}`);
+        console.log(`[${new Date().toISOString()}] 🔄 Loading pool data for: ${poolAddress}`);
         try {
             // 1) Try localStorage first for instant render
             const local = await this.fetchFromLocalStorage(poolAddress);
@@ -54,7 +55,7 @@ class PoolCacheManager {
                         if (updated) await this.updateLocalStorageCache(poolAddress, updated);
                     } catch (_) {}
                 })();
-                console.log('⚡ Using localStorage for instant render');
+                console.log(`[${new Date().toISOString()}] ⚡ Using localStorage for instant render`);
                 return local;
             }
 
@@ -67,7 +68,7 @@ class PoolCacheManager {
             const selected = await this.selectFreshestData(results, poolAddress);
             if (!selected) throw new Error('No valid pool data received from any source');
             await this.updateLocalStorageCache(poolAddress, selected);
-            console.log(`✅ Pool data loaded from: ${selected.source}`);
+            console.log(`[${new Date().toISOString()}] ✅ Pool data loaded from: ${selected.source}`);
             return selected;
         } catch (error) {
             console.error('❌ Failed to get pool data:', error);
@@ -89,7 +90,7 @@ class PoolCacheManager {
                 const data = await response.json();
                 const cacheStatus = response.headers.get('X-Cache-Status') || 'unknown';
                 
-                console.log(`📋 Server cache ${cacheStatus} (${Math.round(responseTime)}ms)`);
+                console.log(`[${new Date().toISOString()}] 📋 Server cache ${cacheStatus} (${Math.round(responseTime)}ms)`);
                 
                 return {
                     data: data.rpc_response,
@@ -113,6 +114,18 @@ class PoolCacheManager {
      * Fetch directly from Solana RPC
      */
     async fetchFromSolanaRPC(poolAddress) {
+        // Global RPC defer gate (set by pages like swap.html)
+        try {
+            if (typeof window !== 'undefined' && typeof window.FRT_RPC_ALLOWED_AT === 'number') {
+                const now = Date.now();
+                if (now < window.FRT_RPC_ALLOWED_AT) {
+                    const ms = window.FRT_RPC_ALLOWED_AT - now;
+                    console.log(`⏳ RPC deferred for ${Math.round(ms)}ms (policy gate)`);
+                    return null;
+                }
+            }
+        } catch (_) {}
+
         if (!this.connection) {
             console.warn('⚠️ No RPC connection available');
             return null;
@@ -127,7 +140,7 @@ class PoolCacheManager {
             );
             
             const responseTime = performance.now() - startTime;
-            console.log(`🔗 Direct RPC fetch (${Math.round(responseTime)}ms)`);
+            console.log(`[${new Date().toISOString()}] 🔗 Direct RPC fetch (${Math.round(responseTime)}ms)`);
             
             if (accountInfo) {
                 // Convert to same format as server cache
@@ -295,12 +308,12 @@ class PoolCacheManager {
             while (cacheData.access_order.length > this.MAX_POOLS) {
                 const oldestPool = cacheData.access_order.shift();
                 delete cacheData.pools[oldestPool];
-                console.log(`🗑️ Evicted old pool from cache: ${oldestPool.substring(0, 8)}...`);
+                console.log(`[${new Date().toISOString()}] 🗑️ Evicted old pool from cache: ${oldestPool.substring(0, 8)}...`);
             }
 
             // Save to localStorage
             localStorage.setItem(this.LOCALSTORAGE_KEY, JSON.stringify(cacheData));
-            console.log(`💾 Updated localStorage cache (${Object.keys(cacheData.pools).length}/${this.MAX_POOLS} pools)`);
+            console.log(`[${new Date().toISOString()}] 💾 Updated localStorage cache (${Object.keys(cacheData.pools).length}/${this.MAX_POOLS} pools)`);
             
         } catch (error) {
             console.warn('⚠️ Failed to update localStorage cache:', error.message);
@@ -361,6 +374,32 @@ class PoolCacheManager {
     }
 
     /**
+     * Token decimals cache (per-mint) for instant renders across pools
+     */
+    getTokenDecimalFromCache(mintAddress) {
+        try {
+            const raw = localStorage.getItem(this.TOKEN_DECIMALS_KEY) || '{}';
+            const store = JSON.parse(raw);
+            const entry = store[mintAddress];
+            if (entry && typeof entry.decimals === 'number') {
+                return entry.decimals;
+            }
+            return null;
+        } catch (_) { return null; }
+    }
+
+    setTokenDecimalInCache(mintAddress, decimals) {
+        try {
+            const raw = localStorage.getItem(this.TOKEN_DECIMALS_KEY) || '{}';
+            const store = JSON.parse(raw);
+            store[mintAddress] = { decimals, updated_at: new Date().toISOString() };
+            localStorage.setItem(this.TOKEN_DECIMALS_KEY, JSON.stringify(store));
+        } catch (e) {
+            console.warn('⚠️ Failed to set token decimals cache:', e?.message);
+        }
+    }
+
+    /**
      * Create timeout promise
      */
     createTimeoutPromise(timeout) {
@@ -407,4 +446,4 @@ class PoolCacheManager {
 // Create global instance
 window.PoolCacheManager = new PoolCacheManager();
 
-console.log('🗄️ PoolCacheManager loaded');
+console.log(`[${new Date().toISOString()}] 🗄️ PoolCacheManager loaded`);
