@@ -656,9 +656,14 @@
         <div class="pool-info-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2 style="color: #333; margin: 0;">🏊‍♂️ Pool Information</h2>
-                <button id="refresh-pool-btn" onclick="refreshPoolStatus()" class="nav-btn secondary" style="padding: 8px 16px; font-size: 14px; display: none;">
-                    🔄 Refresh Status
-                </button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div id="cache-status" style="font-size: 12px; color: #666; display: none;">
+                        <span id="cache-source">🗄️ Loading...</span>
+                    </div>
+                    <button id="refresh-pool-btn" onclick="refreshPoolStatus()" class="nav-btn secondary" style="padding: 8px 16px; font-size: 14px; display: none;">
+                        🔄 Refresh Status
+                    </button>
+                </div>
             </div>
             <div id="pool-loading" class="loading">
                 <h3>🔍 Loading pool information...</h3>
@@ -674,6 +679,7 @@
     <script src="libs/spl-token.min.js"></script>
     <script src="config.js"></script>
     <script src="data-service.js"></script>
+    <script src="pool-cache-manager.js"></script>
     <script src="error-codes.js"></script>
     <script src="utils.js?v=1753358100"></script>
     <script src="swap.js?v=1753358300"></script>

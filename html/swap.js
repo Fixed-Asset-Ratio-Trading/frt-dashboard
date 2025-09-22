@@ -105,20 +105,47 @@ async function initializeApp() {
         // Set up CONFIG alias for backward compatibility
         window.CONFIG = window.TRADING_CONFIG;
         
-        // Initialize Solana connection
+        // Determine poolAddress early
+        const urlParams = new URLSearchParams(window.location.search);
+        poolAddress = urlParams.get('pool') || sessionStorage.getItem('selectedPoolAddress');
+        if (!poolAddress) {
+            throw new Error('Pool address not specified');
+        }
+        console.log('🎯 Loading pool for swap:', poolAddress);
+
+        // Fast-path: if we have fresh local cache, avoid any slow connections before first paint
+        let fastRender = false;
+        try {
+            if (!window.PoolCacheManager?.connection) {
+                await window.PoolCacheManager.initialize(window.TRADING_CONFIG, null);
+            }
+            const local = await window.PoolCacheManager.fetchFromLocalStorage(poolAddress);
+            const fresh = local && (Date.now() - new Date(local.generated_at).getTime() < 5 * 60 * 1000);
+            fastRender = !!fresh;
+            if (fastRender) {
+                console.log('⚡ Fast-render mode enabled (fresh local cache)');
+            }
+        } catch (_) {}
+
+        // Initialize Solana connection (defer WS if fast-render)
         console.log('🔌 Connecting to Solana RPC...');
         const connectionConfig = {
             commitment: CONFIG.commitment,
             disableRetryOnRateLimit: CONFIG.disableRetryOnRateLimit || true
         };
-        
-        if (CONFIG.wsUrl) {
-            console.log('📡 Using WebSocket endpoint:', CONFIG.wsUrl);
-            connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig, CONFIG.wsUrl);
-        } else {
-            console.log('📡 Using HTTP polling (WebSocket disabled)');
+        if (fastRender) {
+            console.log('📡 Using HTTP polling (WS deferred until idle)');
             connectionConfig.wsEndpoint = false;
             connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig);
+        } else {
+            if (CONFIG.wsUrl) {
+                console.log('📡 Using WebSocket endpoint:', CONFIG.wsUrl);
+                connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig, CONFIG.wsUrl);
+            } else {
+                console.log('📡 Using HTTP polling (WebSocket disabled)');
+                connectionConfig.wsEndpoint = false;
+                connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig);
+            }
         }
         
         console.log('✅ SPL Token library ready');
@@ -129,28 +156,47 @@ async function initializeApp() {
             // Don't return here - continue with pool loading
         }
         
-        // Get pool address from URL params first, then sessionStorage as fallback
-        const urlParams = new URLSearchParams(window.location.search);
-        poolAddress = urlParams.get('pool') || sessionStorage.getItem('selectedPoolAddress');
-        
+        // poolAddress was resolved earlier; validate only
         if (!poolAddress) {
             showStatus('error', 'No pool selected. Please select a pool from the dashboard or provide a pool ID in the URL (?pool=POOL_ID).');
             return;
         }
-        
-        console.log('🎯 Loading pool for swap:', poolAddress);
         
         // Store pool address in sessionStorage for potential navigation
         sessionStorage.setItem('selectedPoolAddress', poolAddress);
         
         await loadPoolData();
         
-        // Check if wallet is already connected (only if Backpack is available)
-        if (window.backpack && window.backpack.isConnected) {
-            await handleWalletConnected();
-        } else {
-            showWalletConnection();
-        }
+        // Defer wallet connect and WS upgrade until idle to avoid blocking render
+        showWalletConnection();
+        const runAfterIdle = (fn) => {
+            if ('requestIdleCallback' in window) { window.requestIdleCallback(() => fn(), { timeout: 2000 }); }
+            else { setTimeout(fn, 0); }
+        };
+        runAfterIdle(async () => {
+            try {
+                // Upgrade to WS after paint if we deferred it
+                if (fastRender && CONFIG.wsUrl) {
+                    try {
+                        console.log('📡 Upgrading to WebSocket connection (idle)');
+                        const newConn = new solanaWeb3.Connection(CONFIG.rpcUrl, {
+                            commitment: CONFIG.commitment,
+                            disableRetryOnRateLimit: CONFIG.disableRetryOnRateLimit || true
+                        }, CONFIG.wsUrl);
+                        connection = newConn;
+                        if (window.TradingDataService) {
+                            window.TradingDataService.connection = newConn;
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ WS upgrade failed (will continue with HTTP):', e?.message);
+                    }
+                }
+                // Connect wallet only after page is rendered
+                if (window.backpack && window.backpack.isConnected) {
+                    await handleWalletConnected();
+                }
+            } catch (_) {}
+        });
         
     } catch (error) {
         console.error('❌ Error initializing swap page:', error);
@@ -159,27 +205,104 @@ async function initializeApp() {
 }
 
 /**
- * Load pool data from various sources
+ * Load pool data using three-tier caching strategy
  */
 async function loadPoolData() {
     try {
         showStatus('info', 'Loading pool information...');
         
-        // Initialize centralized data service if not already done
-        if (!window.TradingDataService.connection) {
-            await window.TradingDataService.initialize(window.TRADING_CONFIG, connection);
+        // Initialize pool cache manager if not already done
+        if (!window.PoolCacheManager.connection) {
+            await window.PoolCacheManager.initialize(window.TRADING_CONFIG, connection);
         }
         
-        // Get pool data using centralized service (RPC only)
-        poolData = await window.TradingDataService.getPool(poolAddress, 'rpc');
+        // Get pool data using three-tier caching (server cache + RPC + localStorage)
+        const cacheResult = await window.PoolCacheManager.getPoolData(poolAddress);
         
-        if (poolData) {
-            console.log(`✅ Pool loaded via TradingDataService (source: ${poolData.source || poolData.dataSource || 'unknown'})`);
+        // Render immediately if localStorage or server cache provided data
+        if (cacheResult && (cacheResult.source === 'localStorage' || cacheResult.source.startsWith('server-cache'))) {
+            try {
+                const base64Data = cacheResult.data.value.data[0];
+                const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+                poolData = window.TradingDataService.parsePoolState(binaryData, poolAddress);
+                
+                // Fetch decimals async but do not block initial render
+                (async () => {
+                    try {
+                        const [decA, decB] = await Promise.all([
+                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenAMint, connection),
+                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenBMint, connection)
+                        ]);
+                        poolData.ratioADecimal = decA;
+                        poolData.ratioBDecimal = decB;
+                        poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, decA);
+                        poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, decB);
+                        // Re-enrich UI quietly
+                        try { await enrichPoolData(); } catch (_) {}
+                    } catch (_) {}
+                })();
+                
+                // Proceed to render UI immediately
+                console.log('⚡ Rendering immediately from cache:', cacheResult.source);
+            } catch (e) {
+                console.warn('⚠️ Failed fast render from cache, falling back:', e.message);
+            }
+        }
+        
+        if (cacheResult && cacheResult.data) {
+            // Parse the raw RPC data using existing TradingDataService parser
+            if (!window.TradingDataService.connection) {
+                await window.TradingDataService.initialize(window.TRADING_CONFIG, connection);
+            }
+            
+            try {
+                // Convert cached RPC response to parsed pool data
+                // The cached data is base64 encoded, so we need to decode it first
+                const base64Data = cacheResult.data.value.data[0];
+                const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+                
+                poolData = window.TradingDataService.parsePoolState(
+                    binaryData, 
+                    poolAddress
+                );
+                
+                // Enrich with token decimals if available from TradingDataService
+                if (window.TokenDisplayUtils?.getTokenDecimals) {
+                    try {
+                        const [decA, decB] = await Promise.all([
+                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenAMint, connection),
+                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenBMint, connection)
+                        ]);
+                        poolData.ratioADecimal = decA;
+                        poolData.ratioBDecimal = decB;
+                        poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, decA);
+                        poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, decB);
+                    } catch (e) {
+                        console.warn('⚠️ Failed to fetch token decimals for cached pool:', e?.message);
+                    }
+                }
+                
+                // Add cache metadata
+                poolData.cacheSource = cacheResult.source;
+                poolData.cacheResponseTime = cacheResult.response_time;
+                poolData.generatedAt = cacheResult.generated_at;
+            } catch (parseError) {
+                console.error('❌ Failed to parse cached pool data:', parseError);
+                console.log('Cache result structure:', cacheResult);
+                throw new Error(`Failed to parse cached pool data: ${parseError.message}`);
+            }
+            
+            console.log(`✅ Pool loaded via PoolCacheManager (source: ${cacheResult.source}, ${Math.round(cacheResult.response_time)}ms)`);
+            
+            // Update cache status indicator
+            updateCacheStatusDisplay(cacheResult);
             
             // 🔍 DEVELOPER DEBUGGING: Log complete pool data to console
             console.group('🔍 POOL DATA FOR DEVELOPERS');
             console.log('📊 Complete Pool State:', poolData);
             console.log('🏊‍♂️ Pool Address:', poolAddress);
+            console.log('🗄️ Cache Source:', cacheResult.source);
+            console.log('⚡ Response Time:', Math.round(cacheResult.response_time) + 'ms');
             console.log('🪙 Token A Mint:', poolData.tokenAMint || poolData.token_a_mint);
             console.log('🪙 Token B Mint:', poolData.tokenBMint || poolData.token_b_mint);
             console.log('⚖️ Ratio A Numerator:', poolData.ratioANumerator || poolData.ratio_a_numerator);
@@ -211,12 +334,25 @@ async function enrichPoolData() {
     if (!poolData) return;
     
     try {
-        const symbols = await getTokenSymbols(
-            poolData.tokenAMint || poolData.token_a_mint, 
-            poolData.tokenBMint || poolData.token_b_mint
-        );
-        poolData.tokenASymbol = symbols.tokenA;
-        poolData.tokenBSymbol = symbols.tokenB;
+        // Try cached extras first for performance
+        const cachedExtras = window.PoolCacheManager?.getLocalExtras?.(poolData.address || poolAddress) || null;
+        if (cachedExtras?.tokenASymbol && cachedExtras?.tokenBSymbol) {
+            poolData.tokenASymbol = cachedExtras.tokenASymbol;
+            poolData.tokenBSymbol = cachedExtras.tokenBSymbol;
+        } else {
+            const symbols = await getTokenSymbols(
+                poolData.tokenAMint || poolData.token_a_mint, 
+                poolData.tokenBMint || poolData.token_b_mint
+            );
+            poolData.tokenASymbol = symbols.tokenA;
+            poolData.tokenBSymbol = symbols.tokenB;
+            // Persist symbols for future instant renders
+            window.PoolCacheManager?.setLocalExtras?.(poolData.address || poolAddress, {
+                ...(cachedExtras || {}),
+                tokenASymbol: poolData.tokenASymbol,
+                tokenBSymbol: poolData.tokenBSymbol
+            });
+        }
         
         console.log(`✅ Token symbols resolved: ${poolData.tokenASymbol}/${poolData.tokenBSymbol}`);
     } catch (error) {
@@ -227,6 +363,36 @@ async function enrichPoolData() {
     
     // 🎯 CENTRALIZED: Create TokenPairRatio instance for all calculations
     try {
+        // If decimals are not present, try cached extras, else compute async
+        if (typeof poolData.ratioADecimal !== 'number' || typeof poolData.ratioBDecimal !== 'number') {
+            if (cachedExtras?.ratioADecimal != null && cachedExtras?.ratioBDecimal != null) {
+                poolData.ratioADecimal = cachedExtras.ratioADecimal;
+                poolData.ratioBDecimal = cachedExtras.ratioBDecimal;
+                poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, poolData.ratioADecimal);
+                poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, poolData.ratioBDecimal);
+            } else if (window.TokenDisplayUtils?.getTokenDecimals) {
+                // Fetch decimal info in the background, then persist and patch UI
+                (async () => {
+                    try {
+                        const [decA, decB] = await Promise.all([
+                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenAMint || poolData.token_a_mint, connection),
+                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenBMint || poolData.token_b_mint, connection)
+                        ]);
+                        poolData.ratioADecimal = decA;
+                        poolData.ratioBDecimal = decB;
+                        poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, decA);
+                        poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, decB);
+                        window.PoolCacheManager?.setLocalExtras?.(poolData.address || poolAddress, {
+                            ...(cachedExtras || {}),
+                            ratioADecimal: decA,
+                            ratioBDecimal: decB
+                        });
+                        try { updatePoolDisplay(); } catch (_) {}
+                    } catch (_) {}
+                })();
+            }
+        }
+
         tokenPairRatio = TokenPairRatio.fromPoolData(poolData);
         console.log(`🎯 TokenPairRatio created: ${tokenPairRatio.ExchangeDisplay()}`);
         console.log(`🔍 TokenPairRatio ready:`, tokenPairRatio.getDebugInfo());
@@ -364,11 +530,15 @@ async function handleWalletConnected() {
         
         console.log('✅ Wallet connected:', wallet.publicKey.toString());
         
-        // Check wallet balance
-        await checkWalletBalance();
-        
-        // Load user tokens
-        await loadUserTokensForPool();
+        // Defer token/balance calls to avoid blocking
+        const runAfterIdle = (fn) => {
+            if ('requestIdleCallback' in window) { window.requestIdleCallback(() => fn(), { timeout: 2000 }); }
+            else { setTimeout(fn, 50); }
+        };
+        runAfterIdle(async () => {
+            try { await checkWalletBalance(); } catch (e) { console.warn('⚠️ Balance fetch deferred error:', e?.message); }
+            try { await loadUserTokensForPool(); } catch (e) { console.warn('⚠️ Token fetch deferred error:', e?.message); }
+        });
         
         // Update swap interface with real balances (preserving any existing amounts)
         const existingFromAmount = document.getElementById('from-amount').value;
@@ -424,11 +594,46 @@ async function loadUserTokensForPool() {
         
         showStatus('info', '🔍 Loading your pool tokens...');
         
-        // Get all token accounts for the user
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-            wallet.publicKey,
-            { programId: window.splToken.TOKEN_PROGRAM_ID }
-        );
+        // Get all token accounts for the user (with caching/backoff)
+        const cacheKey = `wallet_tokens_${wallet.publicKey.toString()}_${(window.CONFIG?.rpcUrl || '').slice(-6)}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        let tokenAccounts;
+        if (cached) {
+            try {
+                const data = JSON.parse(cached);
+                if (Date.now() - (data.timestamp || 0) < 2 * 60 * 1000) {
+                    console.log('💾 Using cached wallet token accounts');
+                    tokenAccounts = data.tokenAccounts;
+                }
+            } catch (_) {}
+        }
+        if (!tokenAccounts) {
+            try {
+                tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+                    wallet.publicKey,
+                    { programId: window.splToken.TOKEN_PROGRAM_ID }
+                );
+            } catch (e) {
+                console.warn('⚠️ Primary RPC token fetch failed:', e?.message);
+                await new Promise(r => setTimeout(r, 300));
+                const fallbacks = (window.TRADING_CONFIG?.fallbackRpcUrls || []);
+                for (const rpc of fallbacks) {
+                    try {
+                        const altConn = new solanaWeb3.Connection(rpc, { commitment: 'confirmed', disableRetryOnRateLimit: true });
+                        tokenAccounts = await altConn.getParsedTokenAccountsByOwner(
+                            wallet.publicKey,
+                            { programId: window.splToken.TOKEN_PROGRAM_ID }
+                        );
+                        console.log('✅ Token accounts fetched via fallback RPC');
+                        break;
+                    } catch (e2) {
+                        console.warn('⚠️ Fallback RPC failed:', e2?.message);
+                    }
+                }
+                if (!tokenAccounts) throw e;
+            }
+            try { sessionStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), tokenAccounts })); } catch (_) {}
+        }
         
         console.log(`Found ${tokenAccounts.value.length} token accounts`);
         
@@ -1916,8 +2121,20 @@ async function checkPoolStatusUpdate() {
     try {
         console.log('🔍 Checking pool status for updates...');
         
-        // Get fresh pool data
-        const freshPoolData = await window.TradingDataService.getPool(poolAddress, 'rpc');
+        // Get fresh pool data (force RPC to get latest)
+        const cacheResult = await window.PoolCacheManager.fetchFromSolanaRPC(poolAddress);
+        let freshPoolData = null;
+        
+        if (cacheResult) {
+            // The RPC data is base64 encoded, so we need to decode it first
+            const base64Data = cacheResult.data.value.data[0];
+            const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+            
+            freshPoolData = window.TradingDataService.parsePoolState(
+                binaryData, 
+                poolAddress
+            );
+        }
         
         if (freshPoolData && freshPoolData.flags !== undefined) {
             const oldFlags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
@@ -2152,6 +2369,58 @@ async function refreshPoolStatus() {
             refreshBtn.disabled = false;
             refreshBtn.textContent = '🔄 Refresh Status';
         }
+    }
+}
+
+/**
+ * Update cache status display in the UI
+ */
+function updateCacheStatusDisplay(cacheResult) {
+    const cacheStatusDiv = document.getElementById('cache-status');
+    const cacheSourceSpan = document.getElementById('cache-source');
+    
+    if (cacheStatusDiv && cacheSourceSpan) {
+        // Show cache status
+        cacheStatusDiv.style.display = 'block';
+        
+        // Create appropriate icon and text based on cache source
+        let icon, text, color;
+        const responseTime = Math.round(cacheResult.response_time);
+        
+        switch (cacheResult.source) {
+            case 'server-cache-hit':
+                icon = '🗄️';
+                text = `Server Cache (${responseTime}ms)`;
+                color = '#10b981'; // green
+                break;
+            case 'server-cache-miss':
+                icon = '📡';
+                text = `Server Fresh (${responseTime}ms)`;
+                color = '#f59e0b'; // amber
+                break;
+            case 'direct-rpc':
+                icon = '🔗';
+                text = `Direct RPC (${responseTime}ms)`;
+                color = '#3b82f6'; // blue
+                break;
+            case 'localStorage':
+                icon = '💾';
+                text = `Local Cache (${responseTime}ms)`;
+                color = '#8b5cf6'; // purple
+                break;
+            default:
+                icon = '❓';
+                text = `${cacheResult.source} (${responseTime}ms)`;
+                color = '#6b7280'; // gray
+        }
+        
+        cacheSourceSpan.innerHTML = `${icon} ${text}`;
+        cacheSourceSpan.style.color = color;
+        
+        // Add tooltip with more details
+        const age = Date.now() - new Date(cacheResult.generated_at).getTime();
+        const ageText = age < 60000 ? `${Math.round(age/1000)}s ago` : `${Math.round(age/60000)}m ago`;
+        cacheStatusDiv.title = `Data generated: ${ageText}`;
     }
 }
 

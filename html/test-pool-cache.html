@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pool Cache Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .test-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #5a6fd8;
+        }
+        .test-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .timing {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏊‍♂️ Pool Data Cache Test</h1>
+        
+        <div class="test-section">
+            <h3>Test Pool Address</h3>
+            <input type="text" id="poolAddress" class="test-input" 
+                   value="So11111111111111111111111111111111111111112"
+                   placeholder="Enter pool address (Base58)">
+            <div>
+                <button class="test-button" onclick="testCacheEndpoint()">Test Cache Endpoint</button>
+                <button class="test-button" onclick="testDirectRPC()">Test Direct RPC</button>
+                <button class="test-button" onclick="testConcurrentRequests()">Test Concurrent Requests</button>
+                <button class="test-button" onclick="clearResults()">Clear Results</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Predefined Test Cases</h3>
+            <div>
+                <button class="test-button" onclick="runTestCase('valid')">Valid Pool Test</button>
+                <button class="test-button" onclick="runTestCase('invalid')">Invalid Address Test</button>
+                <button class="test-button" onclick="runTestCase('nonexistent')">Non-existent Pool Test</button>
+                <button class="test-button" onclick="runTestCase('stress')">Cache Stress Test</button>
+            </div>
+        </div>
+
+        <div id="results" class="results">
+Ready to test pool data caching...
+        </div>
+    </div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            resultsDiv.textContent += logEntry;
+            resultsDiv.className = `results ${type}`;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        function clearResults() {
+            resultsDiv.textContent = 'Results cleared...\n';
+            resultsDiv.className = 'results info';
+        }
+        
+        async function testCacheEndpoint() {
+            const poolAddress = document.getElementById('poolAddress').value.trim();
+            if (!poolAddress) {
+                log('Please enter a pool address', 'error');
+                return;
+            }
+            
+            log(`Testing cache endpoint for: ${poolAddress}`);
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch(`./pool-data.php?poolAddress=${poolAddress}`);
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                log(`Response status: ${response.status} (${responseTime}ms)`);
+                log(`Cache status: ${response.headers.get('X-Cache-Status') || 'unknown'}`);
+                log(`Generated at: ${response.headers.get('X-Generated-At') || 'unknown'}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✅ Cache endpoint success', 'success');
+                    log(`Schema version: ${data.schema_version}`);
+                    log(`Pool address: ${data.pool_address}`);
+                    log(`Generated at: ${data.generated_at}`);
+                    log(`Has RPC response: ${!!data.rpc_response}`);
+                    if (data.rpc_response && data.rpc_response.value) {
+                        log(`Account owner: ${data.rpc_response.value.owner}`);
+                        log(`Account data length: ${data.rpc_response.value.data[0]?.length || 0} chars`);
+                    }
+                } else {
+                    const errorData = await response.text();
+                    log(`❌ Cache endpoint error: ${errorData}`, 'error');
+                }
+            } catch (error) {
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                log(`❌ Network error (${responseTime}ms): ${error.message}`, 'error');
+            }
+        }
+        
+        async function testDirectRPC() {
+            const poolAddress = document.getElementById('poolAddress').value.trim();
+            if (!poolAddress) {
+                log('Please enter a pool address', 'error');
+                return;
+            }
+            
+            log(`Testing direct RPC for: ${poolAddress}`);
+            const startTime = performance.now();
+            
+            try {
+                const rpcPayload = {
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'getAccountInfo',
+                    params: [
+                        poolAddress,
+                        { encoding: 'base64', commitment: 'confirmed' }
+                    ]
+                };
+                
+                const response = await fetch('https://api.mainnet-beta.solana.com', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rpcPayload)
+                });
+                
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Direct RPC success (${responseTime}ms)`, 'success');
+                    if (data.result && data.result.value) {
+                        log(`Account owner: ${data.result.value.owner}`);
+                        log(`Account data length: ${data.result.value.data[0]?.length || 0} chars`);
+                        log(`Lamports: ${data.result.value.lamports}`);
+                    } else {
+                        log('Account not found or null');
+                    }
+                } else {
+                    log(`❌ RPC error (${responseTime}ms): ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                const endTime = performance.now();
+                const responseTime = Math.round(endTime - startTime);
+                log(`❌ RPC network error (${responseTime}ms): ${error.message}`, 'error');
+            }
+        }
+        
+        async function testConcurrentRequests() {
+            const poolAddress = document.getElementById('poolAddress').value.trim();
+            if (!poolAddress) {
+                log('Please enter a pool address', 'error');
+                return;
+            }
+            
+            log(`Testing concurrent requests for: ${poolAddress}`);
+            const startTime = performance.now();
+            
+            const promises = [
+                fetch(`./pool-data.php?poolAddress=${poolAddress}`),
+                fetch(`./pool-data.php?poolAddress=${poolAddress}`),
+                fetch(`./pool-data.php?poolAddress=${poolAddress}`)
+            ];
+            
+            try {
+                const responses = await Promise.all(promises);
+                const endTime = performance.now();
+                const totalTime = Math.round(endTime - startTime);
+                
+                log(`✅ Concurrent requests completed (${totalTime}ms)`, 'success');
+                
+                for (let i = 0; i < responses.length; i++) {
+                    const response = responses[i];
+                    const cacheStatus = response.headers.get('X-Cache-Status') || 'unknown';
+                    log(`Request ${i + 1}: ${response.status} (${cacheStatus})`);
+                }
+                
+                // Check if responses are consistent
+                const bodies = await Promise.all(responses.map(r => r.text()));
+                const allSame = bodies.every(body => body === bodies[0]);
+                log(`Response consistency: ${allSame ? '✅ All identical' : '❌ Responses differ'}`);
+                
+            } catch (error) {
+                const endTime = performance.now();
+                const totalTime = Math.round(endTime - startTime);
+                log(`❌ Concurrent test error (${totalTime}ms): ${error.message}`, 'error');
+            }
+        }
+        
+        async function runTestCase(testType) {
+            log(`\n=== Running ${testType.toUpperCase()} test case ===`);
+            
+            switch (testType) {
+                case 'valid':
+                    document.getElementById('poolAddress').value = 'So11111111111111111111111111111111111111112'; // WSOL
+                    await testCacheEndpoint();
+                    break;
+                    
+                case 'invalid':
+                    document.getElementById('poolAddress').value = 'invalid-address-123';
+                    await testCacheEndpoint();
+                    break;
+                    
+                case 'nonexistent':
+                    document.getElementById('poolAddress').value = '11111111111111111111111111111111111111111';
+                    await testCacheEndpoint();
+                    break;
+                    
+                case 'stress':
+                    log('Running cache stress test (5 concurrent requests)...');
+                    const testAddresses = [
+                        'So11111111111111111111111111111111111111112',
+                        'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+                        'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT
+                        '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R', // RAY
+                        'SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt'   // SRM
+                    ];
+                    
+                    for (const addr of testAddresses) {
+                        document.getElementById('poolAddress').value = addr;
+                        await testCacheEndpoint();
+                        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+                    }
+                    break;
+            }
+        }
+        
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            log('Pool Cache Test Interface Ready');
+            log('Testing with staging server...');
+        });
+    </script>
+</body>
+</html>
+
