@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Swap - Server Data Only - Fixed Ratio Trading</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="shared-styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        
+        .header-title {
+            color: #333;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .page-title {
+            color: #333;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .test-banner {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 2px solid #fbbf24;
+        }
+        
+        .nav-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-btn.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .nav-btn.secondary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .donate-btn {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: 2px solid transparent;
+        }
+        
+        .donate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+        }
+        
+        .pool-info-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .pool-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .pool-metric {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .swap-interface-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #10b981;
+        }
+        
+        .swap-form {
+            display: grid;
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .token-input-section {
+            background: #f8f9fa;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .token-input-section:hover {
+            border-color: #3b82f6;
+        }
+        
+        .token-selector-enhanced {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .token-selector-enhanced:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+        
+        .token-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .token-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            overflow: hidden;
+        }
+        
+        .token-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        
+        .token-details {
+            flex: 1;
+            margin-left: 12px;
+        }
+        
+        .token-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+        }
+        
+        .token-balance-enhanced {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+        
+        .token-dropdown-arrow {
+            font-size: 12px;
+            color: #9ca3af;
+            transition: transform 0.3s ease;
+        }
+        
+        .amount-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: right;
+            background: white;
+        }
+        
+        .amount-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .swap-btn {
+            width: 100%;
+            padding: 18px 32px;
+            background: #d1d5db;
+            color: #9ca3af;
+            border: none;
+            border-radius: 12px;
+            font-size: 20px;
+            font-weight: 700;
+            cursor: not-allowed;
+            margin: 25px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        
+        .exchange-rate-display {
+            background: #dbeafe;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            border: 1px solid #93c5fd;
+        }
+        
+        .fixed-ratio-info {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .fixed-ratio-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        
+        .fixed-ratio-content {
+            flex: 1;
+        }
+        
+        .fixed-ratio-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .fixed-ratio-text {
+            font-size: 12px;
+            opacity: 0.9;
+            line-height: 1.3;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .status-message.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .status-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .status-message.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .pool-details {
+                grid-template-columns: 1fr;
+            }
+            
+            .swap-form [style*="grid-template-columns: 1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+                gap: 15px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <img src="images/Fixedratio_1024x1024.png" alt="Fixed Ratio Trading Logo" class="logo">
+                <div class="header-title">Fixed Ratio Trading</div>
+            </div>
+            <div class="header-center">
+                <h1 class="page-title">Test Swap - Server Data Only</h1>
+                <p class="subtitle">Testing swap interface with server-only data (no wallet/RPC)</p>
+            </div>
+            <div class="nav-buttons">
+                <button class="nav-btn secondary" onclick="window.location.href='swap.html' + window.location.search">
+                    🔄 Regular Swap
+                </button>
+                <button class="nav-btn donate-btn" onclick="window.location.href='donate.html'">
+                    💝 Donate
+                </button>
+            </div>
+        </div>
+        
+        <div class="test-banner">
+            <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">🧪 TEST MODE - SERVER DATA ONLY</div>
+            <div style="font-size: 14px; opacity: 0.9;">
+                This page demonstrates the swap interface using only server-side data from pool-data.php.
+                <br>No wallet connection or RPC calls are made.
+            </div>
+        </div>
+        
+        <div id="status-container"></div>
+        
+        <!-- Swap Interface Section -->
+        <div class="swap-interface-section">
+            <h2 style="color: #333; margin-bottom: 15px;">🔄 Token Swap Interface (Test Mode)</h2>
+            <p style="color: #666; margin-bottom: 20px;">This interface shows how the swap would look with server data only. All calculations are performed, but no actual transactions can be executed.</p>
+            
+            <div id="swap-loading" class="loading">
+                <h3>🔍 Loading pool information from server...</h3>
+            </div>
+            
+            <div id="swap-form" class="swap-form" style="display: none;">
+                <!-- Side by side From and To tokens -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <!-- From Token -->
+                    <div class="token-input-section">
+                        <label style="font-size: 14px; color: #374151; font-weight: 600; margin-bottom: 8px; display: block;">From</label>
+                        <div class="token-selector-enhanced" id="from-token-selector" onclick="toggleSwapDirection()">
+                            <div class="token-display">
+                                <div class="token-icon" id="from-token-icon">A</div>
+                                <div class="token-details">
+                                    <div class="token-name" id="from-token-symbol">TOKEN A</div>
+                                    <div class="token-balance-enhanced">Balance: <span id="from-token-balance">N/A (Test Mode)</span></div>
+                                </div>
+                                <div class="token-dropdown-arrow">▼</div>
+                            </div>
+                        </div>
+                        <input type="number" 
+                               class="amount-input" 
+                               id="from-amount" 
+                               placeholder="0.000000" 
+                               min="0" 
+                               step="0.000001"
+                               oninput="calculateSwapOutput()"
+                               style="margin-top: 10px;">
+                        <div style="font-size: 12px; color: #6b7280; margin-top: 5px; text-align: right;">
+                            Enter amount to swap
+                        </div>
+                    </div>
+                    
+                    <!-- To Token -->
+                    <div class="token-input-section">
+                        <label style="font-size: 14px; color: #374151; font-weight: 600; margin-bottom: 8px; display: block;">To</label>
+                        <div class="token-selector-enhanced" id="to-token-selector">
+                            <div class="token-display">
+                                <div class="token-icon" id="to-token-icon">B</div>
+                                <div class="token-details">
+                                    <div class="token-name" id="to-token-symbol">TOKEN B</div>
+                                    <div class="token-balance-enhanced">Balance: <span id="to-token-balance">N/A (Test Mode)</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="number" 
+                               class="amount-input" 
+                               id="to-amount" 
+                               placeholder="0.000000" 
+                               min="0" 
+                               step="0.000001"
+                               readonly
+                               style="margin-top: 10px; background: #f9fafb;">
+                        <div style="font-size: 12px; color: #6b7280; margin-top: 5px; text-align: right;">
+                            Calculated output amount
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Exchange Rate Display -->
+                <div class="exchange-rate-display" id="exchange-rate-display">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 5px;">Exchange Rate</div>
+                    <div id="exchange-rate-text" style="font-size: 16px; font-weight: 700;">1 TOKEN A = ? TOKEN B</div>
+                </div>
+                
+                <!-- Fixed Ratio Info -->
+                <div class="fixed-ratio-info">
+                    <div class="fixed-ratio-icon">🎯</div>
+                    <div class="fixed-ratio-content">
+                        <div class="fixed-ratio-title">Fixed Ratio Trading</div>
+                        <div class="fixed-ratio-text">
+                            This pool uses fixed ratios - no slippage, no price impact. 
+                            You always get exactly the calculated amount.
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Execute Swap Button (Disabled in Test Mode) -->
+                <button class="swap-btn" disabled>
+                    🧪 Test Mode - Swap Disabled
+                </button>
+                
+                <div class="status-message info">
+                    <strong>Test Mode:</strong> This page demonstrates the swap interface using server-only data. 
+                    No wallet connection is made and no actual transactions can be executed.
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pool Info Section -->
+        <div class="pool-info-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="color: #333; margin: 0;">🏊‍♂️ Pool Information</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div id="cache-status" style="font-size: 12px; color: #666;">
+                        <span id="cache-source">🗄️ Server Data</span>
+                    </div>
+                </div>
+            </div>
+            <div id="pool-loading" class="loading">
+                <h3>🔍 Loading pool information...</h3>
+            </div>
+            <div id="pool-details" class="pool-details" style="display: none;">
+                <!-- Pool details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Global variables for test mode
+        let poolAddress = null;
+        let poolData = null;
+        let swapDirection = 'AtoB'; // 'AtoB' or 'BtoA'
+        
+        /**
+         * Initialize the test page
+         */
+        async function initializeTestPage() {
+            console.log('🧪 Initializing Test Swap Page (Server Data Only)...');
+            
+            // Get pool address from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            poolAddress = urlParams.get('pool');
+            
+            if (!poolAddress) {
+                showStatus('error', 'No pool address provided. Please add ?pool=<pool_address> to the URL.');
+                return;
+            }
+            
+            // Update page subtitle with pool ID
+            const subtitle = document.querySelector('.header .subtitle');
+            if (subtitle && poolAddress) {
+                const poolIdShort = poolAddress.slice(0, 8) + '...' + poolAddress.slice(-8);
+                subtitle.innerHTML = `Testing swap interface with server-only data (no wallet/RPC)<br><small style="color: #888; font-size: 0.9em;">Pool: ${poolIdShort}</small>`;
+            }
+            
+            await loadPoolDataFromServer();
+        }
+        
+        /**
+         * Load pool data from server only
+         */
+        async function loadPoolDataFromServer() {
+            try {
+                showStatus('info', 'Loading pool information from server...');
+                
+                const response = await fetch(`./pool-data.php?poolAddress=${poolAddress}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+                }
+                
+                const serverData = await response.json();
+                
+                if (serverData.error) {
+                    throw new Error(serverData.error);
+                }
+                
+                // Process the server data
+                if (serverData.parsed_pool_data) {
+                    poolData = serverData.parsed_pool_data;
+                    console.log('✅ Pool data loaded from server:', poolData);
+                    
+                    updatePoolDisplay();
+                    initializeSwapInterface();
+                    clearStatus();
+                } else {
+                    throw new Error('No parsed pool data in server response');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading pool data from server:', error);
+                showStatus('error', `Failed to load pool data: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Update pool display with server data
+         */
+        function updatePoolDisplay() {
+            if (!poolData) return;
+            
+            const poolLoading = document.getElementById('pool-loading');
+            const poolDetails = document.getElementById('pool-details');
+            
+            // Hide loading, show details
+            poolLoading.style.display = 'none';
+            poolDetails.style.display = 'grid';
+            
+            // Clear existing content
+            poolDetails.innerHTML = '';
+            
+            // Pool Status
+            const statusMetric = createMetric('Pool Status', '✅ Active (Test Mode)');
+            poolDetails.appendChild(statusMetric);
+            
+            // Pool Pair
+            const tokenASymbol = poolData.token_a_ticker || poolData.token_a_mint?.slice(0, 4) || 'UNKNOWN';
+            const tokenBSymbol = poolData.token_b_ticker || poolData.token_b_mint?.slice(0, 4) || 'UNKNOWN';
+            const pairText = `${tokenASymbol} / ${tokenBSymbol}`;
+            const pairMetric = createMetric('Pool Pair', pairText);
+            poolDetails.appendChild(pairMetric);
+            
+            // Exchange Rate
+            const ratioA = poolData.ratio_a_actual || (poolData.ratio_a_numerator / Math.pow(10, poolData.ratio_a_decimal || 6));
+            const ratioB = poolData.ratio_b_actual || (poolData.ratio_b_denominator / Math.pow(10, poolData.ratio_b_decimal || 6));
+            const rate = ratioB / ratioA;
+            const rateText = `1 ${tokenASymbol} = ${rate.toFixed(6)} ${tokenBSymbol}`;
+            const rateMetric = createMetric('Exchange Rate', rateText);
+            poolDetails.appendChild(rateMetric);
+            
+            // Token A Liquidity
+            const tokenALiquidity = poolData.total_token_a_liquidity || 0;
+            const tokenADecimal = poolData.ratio_a_decimal || 6;
+            const tokenALiquidityFormatted = (tokenALiquidity / Math.pow(10, tokenADecimal)).toFixed(6);
+            const tokenALiquidityMetric = createMetric(`${tokenASymbol} Liquidity`, `${tokenALiquidityFormatted} ${tokenASymbol}`);
+            poolDetails.appendChild(tokenALiquidityMetric);
+            
+            // Token B Liquidity
+            const tokenBLiquidity = poolData.total_token_b_liquidity || 0;
+            const tokenBDecimal = poolData.ratio_b_decimal || 6;
+            const tokenBLiquidityFormatted = (tokenBLiquidity / Math.pow(10, tokenBDecimal)).toFixed(6);
+            const tokenBLiquidityMetric = createMetric(`${tokenBSymbol} Liquidity`, `${tokenBLiquidityFormatted} ${tokenBSymbol}`);
+            poolDetails.appendChild(tokenBLiquidityMetric);
+            
+            // Pool Address
+            const addressShort = poolData.address?.slice(0, 8) + '...' + poolData.address?.slice(-8) || 'Unknown';
+            const addressMetric = createMetric('Pool Address', addressShort);
+            poolDetails.appendChild(addressMetric);
+        }
+        
+        /**
+         * Create a metric display element
+         */
+        function createMetric(label, value) {
+            const metric = document.createElement('div');
+            metric.className = 'pool-metric';
+            
+            const labelEl = document.createElement('div');
+            labelEl.className = 'metric-label';
+            labelEl.textContent = label;
+            
+            const valueEl = document.createElement('div');
+            valueEl.className = 'metric-value';
+            valueEl.textContent = value;
+            
+            metric.appendChild(labelEl);
+            metric.appendChild(valueEl);
+            
+            return metric;
+        }
+        
+        /**
+         * Initialize swap interface
+         */
+        function initializeSwapInterface() {
+            if (!poolData) return;
+            
+            const swapLoading = document.getElementById('swap-loading');
+            const swapForm = document.getElementById('swap-form');
+            
+            // Hide loading, show form
+            swapLoading.style.display = 'none';
+            swapForm.style.display = 'block';
+            
+            updateTokenDisplay();
+            updateExchangeRate();
+        }
+        
+        /**
+         * Update token display
+         */
+        function updateTokenDisplay() {
+            if (!poolData) return;
+            
+            const tokenASymbol = poolData.token_a_ticker || poolData.token_a_mint?.slice(0, 4) || 'TOKEN A';
+            const tokenBSymbol = poolData.token_b_ticker || poolData.token_b_mint?.slice(0, 4) || 'TOKEN B';
+            const tokenAName = poolData.token_a_description || `Token ${tokenASymbol}`;
+            const tokenBName = poolData.token_b_description || `Token ${tokenBSymbol}`;
+            
+            if (swapDirection === 'AtoB') {
+                // From Token A to Token B
+                document.getElementById('from-token-symbol').textContent = tokenASymbol;
+                document.getElementById('to-token-symbol').textContent = tokenBSymbol;
+                document.getElementById('from-token-icon').textContent = tokenASymbol.charAt(0);
+                document.getElementById('to-token-icon').textContent = tokenBSymbol.charAt(0);
+                
+                // Update token images
+                updateTokenImage('from-token-icon', poolData.token_a_mint, tokenASymbol);
+                updateTokenImage('to-token-icon', poolData.token_b_mint, tokenBSymbol);
+            } else {
+                // From Token B to Token A
+                document.getElementById('from-token-symbol').textContent = tokenBSymbol;
+                document.getElementById('to-token-symbol').textContent = tokenASymbol;
+                document.getElementById('from-token-icon').textContent = tokenBSymbol.charAt(0);
+                document.getElementById('to-token-icon').textContent = tokenASymbol.charAt(0);
+                
+                // Update token images
+                updateTokenImage('from-token-icon', poolData.token_b_mint, tokenBSymbol);
+                updateTokenImage('to-token-icon', poolData.token_a_mint, tokenASymbol);
+            }
+        }
+        
+        /**
+         * Update token image using token-image.php
+         */
+        function updateTokenImage(elementId, mintAddress, symbol) {
+            if (!mintAddress) return;
+            
+            const iconElement = document.getElementById(elementId);
+            if (!iconElement) return;
+            
+            // Create img element
+            const img = document.createElement('img');
+            img.src = `token-image.php?mint=${encodeURIComponent(mintAddress)}`;
+            img.alt = symbol;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '50%';
+            
+            // Fallback to text if image fails to load
+            img.onerror = function() {
+                iconElement.innerHTML = '';
+                iconElement.textContent = (symbol || 'T').charAt(0);
+            };
+            
+            img.onload = function() {
+                iconElement.innerHTML = '';
+                iconElement.appendChild(img);
+            };
+        }
+        
+        /**
+         * Update exchange rate display
+         */
+        function updateExchangeRate() {
+            if (!poolData) return;
+            
+            const tokenASymbol = poolData.token_a_ticker || 'TOKEN A';
+            const tokenBSymbol = poolData.token_b_ticker || 'TOKEN B';
+            
+            const ratioA = poolData.ratio_a_actual || (poolData.ratio_a_numerator / Math.pow(10, poolData.ratio_a_decimal || 6));
+            const ratioB = poolData.ratio_b_actual || (poolData.ratio_b_denominator / Math.pow(10, poolData.ratio_b_decimal || 6));
+            
+            let rateText;
+            if (swapDirection === 'AtoB') {
+                const rate = ratioB / ratioA;
+                rateText = `1 ${tokenASymbol} = ${rate.toFixed(6)} ${tokenBSymbol}`;
+            } else {
+                const rate = ratioA / ratioB;
+                rateText = `1 ${tokenBSymbol} = ${rate.toFixed(6)} ${tokenASymbol}`;
+            }
+            
+            document.getElementById('exchange-rate-text').textContent = rateText;
+        }
+        
+        /**
+         * Calculate swap output based on input
+         */
+        function calculateSwapOutput() {
+            if (!poolData) return;
+            
+            const fromAmount = parseFloat(document.getElementById('from-amount').value) || 0;
+            
+            if (fromAmount <= 0) {
+                document.getElementById('to-amount').value = '';
+                return;
+            }
+            
+            const ratioA = poolData.ratio_a_actual || (poolData.ratio_a_numerator / Math.pow(10, poolData.ratio_a_decimal || 6));
+            const ratioB = poolData.ratio_b_actual || (poolData.ratio_b_denominator / Math.pow(10, poolData.ratio_b_decimal || 6));
+            
+            let toAmount;
+            if (swapDirection === 'AtoB') {
+                // A to B: multiply by ratio B/A
+                toAmount = fromAmount * (ratioB / ratioA);
+            } else {
+                // B to A: multiply by ratio A/B
+                toAmount = fromAmount * (ratioA / ratioB);
+            }
+            
+            document.getElementById('to-amount').value = toAmount.toFixed(6);
+        }
+        
+        /**
+         * Toggle swap direction
+         */
+        function toggleSwapDirection() {
+            swapDirection = swapDirection === 'AtoB' ? 'BtoA' : 'AtoB';
+            
+            // Clear input amounts
+            document.getElementById('from-amount').value = '';
+            document.getElementById('to-amount').value = '';
+            
+            updateTokenDisplay();
+            updateExchangeRate();
+        }
+        
+        /**
+         * Show status message
+         */
+        function showStatus(type, message) {
+            const container = document.getElementById('status-container');
+            container.innerHTML = `<div class="status-message ${type}">${message}</div>`;
+        }
+        
+        /**
+         * Clear status message
+         */
+        function clearStatus() {
+            const container = document.getElementById('status-container');
+            container.innerHTML = '';
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeTestPage);
+    </script>
+</body>
+</html>

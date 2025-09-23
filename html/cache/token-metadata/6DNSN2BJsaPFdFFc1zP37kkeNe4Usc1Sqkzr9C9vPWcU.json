@@ -1,0 +1,29 @@
+{
+    "mint": "6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU",
+    "timestamp": 1758542839,
+    "metadata": {
+        "symbol": "tBTC",
+        "name": "Threshold Bitcoin TBTC",
+        "decimals": 8,
+        "source": "manual_override",
+        "Image": "https://coin-images.coingecko.com/coins/images/11224/large/0x18084fba666a33d37592fa2633fd49a74dd93a88.png?1696511155",
+        "additionalMetadata": [
+            {
+                "name": "Threshold Bitcoin TBTC",
+                "symbol": "tBTC",
+                "description": "Threshold's tBTC is your seamless, trust-minimized path to Bitcoin — always permissionless, always redeemable for BTC.",
+                "image": "https://coin-images.coingecko.com/coins/images/11224/large/0x18084fba666a33d37592fa2633fd49a74dd93a88.png?1696511155",
+                "tags": ["Bitcoin", "Stablecoin", "Satoshi"],
+                "extensions": {
+                    "website": "https://tbtc.network",
+                    "twitter": "https://x.com/TheTNetwork",
+                    "telegram": "https://t.me/thresholdnetwork"
+                },
+                "creator": {
+                    "name": "frt15",
+                    "site": "https://frt15.net"
+                }
+            }
+        ]
+    }
+}

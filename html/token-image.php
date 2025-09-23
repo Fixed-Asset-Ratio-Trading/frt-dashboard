@@ -18,14 +18,18 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 // Configuration
 $CACHE_DIR = __DIR__ . '/cache/token-images';
+$METADATA_CACHE_DIR = __DIR__ . '/cache/token-metadata';
 $CACHE_DURATION = 60 * 24 * 60 * 60; // 60 days
 $CHAINSTACK_RPC = 'https://api.mainnet-beta.solana.com';
 $CHAINSTACK_AUTH = base64_encode('condescending-fermi:jockey-snore-detest-uproar-fleshy-faucet');
 $DEFAULT_IMAGE = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#667eea"/><text x="50" y="60" text-anchor="middle" fill="white" font-size="30">?</text></svg>');
 
-// Create cache directory
+// Create cache directories
 if (!file_exists($CACHE_DIR)) {
     mkdir($CACHE_DIR, 0755, true);
+}
+if (!file_exists($METADATA_CACHE_DIR)) {
+    mkdir($METADATA_CACHE_DIR, 0755, true);
 }
 
 // Get mint parameter
@@ -204,11 +208,24 @@ function fetchFromJupiterTokenList($mint) {
     foreach ($tokenList as $token) {
         if (isset($token['address']) && $token['address'] === $mint) {
             error_log("Found matching token in Jupiter list: " . json_encode($token));
+            
+            // Save metadata to cache
+            $metadata = [
+                'symbol' => $token['symbol'] ?? substr($mint, 0, 4),
+                'name' => $token['name'] ?? 'Token ' . substr($mint, 0, 4),
+                'decimals' => $token['decimals'] ?? 6,
+                'source' => 'jupiter',
+                'logoURI' => $token['logoURI'] ?? null
+            ];
+            saveTokenMetadataCache($mint, $metadata);
+            
             if (isset($token['logoURI'])) {
                 error_log("Found token in Jupiter list: $mint -> " . $token['logoURI']);
                 return fetchImage($token['logoURI']);
             } else {
                 error_log("Token found but no logoURI field");
+                // Still return null for image, but metadata was already cached above
+                return null;
             }
         }
     }
@@ -254,6 +271,44 @@ function deriveMetadataPDA($mint) {
     // This is a simplified version - in production you'd use proper PDA derivation
     // For now, we'll use the RPC to find the account
     return null; // Will use RPC lookup instead
+}
+
+/**
+ * Save token metadata to cache
+ */
+function saveTokenMetadataCache($mint, $metadata) {
+    global $METADATA_CACHE_DIR;
+    
+    $metadataFile = $METADATA_CACHE_DIR . '/' . $mint . '.json';
+    $cacheData = [
+        'mint' => $mint,
+        'timestamp' => time(),
+        'metadata' => $metadata
+    ];
+    
+    file_put_contents($metadataFile, json_encode($cacheData, JSON_PRETTY_PRINT));
+    error_log("Saved metadata cache for $mint: " . json_encode($metadata));
+}
+
+/**
+ * Load token metadata from cache
+ */
+function loadTokenMetadataCache($mint) {
+    global $METADATA_CACHE_DIR, $CACHE_DURATION;
+    
+    $metadataFile = $METADATA_CACHE_DIR . '/' . $mint . '.json';
+    
+    if (!file_exists($metadataFile)) {
+        return null;
+    }
+    
+    // Check if cache is expired
+    if ((time() - filemtime($metadataFile)) > $CACHE_DURATION) {
+        return null;
+    }
+    
+    $cacheData = json_decode(file_get_contents($metadataFile), true);
+    return $cacheData ? $cacheData['metadata'] : null;
 }
 
 /**
@@ -574,6 +629,17 @@ function fetchTokenImage($mint) {
                     $uri = $metadata['uri'];
                     error_log("Found metadata URI: $uri");
                     error_log("Metadata structure: " . json_encode($metadata));
+                    
+                    // Save metadata to cache
+                    $metadataForCache = [
+                        'symbol' => $metadata['symbol'] ?? substr($mint, 0, 4),
+                        'name' => $metadata['name'] ?? 'Token ' . substr($mint, 0, 4),
+                        'decimals' => 6, // Will be fetched separately from mint account
+                        'source' => 'metaplex',
+                        'uri' => $metadata['uri'] ?? null,
+                        'additionalMetadata' => $metadata['additionalMetadata'] ?? []
+                    ];
+                    saveTokenMetadataCache($mint, $metadataForCache);
                     
                     // First, scan the on-chain additional metadata for any image URLs (like "Jupiter logoURI")
                     if (isset($metadata['additionalMetadata']) && is_array($metadata['additionalMetadata'])) {
