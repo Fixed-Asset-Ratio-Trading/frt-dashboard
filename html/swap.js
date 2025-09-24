@@ -1848,7 +1848,7 @@ async function executeSwap() {
             toTokenAccountPubkey
         );
         
-        showStatus('info', '📝 Requesting wallet signature...');
+        showStatus('info', '📝 Requesting wallet signature... (please check your wallet)');
         
         // Keep the blockhash for wallet to use in simulation
         // Comment out the blockhash deletion to prevent "Blockhash not found" errors
@@ -1857,9 +1857,38 @@ async function executeSwap() {
         try { transaction.feePayer = wallet.publicKey; } catch (_) {}
         console.log('📝 Transaction ready for wallet with blockhash:', transaction.recentBlockhash);
 
-        // Sign and send transaction
-        const signatureResult = await wallet.signAndSendTransaction(transaction);
-        console.log('✅ Swap transaction sent:', signatureResult);
+        // Sign and send transaction with timeout
+        let signatureResult;
+        try {
+            // Add a 30-second timeout for wallet interaction
+            const walletTimeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Wallet signature timeout - please check your wallet')), 30000)
+            );
+            
+            const walletPromise = wallet.signAndSendTransaction(transaction);
+            
+            signatureResult = await Promise.race([walletPromise, walletTimeout]);
+            console.log('✅ Swap transaction sent:', signatureResult);
+        } catch (walletError) {
+            console.error('❌ Wallet error:', walletError);
+            
+            // Check if user rejected
+            if (walletError.message?.includes('rejected') || 
+                walletError.message?.includes('cancelled') || 
+                walletError.message?.includes('denied')) {
+                throw new Error('Transaction cancelled by user');
+            }
+            
+            // Check for simulation errors
+            if (walletError.message?.includes('simulation') || 
+                walletError.message?.includes('Simulation failed')) {
+                console.error('Simulation error details:', walletError);
+                throw new Error(`Transaction simulation failed: ${walletError.message}`);
+            }
+            
+            // Re-throw other errors
+            throw walletError;
+        }
         
         // Extract signature string from result
         const signature = signatureResult.signature || signatureResult;
@@ -1941,7 +1970,9 @@ async function buildSwapTransaction(fromAmount, fromToken, toTokenAccountPubkey)
     console.log(`💰 Amount in basis points: ${amountInBaseUnits} (${fromAmount} display units with ${fromToken.decimals} decimals)`);
     
     // Get program ID
-    const programId = new solanaWeb3.PublicKey(CONFIG.programId);
+    const programIdString = window.CONFIG?.programId || window.TRADING_CONFIG?.programId || 'quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD';
+    console.log('🔑 Using program ID:', programIdString);
+    const programId = new solanaWeb3.PublicKey(programIdString);
     
     // Get system state PDA
     const systemStatePDA = await solanaWeb3.PublicKey.findProgramAddress(
