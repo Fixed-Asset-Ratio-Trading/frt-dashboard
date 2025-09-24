@@ -125,21 +125,30 @@ function interpretPoolFlags(poolData) {
     const flags = {
         swapsPaused: false,
         liquidityPaused: false,
-        oneToManyRatio: false
+        oneToManyRatio: false,
+        exactExchangeRequired: false
     };
     
     // Check if pool has flags field from server
     if (poolData && poolData.flags !== undefined) {
         const flagValue = parseInt(poolData.flags) || 0;
         
-        // Based on API documentation, these seem to be specific error codes rather than bit flags
-        // For now, assume pools are NOT paused unless we have specific evidence
-        // TODO: Get correct flag interpretation from server or API
-        console.log(`🚩 Pool flags value: ${flagValue} (assuming NOT paused for now)`);
+        // Interpret flags using bitwise operations based on contract documentation
+        // Bit 0 (value 1): Simple ratio flag
+        // Bit 1 (value 2): Liquidity paused
+        // Bit 2 (value 4): Swaps paused  
+        // Bit 5 (value 32): Swap for owners only
+        // Bit 6 (value 64): Exact exchange required (no dust allowed)
         
-        // Conservative approach: assume pools are active unless explicitly told otherwise
-        flags.swapsPaused = false;
-        flags.liquidityPaused = false;
+        flags.swapsPaused = (flagValue & 4) !== 0;
+        flags.liquidityPaused = (flagValue & 2) !== 0;
+        flags.swapForOwnersOnly = (flagValue & 32) !== 0;
+        flags.exactExchangeRequired = (flagValue & 64) !== 0;
+        
+        console.log(`🚩 Pool flags value: ${flagValue}`);
+        if (flags.exactExchangeRequired) {
+            console.log('⚠️ EXACT EXCHANGE REQUIRED: This pool requires amounts that divide exactly (no dust)');
+        }
     }
     
     return flags;
@@ -1500,6 +1509,28 @@ function calculateSwapOutputEnhanced() {
         ? tokenPairRatio ? tokenPairRatio.SwapAToB(fromAmount) : (fromAmount * ratioB) / ratioA
         : tokenPairRatio ? tokenPairRatio.SwapBToA(fromAmount) : (fromAmount * ratioA) / ratioB;
     
+    // Check for exact exchange requirement (no dust allowed)
+    let hasDustIssue = false;
+    const flags = interpretPoolFlags(poolData);
+    if (flags.exactExchangeRequired && tokenPairRatio) {
+        // Convert amounts to basis points to check for exact division
+        const fromBasisPoints = swapDirection === 'AtoB'
+            ? Math.floor(fromAmount * Math.pow(10, tokenPairRatio.tokenADecimals))
+            : Math.floor(fromAmount * Math.pow(10, tokenPairRatio.tokenBDecimals));
+        
+        const ratioA = poolData.ratio_a_numerator || poolData.ratioANumerator || 10000000000;
+        const ratioB = poolData.ratio_b_denominator || poolData.ratioBDenominator || 100000000;
+        
+        // Check if the swap would have remainder (dust)
+        hasDustIssue = swapDirection === 'AtoB'
+            ? (fromBasisPoints * ratioB) % ratioA !== 0
+            : (fromBasisPoints * ratioA) % ratioB !== 0;
+        
+        if (hasDustIssue) {
+            console.warn(`⚠️ Dust detected: ${fromBasisPoints} basis points would create remainder. Pool requires exact amounts.`);
+        }
+    }
+    
     const toAmountInput = document.getElementById('to-amount');
     // Use proper decimals for output formatting
     const outputDecimals = swapDirection === 'AtoB' 
@@ -1523,12 +1554,16 @@ function calculateSwapOutputEnhanced() {
     // Show preview with amounts - works even without wallet
     updateTransactionPreview(fromAmount, outputAmount, hasInsufficientBalance);
     
-    // Update swap button state based on wallet connection and balance
+    // Update swap button state based on wallet connection, balance, and dust
     const swapBtn = document.getElementById('swap-btn');
     if (!isConnected) {
         swapBtn.disabled = false;
         swapBtn.textContent = '🔗 Connect Wallet to Swap';
         swapBtn.onclick = () => connectWallet();
+    } else if (hasDustIssue) {
+        swapBtn.disabled = true;
+        swapBtn.textContent = '⚠️ Amount Creates Dust (Not Allowed)';
+        showStatus('warning', '⚠️ This pool requires exact amounts only. Try a different amount.');
     } else if (hasInsufficientBalance) {
         swapBtn.disabled = true;
         swapBtn.textContent = '❌ Insufficient Balance';
@@ -2278,12 +2313,32 @@ function calculateSwapInputFromOutput() {
     // Show preview with amounts - works even without wallet
     updateTransactionPreview(inputAmount, desiredOut, hasInsufficientBalance);
     
-    // Update swap button state based on wallet connection and balance
+    // Check for exact exchange requirement (no dust allowed)
+    let hasDustIssue = false;
+    const flags = interpretPoolFlags(poolData);
+    if (flags.exactExchangeRequired && tokenPairRatio) {
+        const fromBasisPoints = swapDirection === 'AtoB'
+            ? Math.floor(inputAmount * Math.pow(10, tokenPairRatio.tokenADecimals))
+            : Math.floor(inputAmount * Math.pow(10, tokenPairRatio.tokenBDecimals));
+        
+        const ratioA = poolData.ratio_a_numerator || poolData.ratioANumerator || 10000000000;
+        const ratioB = poolData.ratio_b_denominator || poolData.ratioBDenominator || 100000000;
+        
+        hasDustIssue = swapDirection === 'AtoB'
+            ? (fromBasisPoints * ratioB) % ratioA !== 0
+            : (fromBasisPoints * ratioA) % ratioB !== 0;
+    }
+    
+    // Update swap button state based on wallet connection, balance, and dust
     const swapBtn = document.getElementById('swap-btn');
     if (!isConnected) {
         swapBtn.disabled = false;
         swapBtn.textContent = '🔗 Connect Wallet to Swap';
         swapBtn.onclick = () => connectWallet();
+    } else if (hasDustIssue) {
+        swapBtn.disabled = true;
+        swapBtn.textContent = '⚠️ Amount Creates Dust (Not Allowed)';
+        showStatus('warning', '⚠️ This pool requires exact amounts only. Try a different amount.');
     } else if (hasInsufficientBalance) {
         swapBtn.disabled = true;
         swapBtn.textContent = '❌ Insufficient Balance';
