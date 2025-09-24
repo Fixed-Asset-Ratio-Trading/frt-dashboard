@@ -448,6 +448,16 @@ async function enrichPoolData() {
             SwapBToA: function(amountB) {
                 return (amountB * this.ratioA) / this.ratioB;
             },
+            
+            // Convert display amounts to basis points
+            ADisplayToBasisPoints: function(displayAmount) {
+                return Math.floor(displayAmount * Math.pow(10, this.tokenADecimals));
+            },
+            
+            BDisplayToBasisPoints: function(displayAmount) {
+                return Math.floor(displayAmount * Math.pow(10, this.tokenBDecimals));
+            },
+            
             ExchangeDisplay: function() {
                 const rate = this.ratioB / this.ratioA;
                 return `1 ${this.tokenASymbol} = ${rate.toFixed(8)} ${this.tokenBSymbol}`;
@@ -1463,8 +1473,16 @@ function calculateSwapOutputEnhanced() {
     if (!tokenPairRatio && (typeof ratioA === 'number') && (typeof ratioB === 'number')) {
         tokenPairRatio = {
             ratioA, ratioB,
+            tokenADecimals: poolData.ratio_a_decimal || poolData.ratioADecimal || 6,
+            tokenBDecimals: poolData.ratio_b_decimal || poolData.ratioBDecimal || 6,
             SwapAToB: function(amountA) { return (amountA * this.ratioB) / this.ratioA; },
             SwapBToA: function(amountB) { return (amountB * this.ratioA) / this.ratioB; },
+            ADisplayToBasisPoints: function(displayAmount) {
+                return Math.floor(displayAmount * Math.pow(10, this.tokenADecimals));
+            },
+            BDisplayToBasisPoints: function(displayAmount) {
+                return Math.floor(displayAmount * Math.pow(10, this.tokenBDecimals));
+            },
             ExchangeDisplay: function() { const rate = this.ratioB / this.ratioA; return `1 A = ${rate.toFixed(8)} B`; }
         };
     }
@@ -2154,8 +2172,16 @@ function calculateSwapInputFromOutput() {
     if (!tokenPairRatio && (typeof ratioA === 'number') && (typeof ratioB === 'number')) {
         tokenPairRatio = {
             ratioA, ratioB,
+            tokenADecimals: poolData.ratio_a_decimal || poolData.ratioADecimal || 6,
+            tokenBDecimals: poolData.ratio_b_decimal || poolData.ratioBDecimal || 6,
             SwapAToB: function(amountA) { return (amountA * this.ratioB) / this.ratioA; },
-            SwapBToA: function(amountB) { return (amountB * this.ratioA) / this.ratioB; }
+            SwapBToA: function(amountB) { return (amountB * this.ratioA) / this.ratioB; },
+            ADisplayToBasisPoints: function(displayAmount) {
+                return Math.floor(displayAmount * Math.pow(10, this.tokenADecimals));
+            },
+            BDisplayToBasisPoints: function(displayAmount) {
+                return Math.floor(displayAmount * Math.pow(10, this.tokenBDecimals));
+            }
         };
     }
     
