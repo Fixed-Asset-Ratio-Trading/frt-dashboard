@@ -15,45 +15,46 @@ let isConnected = false;
 let userTokens = [];
 let swapDirection = 'AtoB'; // 'AtoB' or 'BtoA'
 let tokenPairRatio = null; // 🎯 CENTRALIZED: TokenPairRatio instance for all calculations
-let poolStatusCheckInterval = null; // For periodic pool status monitoring
+// Removed: poolStatusCheckInterval - no more periodic monitoring
 // No slippage tolerance needed for fixed ratio trading
 
 /**
  * Initialize the swap page with library loading retry mechanism
  */
 async function initializeSwapPage() {
-    console.log('🔄 Initializing Enhanced Swap Page...');
+    console.log('🚀 Starting immediate server-only initialization...');
     
-    // Simple retry mechanism for library loading
-    let attempts = 0;
-    const maxAttempts = 8;
+    // Get pool address from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const poolAddress = urlParams.get('pool');
     
-    const tryInitialize = async () => {
-        attempts++;
-        console.log(`📋 Initialization attempt ${attempts}/${maxAttempts}`);
-        
-        // Check if libraries are loaded
-        if (window.solanaWeb3 && window.SPL_TOKEN_LOADED === true) {
-            console.log('✅ All libraries loaded successfully!');
-            await initializeApp();
+    if (!poolAddress) {
+        showStatus('error', '❌ No pool address specified in URL');
             return;
         }
         
-        // If libraries aren't loaded yet, try again
-        if (attempts < maxAttempts) {
-            console.log(`⏳ Libraries still loading... retrying in 1 second`);
-            setTimeout(tryInitialize, 1000);
-        } else {
-            console.error('❌ Failed to load libraries after', maxAttempts, 'attempts');
-            showStatus('error', '❌ Failed to load required libraries. Please refresh the page.');
-        }
-    };
+    console.log('🎯 Loading pool for swap:', poolAddress);
     
-    // Check for SPL Token library
-    setTimeout(() => {
+    // Load pool data directly from server and render immediately - NO library checks needed
+    loadPoolDataFromServerOnly(poolAddress);
+}
+
+/**
+ * Lazy load SPL Token library when needed for transactions
+ */
+async function ensureSPLTokenLibrary() {
+    // Return early if already loaded
+    if (window.SPL_TOKEN_LOADED && window.splToken) {
+        return true;
+    }
+    
+    console.log('🔄 Loading SPL Token library for transaction...');
+    
+    try {
         let splTokenLib = null;
         const possibleNames = ['splToken', 'SPLToken', 'SplToken'];
         
+        // Check window level
         for (const name of possibleNames) {
             if (window[name]) {
                 splTokenLib = window[name];
@@ -62,6 +63,7 @@ async function initializeSwapPage() {
             }
         }
         
+        // Check solanaWeb3 level
         if (!splTokenLib && window.solanaWeb3) {
             for (const name of possibleNames) {
                 if (window.solanaWeb3[name]) {
@@ -72,22 +74,148 @@ async function initializeSwapPage() {
             }
         }
         
+        // Lazy-load if still not found
+        if (!splTokenLib) {
+            try {
+                await loadScriptDeferred('libs/spl-token.min.js');
+                // Re-check after loading
+                for (const name of possibleNames) {
+                    if (window[name]) {
+                        splTokenLib = window[name];
+                        console.log(`✅ Loaded SPL Token library as window.${name}`);
+                        break;
+                    }
+                }
+                if (!splTokenLib && window.solanaWeb3) {
+                    for (const name of possibleNames) {
+                        if (window.solanaWeb3[name]) {
+                            splTokenLib = window.solanaWeb3[name];
+                            console.log(`✅ Loaded SPL Token library as solanaWeb3.${name}`);
+                            break;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ Failed to lazy-load libs/spl-token.min.js:', e?.message);
+            }
+        }
+        
         if (splTokenLib) {
             window.splToken = splTokenLib;
             window.SPL_TOKEN_LOADED = true;
-            console.log('✅ SPL Token library ready!');
+            console.log('✅ SPL Token library loaded and ready for transactions!');
+            return true;
         } else {
-            console.error('❌ SPL Token library not found');
+            console.error('❌ SPL Token library not found - cannot perform transactions');
             window.SPL_TOKEN_LOADED = false;
+            return false;
         }
-        
-        // Start first attempt after a brief delay
-        setTimeout(tryInitialize, 1500);
-    }, 100);
+    } catch (error) {
+        console.error('❌ Error loading SPL Token library:', error);
+        window.SPL_TOKEN_LOADED = false;
+        return false;
+    }
 }
 
 /**
- * Initialize the application after libraries are loaded
+ * Simple flags interpretation from server data (no dependencies)
+ * Based on API docs: pool_state.swaps_paused() and pool_state.liquidity_paused() methods
+ */
+function interpretPoolFlags(poolData) {
+    const flags = {
+        swapsPaused: false,
+        liquidityPaused: false,
+        oneToManyRatio: false
+    };
+    
+    // Check if pool has flags field from server
+    if (poolData && poolData.flags !== undefined) {
+        const flagValue = parseInt(poolData.flags) || 0;
+        
+        // Based on API documentation, these seem to be specific error codes rather than bit flags
+        // For now, assume pools are NOT paused unless we have specific evidence
+        // TODO: Get correct flag interpretation from server or API
+        console.log(`🚩 Pool flags value: ${flagValue} (assuming NOT paused for now)`);
+        
+        // Conservative approach: assume pools are active unless explicitly told otherwise
+        flags.swapsPaused = false;
+        flags.liquidityPaused = false;
+    }
+    
+    return flags;
+}
+
+/**
+ * Load pool data from server only and render immediately (like test page)
+ */
+async function loadPoolDataFromServerOnly(poolAddress) {
+    try {
+        console.log('📡 Fetching pool data from server:', poolAddress);
+        showStatus('info', 'Loading pool information from server...');
+        
+        const response = await fetch(`./pool-data.php?poolAddress=${poolAddress}`);
+        
+        if (!response.ok) {
+            throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+        }
+        
+        const serverData = await response.json();
+        console.log('✅ Server response received:', serverData);
+        
+        if (serverData.parsed_pool_data) {
+            poolData = serverData.parsed_pool_data;
+            console.log('✅ Pool data loaded from server:', poolData);
+            
+            // Render the page immediately with server data
+            console.log('🎨 Starting updatePoolDisplay...');
+            const displayStart = performance.now();
+            updatePoolDisplay();
+            console.log(`🎨 updatePoolDisplay took ${(performance.now() - displayStart).toFixed(1)}ms`);
+            
+            console.log('🔄 Starting initializeSwapInterface...');
+            const interfaceStart = performance.now();
+            initializeSwapInterface();
+            console.log(`🔄 initializeSwapInterface took ${(performance.now() - interfaceStart).toFixed(1)}ms`);
+            clearStatus();
+            
+            console.log('✅ Page rendered with server data - deferring other operations');
+            
+            // Defer non-critical operations until after render
+            setTimeout(() => {
+                initializeNonCriticalOperations();
+    }, 100);
+            
+        } else {
+            throw new Error('No parsed pool data in server response');
+        }
+        
+    } catch (error) {
+        console.error('❌ Failed to load pool data from server:', error);
+        showStatus('error', `❌ Failed to load pool data: ${error.message}`);
+    }
+}
+
+/**
+ * Initialize non-critical operations after page render (RPC, wallet, etc.)
+ */
+async function initializeNonCriticalOperations() {
+    console.log('🔄 Starting non-critical operations after page render...');
+    
+    // Add a small delay to ensure DOM updates are complete
+    setTimeout(async () => {
+        try {
+            // Check for wallet persistence (non-blocking)
+            await checkWalletPersistence();
+        } catch (error) {
+            console.warn('⚠️ Wallet persistence check failed:', error.message);
+        }
+    }, 50);
+    
+    console.log('✅ Non-critical operations deferred - page is ready for user interaction');
+}
+
+/**
+ * Initialize the application after libraries are loaded (LEGACY - not used in server-only mode)
  */
 async function initializeApp() {
     try {
@@ -113,48 +241,31 @@ async function initializeApp() {
         }
         console.log('🎯 Loading pool for swap:', poolAddress);
 
-        // Fast-path: if we have fresh local cache, avoid any slow connections before first paint
-        let fastRender = false;
-        try {
-            if (!window.PoolCacheManager?.connection) {
-                await window.PoolCacheManager.initialize(window.TRADING_CONFIG, null);
-            }
-            const local = await window.PoolCacheManager.fetchFromLocalStorage(poolAddress);
-            const fresh = local && (Date.now() - new Date(local.generated_at).getTime() < 5 * 60 * 1000);
-            fastRender = !!fresh;
-            if (fastRender) {
-                console.log('⚡ Fast-render mode enabled (fresh local cache)');
-            }
-        } catch (_) {}
+        // Simplified: Only use server-side data, no local cache checks
 
-        // Initialize Solana connection (defer entirely if gate not reached)
-        const gate = (typeof window.FRT_RPC_ALLOWED_AT === 'number') ? window.FRT_RPC_ALLOWED_AT : 0;
-        if (fastRender && Date.now() < gate) {
-            console.log(`[${new Date().toISOString()}] ⏳ Deferring RPC connection until gate`);
-            connection = null; // allow cached render without creating a connection
-        } else {
-            console.log(`[${new Date().toISOString()}] 🔌 Connecting to Solana RPC...`);
+        // Initialize Solana connection for transactions only (no pool data fetching)
+        console.log(`[${new Date().toISOString()}] 🔌 Connecting to Solana RPC for transactions only...`);
         const connectionConfig = {
             commitment: CONFIG.commitment,
-            disableRetryOnRateLimit: CONFIG.disableRetryOnRateLimit || true
+            disableRetryOnRateLimit: CONFIG.disableRetryOnRateLimit || true,
+            wsEndpoint: false // Disable WebSocket, use HTTP only
         };
-            if (fastRender) {
-                console.log('📡 Using HTTP polling (WS deferred until idle)');
-                connectionConfig.wsEndpoint = false;
                 connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig);
-            } else {
-        if (CONFIG.wsUrl) {
-            console.log('📡 Using WebSocket endpoint:', CONFIG.wsUrl);
-            connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig, CONFIG.wsUrl);
-        } else {
-            console.log('📡 Using HTTP polling (WebSocket disabled)');
-            connectionConfig.wsEndpoint = false;
-            connection = new solanaWeb3.Connection(CONFIG.rpcUrl, connectionConfig);
-                }
-            }
-        }
         
-        console.log('✅ SPL Token library ready');
+        console.log('✅ Solana connection established (SPL Token library will load when needed)');
+        
+        // If wallet was already connected, retry balance and token loading now that connection is ready
+        if (isConnected && wallet) {
+            console.log('🔄 Connection established, retrying wallet operations...');
+            setTimeout(async () => {
+                try {
+                    await checkWalletBalance();
+                    await loadUserTokensForPool();
+                } catch (error) {
+                    console.warn('⚠️ Error retrying wallet operations:', error);
+                }
+            }, 100);
+        }
         
         // Check if Backpack is installed (but don't block interface if not)
         if (!window.backpack) {
@@ -197,10 +308,7 @@ async function initializeApp() {
                         console.warn('⚠️ WS upgrade failed (will continue with HTTP):', e?.message);
                     }
                 }
-                // Connect wallet only after page is rendered
-        if (window.backpack && window.backpack.isConnected) {
-            await handleWalletConnected();
-        }
+                // Wallet connection will be handled at the very end of pool data processing
             } catch (_) {}
         });
         
@@ -211,223 +319,151 @@ async function initializeApp() {
 }
 
 /**
- * Load pool data using three-tier caching strategy
+ * Load pool data from server only (no caching, no RPC)
  */
 async function loadPoolData() {
     try {
-        showStatus('info', 'Loading pool information...');
+        showStatus('info', 'Loading pool information from server...');
         
-        // Initialize pool cache manager if not already done
-        if (!window.PoolCacheManager.connection) {
-            await window.PoolCacheManager.initialize(window.TRADING_CONFIG, connection);
+        // Fetch pool data directly from server
+        console.log('📡 Fetching pool data from server:', poolAddress);
+        const response = await fetch(`./pool-data.php?poolAddress=${poolAddress}`);
+        
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
         }
         
-        // Get pool data using three-tier caching (server cache + RPC + localStorage)
-        const cacheResult = await window.PoolCacheManager.getPoolData(poolAddress);
+        const serverData = await response.json();
         
-        // Render immediately if localStorage or server cache provided data
-        if (cacheResult && (cacheResult.source === 'localStorage' || cacheResult.source.startsWith('server-cache'))) {
-            try {
-                const base64Data = cacheResult.data.value.data[0];
-                const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-                poolData = window.TradingDataService.parsePoolState(binaryData, poolAddress);
-                
-                // Fetch decimals async but do not block initial render
-                (async () => {
-                    try {
-                        const [decA, decB] = await Promise.all([
-                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenAMint, connection),
-                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenBMint, connection)
-                        ]);
-                        poolData.ratioADecimal = decA;
-                        poolData.ratioBDecimal = decB;
-                        poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, decA);
-                        poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, decB);
-                        // Re-enrich UI quietly
-                        try { await enrichPoolData(); } catch (_) {}
-                    } catch (_) {}
-                })();
-                
-                // Proceed to render UI immediately
-                console.log('⚡ Rendering immediately from cache:', cacheResult.source);
-            } catch (e) {
-                console.warn('⚠️ Failed fast render from cache, falling back:', e.message);
-            }
+        if (!serverData || !serverData.parsed_pool_data) {
+            throw new Error('Invalid server response: missing parsed pool data');
         }
         
-        if (cacheResult && cacheResult.data) {
-            // Parse the raw RPC data using existing TradingDataService parser
-        if (!window.TradingDataService.connection) {
-            await window.TradingDataService.initialize(window.TRADING_CONFIG, connection);
-        }
+        // Use the parsed pool data directly from server
+        poolData = serverData.parsed_pool_data;
         
-            try {
-                // Convert cached RPC response to parsed pool data
-                // The cached data is base64 encoded, so we need to decode it first
-                const base64Data = cacheResult.data.value.data[0];
-                const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-                
-                poolData = window.TradingDataService.parsePoolState(
-                    binaryData, 
-                    poolAddress
-                );
-                
-                // Enrich with token decimals if available from TradingDataService
-                if (window.TokenDisplayUtils?.getTokenDecimals) {
-                    try {
-                        const [decA, decB] = await Promise.all([
-                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenAMint, connection),
-                            window.TokenDisplayUtils.getTokenDecimals(poolData.tokenBMint, connection)
-                        ]);
-                        poolData.ratioADecimal = decA;
-                        poolData.ratioBDecimal = decB;
-                        poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, decA);
-                        poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, decB);
-                    } catch (e) {
-                        console.warn('⚠️ Failed to fetch token decimals for cached pool:', e?.message);
-                    }
-                }
-                
-                // Add cache metadata
-                poolData.cacheSource = cacheResult.source;
-                poolData.cacheResponseTime = cacheResult.response_time;
-                poolData.generatedAt = cacheResult.generated_at;
-            } catch (parseError) {
-                console.error('❌ Failed to parse cached pool data:', parseError);
-                console.log('Cache result structure:', cacheResult);
-                throw new Error(`Failed to parse cached pool data: ${parseError.message}`);
-            }
-            
-            console.log(`✅ Pool loaded via PoolCacheManager (source: ${cacheResult.source}, ${Math.round(cacheResult.response_time)}ms)`);
-            
-            // Update cache status indicator
-            updateCacheStatusDisplay(cacheResult);
+        console.log('✅ Pool data loaded from server:', poolData.address);
+        
+        // Map server field names to expected client field names for compatibility
+        poolData.tokenAMint = poolData.token_a_mint;
+        poolData.tokenBMint = poolData.token_b_mint;
+        poolData.ratioANumerator = poolData.ratio_a_numerator;
+        poolData.ratioBDenominator = poolData.ratio_b_denominator;
+        poolData.totalTokenALiquidity = poolData.total_token_a_liquidity;
+        poolData.totalTokenBLiquidity = poolData.total_token_b_liquidity;
+        poolData.ratioADecimal = poolData.ratio_a_decimal;
+        poolData.ratioBDecimal = poolData.ratio_b_decimal;
+        poolData.ratioAActual = poolData.ratio_a_actual;
+        poolData.ratioBActual = poolData.ratio_b_actual;
+        poolData.tokenASymbol = poolData.token_a_ticker;
+        poolData.tokenBSymbol = poolData.token_b_ticker;
+        
+        // Add server metadata
+        poolData.cacheSource = 'server-only';
+        poolData.cacheResponseTime = 0; // Server handles timing
+        poolData.generatedAt = serverData.generated_at;
             
             // 🔍 DEVELOPER DEBUGGING: Log complete pool data to console
             console.group('🔍 POOL DATA FOR DEVELOPERS');
             console.log('📊 Complete Pool State:', poolData);
             console.log('🏊‍♂️ Pool Address:', poolAddress);
-            console.log('🗄️ Cache Source:', cacheResult.source);
-            console.log('⚡ Response Time:', Math.round(cacheResult.response_time) + 'ms');
-            console.log('🪙 Token A Mint:', poolData.tokenAMint || poolData.token_a_mint);
-            console.log('🪙 Token B Mint:', poolData.tokenBMint || poolData.token_b_mint);
-            console.log('⚖️ Ratio A Numerator:', poolData.ratioANumerator || poolData.ratio_a_numerator);
-            console.log('⚖️ Ratio B Denominator:', poolData.ratioBDenominator || poolData.ratio_b_denominator);
-            console.log('💧 Token A Liquidity:', poolData.tokenALiquidity || poolData.total_token_a_liquidity);
-            console.log('💧 Token B Liquidity:', poolData.tokenBLiquidity || poolData.total_token_b_liquidity);
+        console.log('🗄️ Data Source: server-only');
+        console.log('🪙 Token A Mint:', poolData.tokenAMint);
+        console.log('🪙 Token B Mint:', poolData.tokenBMint);
+        console.log('⚖️ Ratio A Numerator:', poolData.ratioANumerator);
+        console.log('⚖️ Ratio B Denominator:', poolData.ratioBDenominator);
+        console.log('💧 Token A Liquidity:', poolData.totalTokenALiquidity);
+        console.log('💧 Token B Liquidity:', poolData.totalTokenBLiquidity);
             console.log('🚩 Pool Flags:', poolData.flags);
             console.log('🔒 Pool Owner:', poolData.owner);
             console.groupEnd();
             
+        // Enrich pool data with symbols and display information
             await enrichPoolData();
+        
+        // Update pool display
             updatePoolDisplay();
             initializeSwapInterface();
             clearStatus();
-        } else {
-            showStatus('error', 'Pool not found. Please check the pool address.');
-        }
+        
+        // Now that all pool data is processed and interface is ready, check for wallet connection
+        setTimeout(async () => {
+            try {
+                console.log('🔄 Pool data processing complete, checking wallet persistence...');
+                await checkWalletPersistence();
+            } catch (error) {
+                console.warn('⚠️ Wallet persistence check failed:', error);
+            }
+        }, 100); // Small delay to ensure UI updates are complete
         
     } catch (error) {
-        console.error('❌ Error loading pool data:', error);
-        showStatus('error', `Failed to load pool: ${error.message}`);
+        console.error('❌ Error loading pool data from server:', error);
+        showStatus('error', `Failed to load pool from server: ${error.message}`);
     }
 }
 
 /**
- * Enrich pool data with token symbols
+ * Enrich pool data with token symbols (simplified - server provides all data)
  */
 async function enrichPoolData() {
     if (!poolData) return;
     
-    // Hoist cachedExtras so it's visible throughout this function
-    let cachedExtras = null;
-    try {
-        // Try cached extras first for performance
-        cachedExtras = window.PoolCacheManager?.getLocalExtras?.(poolData.address || poolAddress) || null;
-        if (cachedExtras?.tokenASymbol && cachedExtras?.tokenBSymbol) {
-            poolData.tokenASymbol = cachedExtras.tokenASymbol;
-            poolData.tokenBSymbol = cachedExtras.tokenBSymbol;
-        } else {
-        const symbols = await getTokenSymbols(
-            poolData.tokenAMint || poolData.token_a_mint, 
-            poolData.tokenBMint || poolData.token_b_mint
-        );
-        poolData.tokenASymbol = symbols.tokenA;
-        poolData.tokenBSymbol = symbols.tokenB;
-            // Persist symbols for future instant renders
-            window.PoolCacheManager?.setLocalExtras?.(poolData.address || poolAddress, {
-                ...(cachedExtras || {}),
-                tokenASymbol: poolData.tokenASymbol,
-                tokenBSymbol: poolData.tokenBSymbol
-            });
+    // Server already provides token symbols and decimals, just verify they exist
+    if (!poolData.tokenASymbol || !poolData.tokenBSymbol) {
+        console.warn('Warning: Server did not provide token symbols, using fallbacks');
+        poolData.tokenASymbol = poolData.tokenASymbol || `${(poolData.tokenAMint)?.slice(0, 4) || 'A'}`;
+        poolData.tokenBSymbol = poolData.tokenBSymbol || `${(poolData.tokenBMint)?.slice(0, 4) || 'B'}`;
         }
         
         console.log(`✅ Token symbols resolved: ${poolData.tokenASymbol}/${poolData.tokenBSymbol}`);
-    } catch (error) {
-        console.warn('Warning: Could not load token symbols:', error);
-        poolData.tokenASymbol = `${(poolData.tokenAMint || poolData.token_a_mint)?.slice(0, 4) || 'A'}`;
-        poolData.tokenBSymbol = `${(poolData.tokenBMint || poolData.token_b_mint)?.slice(0, 4) || 'B'}`;
-    }
     
     // 🎯 CENTRALIZED: Create TokenPairRatio instance for all calculations
     try {
-        // If decimals are not present, try cached extras and per-mint decimals cache, else compute after RPC gate/connection
+        // Server provides all necessary decimal and ratio data
         if (typeof poolData.ratioADecimal !== 'number' || typeof poolData.ratioBDecimal !== 'number') {
-            const cachedDecA = cachedExtras?.ratioADecimal ?? window.PoolCacheManager?.getTokenDecimalFromCache?.(poolData.tokenAMint || poolData.token_a_mint);
-            const cachedDecB = cachedExtras?.ratioBDecimal ?? window.PoolCacheManager?.getTokenDecimalFromCache?.(poolData.tokenBMint || poolData.token_b_mint);
-            if (cachedDecA != null && cachedDecB != null) {
-                poolData.ratioADecimal = cachedDecA;
-                poolData.ratioBDecimal = cachedDecB;
+            console.warn('Warning: Server did not provide token decimals, using defaults');
+            poolData.ratioADecimal = poolData.ratioADecimal || 6;
+            poolData.ratioBDecimal = poolData.ratioBDecimal || 6;
                 poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, poolData.ratioADecimal);
                 poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, poolData.ratioBDecimal);
-                // Persist into extras if missing
-                window.PoolCacheManager?.setLocalExtras?.(poolData.address || poolAddress, {
-                    ...(cachedExtras || {}),
-                    ratioADecimal: cachedDecA,
-                    ratioBDecimal: cachedDecB
-                });
-            } else if (cachedExtras?.ratioADecimal != null && cachedExtras?.ratioBDecimal != null) {
-                poolData.ratioADecimal = cachedExtras.ratioADecimal;
-                poolData.ratioBDecimal = cachedExtras.ratioBDecimal;
-                poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, poolData.ratioADecimal);
-                poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, poolData.ratioBDecimal);
-            } else if (window.TokenDisplayUtils?.getTokenDecimals) {
-                // Fetch decimals only when RPC connection is available and gate passed
-                const canFetchDecimals = !!connection && (typeof window.FRT_RPC_ALLOWED_AT !== 'number' || Date.now() >= window.FRT_RPC_ALLOWED_AT);
-                if (canFetchDecimals) {
-                    (async () => {
-                        try {
-                            const [decA, decB] = await Promise.all([
-                                window.TokenDisplayUtils.getTokenDecimals(poolData.tokenAMint || poolData.token_a_mint, connection),
-                                window.TokenDisplayUtils.getTokenDecimals(poolData.tokenBMint || poolData.token_b_mint, connection)
-                            ]);
-                            poolData.ratioADecimal = decA;
-                            poolData.ratioBDecimal = decB;
-                            poolData.ratioAActual = (poolData.ratioANumerator || 0) / Math.pow(10, decA);
-                            poolData.ratioBActual = (poolData.ratioBDenominator || 0) / Math.pow(10, decB);
-                            window.PoolCacheManager?.setLocalExtras?.(poolData.address || poolAddress, {
-                                ...(cachedExtras || {}),
-                                ratioADecimal: decA,
-                                ratioBDecimal: decB
-                            });
-                            // Also store in per-mint decimals cache for cross-pool reuse
-                            window.PoolCacheManager?.setTokenDecimalInCache?.(poolData.tokenAMint || poolData.token_a_mint, decA);
-                            window.PoolCacheManager?.setTokenDecimalInCache?.(poolData.tokenBMint || poolData.token_b_mint, decB);
-                            try { updatePoolDisplay(); } catch (_) {}
-                        } catch (e) {
-                            console.warn('⚠️ Failed to fetch token decimals for cached pool:', e?.message);
-                        }
-                    })();
-                } else {
-                    // Schedule a retry shortly after gate
-                    const delay = Math.max(0, (window.FRT_RPC_ALLOWED_AT || Date.now()) - Date.now() + 100);
-                    setTimeout(() => { try { enrichPoolData(); } catch (_) {} }, delay);
-                }
-            }
         }
 
-        tokenPairRatio = TokenPairRatio.fromPoolData(poolData);
-        console.log(`🎯 TokenPairRatio created: ${tokenPairRatio.ExchangeDisplay()}`);
+        // Create simple ratio calculation object (no dependencies)
+        // Store token symbols in poolData for consistent access
+        poolData.tokenASymbol = poolData.token_a_ticker || poolData.tokenASymbol || 'tSAT';
+        poolData.tokenBSymbol = poolData.token_b_ticker || poolData.tokenBSymbol || 'tBTC';
+        
+        tokenPairRatio = {
+            ratioA: poolData.ratio_a_actual || poolData.ratioAActual || 1,
+            ratioB: poolData.ratio_b_actual || poolData.ratioBActual || 1,
+            tokenASymbol: poolData.tokenASymbol,
+            tokenBSymbol: poolData.tokenBSymbol,
+            tokenADecimals: poolData.ratio_a_decimal || poolData.ratioADecimal || 6,
+            tokenBDecimals: poolData.ratio_b_decimal || poolData.ratioBDecimal || 6,
+            
+            // Simple swap calculation methods
+            SwapAToB: function(amountA) {
+                return (amountA * this.ratioB) / this.ratioA;
+            },
+            SwapBToA: function(amountB) {
+                return (amountB * this.ratioA) / this.ratioB;
+            },
+            ExchangeDisplay: function() {
+                const rate = this.ratioB / this.ratioA;
+                return `1 ${this.tokenASymbol} = ${rate.toFixed(8)} ${this.tokenBSymbol}`;
+            },
+            getDebugInfo: function() {
+                return {
+                    ratioA: this.ratioA,
+                    ratioB: this.ratioB,
+                    tokenASymbol: this.tokenASymbol,
+                    tokenBSymbol: this.tokenBSymbol,
+                    exchangeRate: this.ratioB / this.ratioA
+                };
+            }
+        };
+        
+        console.log(`🎯 Simple TokenPairRatio created: ${tokenPairRatio.ExchangeDisplay()}`);
         console.log(`🔍 TokenPairRatio ready:`, tokenPairRatio.getDebugInfo());
     } catch (error) {
         console.error('❌ Failed to create TokenPairRatio:', error);
@@ -509,31 +545,100 @@ function createTokenImageHTML(mintAddress, symbol) {
  * Format number with appropriate decimal places, removing trailing zeros
  */
 function formatTokenAmount(amount, decimals) {
+    // Coerce input to number when possible
+    if (typeof amount === 'string') {
+        amount = parseFloat(amount);
+    } else if (typeof amount === 'bigint') {
+        amount = Number(amount);
+    }
+    
+    if (!Number.isFinite(amount)) {
+        return '0' + (decimals > 0 ? '.' + '0'.repeat(Math.min(decimals, 9)) : '');
+    }
+    
     if (amount === 0) {
-        // For zero amounts, show the appropriate number of decimal places
         if (decimals === 0) return '0';
         return '0.' + '0'.repeat(decimals);
     }
     
-    // Format with full decimal places first
-    const formatted = amount.toFixed(decimals);
-    
-    // Remove trailing zeros, but keep at least one decimal place if there were decimals
+    const formatted = Number(amount).toFixed(decimals);
     if (decimals > 0) {
         return formatted.replace(/\.?0+$/, '');
     }
-    
     return formatted;
 }
 
 /**
- * Show wallet connection UI (deprecated - interface now works without wallet)
- * Kept for compatibility but no longer blocks the interface
+ * Show wallet connection UI and update wallet button
  */
 function showWalletConnection() {
-    // No longer needed - interface works without wallet connection
-    // The swap interface will show "Connect Wallet to Swap" button instead
-    console.log('🔄 Wallet not connected - interface will show connect button when user tries to swap');
+    // Update the main wallet connect button
+    updateWalletButton();
+    console.log('🔄 Wallet connection status updated');
+}
+
+/**
+ * Update the wallet connect/disconnect button in the swap interface
+ */
+function updateWalletButton() {
+    const walletBtn = document.getElementById('wallet-connect-btn');
+    const walletBtnText = document.getElementById('wallet-btn-text');
+    
+    if (walletBtn && walletBtnText) {
+        if (isConnected && wallet) {
+            walletBtn.className = 'wallet-btn connected';
+            walletBtnText.textContent = `🔓 ${wallet.publicKey.toString().slice(0, 4)}...${wallet.publicKey.toString().slice(-4)}`;
+        } else {
+            walletBtn.className = 'wallet-btn disconnected';
+            walletBtnText.textContent = '🔗 Connect Wallet';
+        }
+    }
+}
+
+/**
+ * Check if wallet was previously connected and auto-reconnect
+ */
+async function checkWalletPersistence() {
+    try {
+        // Check if wallet was previously connected
+        const wasConnected = localStorage.getItem('wallet_connected') === 'true';
+        
+        if (wasConnected && window.backpack) {
+            console.log('🔄 Attempting to restore previous wallet connection...');
+            
+            try {
+                // Try to connect to Backpack (this will work if user previously authorized)
+                await window.backpack.connect();
+                console.log('✅ Wallet connection restored successfully');
+                await handleWalletConnected();
+            } catch (connectError) {
+                // Connection failed - user likely disconnected or rejected
+                console.log('⚠️ Could not restore wallet connection:', connectError.message);
+                localStorage.removeItem('wallet_connected');
+                
+                // Update UI to show disconnected state
+                updateWalletButton();
+            }
+        } else {
+            console.log('🔄 No previous wallet connection found');
+        }
+    } catch (error) {
+        console.warn('⚠️ Error checking wallet persistence:', error);
+        // Clear state if there's an error
+        localStorage.removeItem('wallet_connected');
+        updateWalletButton();
+    }
+}
+
+/**
+ * Toggle wallet connection (connect if disconnected, disconnect if connected)
+ */
+async function toggleWalletConnection() {
+    if (isConnected && wallet) {
+        await disconnectWallet();
+    } else {
+        await connectWallet();
+    }
 }
 
 /**
@@ -547,9 +652,116 @@ async function connectWallet() {
         await window.backpack.connect();
         await handleWalletConnected();
         
+        // Save connection state to localStorage
+        localStorage.setItem('wallet_connected', 'true');
+        
     } catch (error) {
         console.error('❌ Error connecting wallet:', error);
         showStatus('error', 'Failed to connect wallet: ' + error.message);
+    }
+}
+
+/**
+ * Disconnect wallet
+ */
+async function disconnectWallet() {
+    try {
+        console.log('🔗 Disconnecting wallet...');
+        showStatus('info', 'Disconnecting wallet...');
+        
+        if (window.backpack && window.backpack.disconnect) {
+            await window.backpack.disconnect();
+        }
+        
+        // Reset wallet state
+        wallet = null;
+        isConnected = false;
+        userTokens = [];
+        
+        // Clear connection state from localStorage
+        localStorage.removeItem('wallet_connected');
+        
+        // Update wallet button to show disconnected state
+        updateWalletButton();
+        
+        // Reset swap interface to show connect button
+        const swapBtn = document.getElementById('swap-btn');
+        if (swapBtn) {
+            swapBtn.disabled = true;
+            swapBtn.textContent = '🔗 Connect Wallet to Swap';
+        }
+        
+        // Clear token balances
+        const fromBalance = document.getElementById('from-token-balance');
+        const toBalance = document.getElementById('to-token-balance');
+        if (fromBalance) fromBalance.textContent = '0.000000';
+        if (toBalance) toBalance.textContent = '0.000000';
+        
+        showStatus('success', 'Wallet disconnected');
+        
+    } catch (error) {
+        console.error('❌ Error disconnecting wallet:', error);
+        showStatus('error', 'Failed to disconnect wallet: ' + error.message);
+    }
+}
+
+/**
+ * Initialize Solana RPC connection when needed for wallet operations
+ */
+async function initializeSolanaConnection() {
+    if (connection) {
+        return connection; // Already initialized
+    }
+    
+    try {
+        console.log('🔌 Initializing Solana RPC connection for wallet operations...');
+        
+        // Ensure config is loaded (lazy-load if missing)
+        if (!window.CONFIG) {
+            try {
+                await loadScriptDeferred('config.js');
+            } catch (e) {
+                console.warn('⚠️ Failed to lazy-load config.js:', e?.message);
+            }
+        }
+        
+        // Wait briefly for CONFIG to populate
+        let attempts = 0;
+        while (!window.CONFIG && attempts < 30) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        if (!window.CONFIG) {
+            throw new Error('Configuration not available');
+        }
+        
+        // Ensure solanaWeb3 is available (lazy-load if missing)
+        if (!window.solanaWeb3) {
+            try {
+                await loadScriptDeferred('libs/solana-web3.min.js');
+            } catch (e) {
+                console.warn('⚠️ Failed to lazy-load solana-web3.min.js:', e?.message);
+            }
+        }
+        
+        if (!window.solanaWeb3) {
+            throw new Error('solanaWeb3 not available');
+        }
+        
+        const connectionConfig = {
+            commitment: window.CONFIG.commitment || 'confirmed',
+            disableRetryOnRateLimit: true,
+            wsEndpoint: false // Disable WebSocket, use HTTP only
+        };
+        
+        connection = new solanaWeb3.Connection(window.CONFIG.rpcUrl, connectionConfig);
+        console.log('✅ Solana RPC connection initialized for wallet operations');
+        
+        return connection;
+    } catch (error) {
+        console.error('❌ Failed to initialize Solana connection:', error);
+        throw error;
     }
 }
 
@@ -562,6 +774,9 @@ async function handleWalletConnected() {
         isConnected = true;
         
         console.log('✅ Wallet connected:', wallet.publicKey.toString());
+        
+        // Initialize Solana connection for wallet operations
+        await initializeSolanaConnection();
         
         // Defer token/balance calls to avoid blocking
         const runAfterIdle = (fn) => {
@@ -589,8 +804,10 @@ async function handleWalletConnected() {
             calculateSwapInputFromOutput();
         }
         
-        // Start periodic pool status monitoring
-        startPoolStatusMonitoring();
+        // Removed: periodic pool status monitoring - using server-only data
+        
+        // Update wallet button to show connected state
+        updateWalletButton();
         
         showStatus('success', `Wallet connected: ${wallet.publicKey.toString().slice(0, 8)}...`);
         
@@ -605,6 +822,17 @@ async function handleWalletConnected() {
  */
 async function checkWalletBalance() {
     try {
+        // Check if connection is available
+        if (!connection) {
+            console.log('⚠️ Solana connection not ready yet, skipping balance check');
+            return;
+        }
+        
+        if (!wallet || !wallet.publicKey) {
+            console.log('⚠️ Wallet not available, skipping balance check');
+            return;
+        }
+        
         const balance = await connection.getBalance(wallet.publicKey);
         const solBalance = balance / solanaWeb3.LAMPORTS_PER_SOL;
         
@@ -623,7 +851,19 @@ async function checkWalletBalance() {
  */
 async function loadUserTokensForPool() {
     try {
-        if (!poolData || !isConnected) return;
+        if (!poolData || !isConnected || !connection) {
+            if (!connection) {
+                console.log('⚠️ Solana connection not ready yet, skipping token loading');
+            }
+            return;
+        }
+        
+        // Ensure SPL Token library is loaded before using it
+        const splTokenReady = await ensureSPLTokenLibrary();
+        if (!splTokenReady) {
+            console.error('❌ Cannot load user tokens without SPL Token library');
+            return;
+        }
         
         showStatus('info', '🔍 Loading your pool tokens...');
         
@@ -740,25 +980,35 @@ function updatePoolDisplay() {
         refreshBtn.style.display = 'inline-flex';
     }
     
-    // ✅ CENTRALIZED: Use centralized display functions for consistency
-    const displayInfo = window.TokenDisplayUtils?.getCentralizedDisplayInfo(poolData);
-    
-    if (!displayInfo) {
-        throw new Error('Failed to get centralized display info');
-    }
-    
-    // Build the full display object 
-    const flags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
+     // ✅ SIMPLE: Use server data directly without dependencies (like test page)
+     const tokenASymbol = poolData.token_a_ticker || poolData.token_a_mint?.slice(0, 4) || 'TOKEN A';
+     const tokenBSymbol = poolData.token_b_ticker || poolData.token_b_mint?.slice(0, 4) || 'TOKEN B';
+     
+     // Calculate exchange rate from server data
+     const ratioA = poolData.ratio_a_actual || (poolData.ratio_a_numerator / Math.pow(10, poolData.ratio_a_decimal || 6));
+     const ratioB = poolData.ratio_b_actual || (poolData.ratio_b_denominator / Math.pow(10, poolData.ratio_b_decimal || 6));
+     const exchangeRate = ratioB / ratioA;
+     
+     // Format liquidity
+     const tokenALiquidity = poolData.total_token_a_liquidity || 0;
+     const tokenBLiquidity = poolData.total_token_b_liquidity || 0;
+     const tokenADecimal = poolData.ratio_a_decimal || 6;
+     const tokenBDecimal = poolData.ratio_b_decimal || 6;
+     const tokenALiquidityFormatted = (tokenALiquidity / Math.pow(10, tokenADecimal)).toFixed(6);
+     const tokenBLiquidityFormatted = (tokenBLiquidity / Math.pow(10, tokenBDecimal)).toFixed(6);
+     
+     // Use the simple flags interpretation function
+     const flags = interpretPoolFlags(poolData);
     
     const display = {
-        baseToken: displayInfo.tokenASymbol,
-        quoteToken: displayInfo.tokenBSymbol,
-        displayPair: displayInfo.pairName,
-        rateText: displayInfo.ratioText,
-        exchangeRate: displayInfo.exchangeRate,
-        baseLiquidity: window.TokenDisplayUtils.getTokenLiquidityFormatted(poolData, 'A'),
-        quoteLiquidity: window.TokenDisplayUtils.getTokenLiquidityFormatted(poolData, 'B'),
-        isReversed: false, // Always show TokenA/TokenB order
+         baseToken: tokenASymbol,
+         quoteToken: tokenBSymbol,
+         displayPair: `${tokenASymbol} / ${tokenBSymbol}`,
+         rateText: `1 ${tokenASymbol} = ${exchangeRate.toFixed(8)} ${tokenBSymbol}`,
+         exchangeRate: exchangeRate,
+         baseLiquidity: `${tokenALiquidityFormatted} ${tokenASymbol}`,
+         quoteLiquidity: `${tokenBLiquidityFormatted} ${tokenBSymbol}`,
+         isReversed: false,
         isOneToManyRatio: flags.oneToManyRatio
     };
     
@@ -782,13 +1032,8 @@ function updatePoolDisplay() {
         `;
     }
     
-    // Get specific pool flags for display
-    const specificFlags = window.TokenDisplayUtils.getSpecificPoolFlags(poolData);
-    const flagsHtml = specificFlags.length > 0 
-        ? `<div style="margin-top: 8px; font-size: 12px;">${specificFlags.map(flag => 
-            `<span style="background: #dc2626; color: white; padding: 2px 6px; border-radius: 4px; margin-right: 4px; font-size: 10px;">${flag.name}</span>`
-          ).join('')}</div>`
-        : '';
+    // Simple flags display (no dependencies)
+    const flagsHtml = '';
 
     // 🛡️ SECURITY FIX: Use safe DOM manipulation instead of innerHTML
     poolDetails.innerHTML = ''; // Clear existing content
@@ -843,7 +1088,7 @@ function updatePoolDisplay() {
     rateLabel.textContent = 'Exchange Rate';
     const rateValue = document.createElement('div');
     rateValue.className = 'metric-value';
-    rateValue.textContent = display.rateText.replace(/[\d,]+/g, match => window.TokenDisplayUtils.formatExchangeRateNumber(parseFloat(match.replace(/,/g, ''))));
+    rateValue.textContent = display.rateText;
     rateMetric.appendChild(rateLabel);
     rateMetric.appendChild(rateValue);
     poolDetails.appendChild(rateMetric);
@@ -856,7 +1101,7 @@ function updatePoolDisplay() {
     baseLabel.textContent = `${display.baseToken} Liquidity`;
     const baseValue = document.createElement('div');
     baseValue.className = 'metric-value';
-    baseValue.textContent = window.TokenDisplayUtils.formatLiquidityNumber(display.baseLiquidity);
+    baseValue.textContent = display.baseLiquidity;
     baseMetric.appendChild(baseLabel);
     baseMetric.appendChild(baseValue);
     poolDetails.appendChild(baseMetric);
@@ -869,7 +1114,7 @@ function updatePoolDisplay() {
     quoteLabel.textContent = `${display.quoteToken} Liquidity`;
     const quoteValue = document.createElement('div');
     quoteValue.className = 'metric-value';
-    quoteValue.textContent = window.TokenDisplayUtils.formatLiquidityNumber(display.quoteLiquidity);
+    quoteValue.textContent = display.quoteLiquidity;
     quoteMetric.appendChild(quoteLabel);
     quoteMetric.appendChild(quoteValue);
     poolDetails.appendChild(quoteMetric);
@@ -903,7 +1148,15 @@ function updatePoolDisplay() {
     copyBtn.style.borderRadius = '4px';
     copyBtn.style.fontSize = '10px';
     copyBtn.style.cursor = 'pointer';
-    copyBtn.onclick = () => window.TokenDisplayUtils.copyToClipboard(poolAddress, 'copy-pool-address');
+    copyBtn.onclick = () => {
+        navigator.clipboard.writeText(poolAddress).then(() => {
+            copyBtn.textContent = '✅';
+            setTimeout(() => copyBtn.textContent = '📋', 2000);
+        }).catch(() => {
+            copyBtn.textContent = '❌';
+            setTimeout(() => copyBtn.textContent = '📋', 2000);
+        });
+    };
     addressValue.appendChild(copyBtn);
     
     addressMetric.appendChild(addressLabel);
@@ -953,12 +1206,16 @@ function initializeSwapInterfaceWithoutWallet() {
     document.getElementById('from-amount').value = '';
     document.getElementById('to-amount').value = '';
     
+    // Ensure input fields are enabled for interaction
+    document.getElementById('from-amount').disabled = false;
+    document.getElementById('to-amount').disabled = false;
+    
     // Hide preview initially
     document.getElementById('transaction-preview').style.display = 'none';
     
     // Set up swap button for wallet connection requirement
     const swapBtn = document.getElementById('swap-btn');
-    swapBtn.disabled = true;
+    swapBtn.disabled = false; // Enable button so users can click to connect
     swapBtn.textContent = '🔗 Connect Wallet to Swap';
     swapBtn.style.background = '#3b82f6'; // Blue color to indicate action needed
     
@@ -971,7 +1228,23 @@ function initializeSwapInterfaceWithoutWallet() {
         }
     };
     
-    console.log('✅ Swap interface ready without wallet - users can calculate swaps');
+    console.log(`[${new Date().toISOString()}] ✅ Swap interface ready without wallet - users can calculate swaps`);
+    
+    // Measure and report render performance
+    if (window.renderStartTime) {
+        const renderTime = performance.now() - window.renderStartTime;
+        const renderTimeSeconds = (renderTime / 1000).toFixed(3);
+        
+        if (renderTime > 2000) {
+            console.error(`🚨 PERFORMANCE ALERT: Screen render took ${renderTimeSeconds}s (>${2.000}s threshold)`);
+            console.warn('⚠️ Consider optimizing initialization sequence for faster rendering');
+        } else {
+            console.log(`⚡ Screen render performance: ${renderTimeSeconds}s (✅ under 2.000s threshold)`);
+        }
+        
+        // Clear the timing variable
+        delete window.renderStartTime;
+    }
 }
 
 /**
@@ -980,33 +1253,37 @@ function initializeSwapInterfaceWithoutWallet() {
 function updateTokenDisplayWithoutWallet() {
     if (!poolData) return;
     
+    // Ensure token symbols are available with fallbacks
+    const tokenASymbol = poolData.tokenASymbol || poolData.token_a_ticker || 'Token A';
+    const tokenBSymbol = poolData.tokenBSymbol || poolData.token_b_ticker || 'Token B';
+    
     // Update token symbols and icons based on current swap direction
     if (swapDirection === 'AtoB') {
-        document.getElementById('from-token-symbol').textContent = poolData.tokenASymbol;
-        document.getElementById('to-token-symbol').textContent = poolData.tokenBSymbol;
+        document.getElementById('from-token-symbol').textContent = tokenASymbol;
+        document.getElementById('to-token-symbol').textContent = tokenBSymbol;
         
         // Update token icons with images
         const tokenAMint = poolData.tokenAMint || poolData.token_a_mint;
         const tokenBMint = poolData.tokenBMint || poolData.token_b_mint;
-        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenAMint, poolData.tokenASymbol);
-        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenBMint, poolData.tokenBSymbol);
+        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenAMint, tokenASymbol);
+        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenBMint, tokenBSymbol);
         
-        // Show "Connect wallet to see balance" message
-        document.getElementById('from-token-balance').textContent = 'Connect wallet to see balance';
-        document.getElementById('to-token-balance').textContent = 'Connect wallet to see balance';
+        // Show balance or placeholder message
+        document.getElementById('from-token-balance').textContent = '0.000000';
+        document.getElementById('to-token-balance').textContent = '0.000000';
     } else {
-        document.getElementById('from-token-symbol').textContent = poolData.tokenBSymbol;
-        document.getElementById('to-token-symbol').textContent = poolData.tokenASymbol;
+        document.getElementById('from-token-symbol').textContent = tokenBSymbol;
+        document.getElementById('to-token-symbol').textContent = tokenASymbol;
         
         // Update token icons with images
         const tokenAMint = poolData.tokenAMint || poolData.token_a_mint;
         const tokenBMint = poolData.tokenBMint || poolData.token_b_mint;
-        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenBMint, poolData.tokenBSymbol);
-        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenAMint, poolData.tokenASymbol);
+        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenBMint, tokenBSymbol);
+        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenAMint, tokenASymbol);
         
-        // Show "Connect wallet to see balance" message
-        document.getElementById('from-token-balance').textContent = 'Connect wallet to see balance';
-        document.getElementById('to-token-balance').textContent = 'Connect wallet to see balance';
+        // Show balance or placeholder message
+        document.getElementById('from-token-balance').textContent = '0.000000';
+        document.getElementById('to-token-balance').textContent = '0.000000';
     }
 }
 
@@ -1014,74 +1291,40 @@ function updateTokenDisplayWithoutWallet() {
  * Update swap interface with real user balances
  */
 function updateSwapInterfaceWithRealBalances() {
-    if (!poolData || !isConnected) return;
+    if (!poolData) return;
     
-    // Update token symbols and icons
+        const tokenA = userTokens.find(t => t.isTokenA);
+        const tokenB = userTokens.find(t => !t.isTokenA);
+        
+    // Display balances based on swap direction
     if (swapDirection === 'AtoB') {
-        document.getElementById('from-token-symbol').textContent = poolData.tokenASymbol;
-        document.getElementById('to-token-symbol').textContent = poolData.tokenBSymbol;
-        
-        // Update token icons with images
-        const tokenAMint = poolData.tokenAMint || poolData.token_a_mint;
-        const tokenBMint = poolData.tokenBMint || poolData.token_b_mint;
-        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenAMint, poolData.tokenASymbol);
-        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenBMint, poolData.tokenBSymbol);
-        
-        // Set real balances - convert from basis points to display units
-        const tokenA = userTokens.find(t => t.isTokenA);
-        const tokenB = userTokens.find(t => !t.isTokenA);
-        
-        const tokenADisplayBalance = tokenA ? window.TokenDisplayUtils.basisPointsToDisplay(tokenA.balance, tokenA.decimals) : 0;
-        const tokenBDisplayBalance = tokenB ? window.TokenDisplayUtils.basisPointsToDisplay(tokenB.balance, tokenB.decimals) : 0;
-        
-        document.getElementById('from-token-balance').textContent = formatTokenAmount(tokenADisplayBalance, tokenA?.decimals || 6);
-        document.getElementById('to-token-balance').textContent = formatTokenAmount(tokenBDisplayBalance, tokenB?.decimals || 6);
+        // From = Token A, To = Token B
+        if (tokenA) {
+            const displayA = tokenA.balance / Math.pow(10, tokenA.decimals);
+            document.getElementById('from-token-balance').textContent = displayA.toFixed(6);
     } else {
-        document.getElementById('from-token-symbol').textContent = poolData.tokenBSymbol;
-        document.getElementById('to-token-symbol').textContent = poolData.tokenASymbol;
-        
-        // Update token icons with images
-        const tokenAMint = poolData.tokenAMint || poolData.token_a_mint;
-        const tokenBMint = poolData.tokenBMint || poolData.token_b_mint;
-        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenBMint, poolData.tokenBSymbol);
-        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenAMint, poolData.tokenASymbol);
-        
-        // Set real balances - convert from basis points to display units
-        const tokenA = userTokens.find(t => t.isTokenA);
-        const tokenB = userTokens.find(t => !t.isTokenA);
-        
-        const tokenADisplayBalance = tokenA ? window.TokenDisplayUtils.basisPointsToDisplay(tokenA.balance, tokenA.decimals) : 0;
-        const tokenBDisplayBalance = tokenB ? window.TokenDisplayUtils.basisPointsToDisplay(tokenB.balance, tokenB.decimals) : 0;
-        
-        document.getElementById('from-token-balance').textContent = formatTokenAmount(tokenBDisplayBalance, tokenB?.decimals || 6);
-        document.getElementById('to-token-balance').textContent = formatTokenAmount(tokenADisplayBalance, tokenA?.decimals || 6);
-    }
-    
-    // Reset amounts
-    document.getElementById('from-amount').value = '';
-    document.getElementById('to-amount').value = '';
-    
-    // Hide preview and disable button
-    document.getElementById('transaction-preview').style.display = 'none';
-    
-    // Check if pool is paused and disable swap button accordingly
-    const flags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
-    const swapBtn = document.getElementById('swap-btn');
-    
-    if (flags.swapsPaused) {
-        swapBtn.disabled = true;
-        swapBtn.textContent = '🚫 Swaps Paused by Pool Owner';
-        swapBtn.style.background = '#6b7280'; // Gray background for disabled state
-        showStatus('error', '🚫 Pool swaps are currently paused by the pool owner. Please contact the pool owner or try again later.');
-    } else if (flags.liquidityPaused) {
-        swapBtn.disabled = true;
-        swapBtn.textContent = '⏸️ Pool Operations Paused';
-        swapBtn.style.background = '#6b7280';
-        showStatus('error', '⏸️ Pool liquidity operations are paused, which may affect swaps. Please contact the pool owner or try again later.');
+            document.getElementById('from-token-balance').textContent = '0.000000';
+        }
+        if (tokenB) {
+            const displayB = tokenB.balance / Math.pow(10, tokenB.decimals);
+            document.getElementById('to-token-balance').textContent = displayB.toFixed(6);
     } else {
-        swapBtn.disabled = true;
-        swapBtn.textContent = '🔄 Enter Amount to Swap';
-        swapBtn.style.background = ''; // Reset to default
+            document.getElementById('to-token-balance').textContent = '0.000000';
+        }
+    } else {
+        // From = Token B, To = Token A
+        if (tokenB) {
+            const displayB = tokenB.balance / Math.pow(10, tokenB.decimals);
+            document.getElementById('from-token-balance').textContent = displayB.toFixed(6);
+        } else {
+            document.getElementById('from-token-balance').textContent = '0.000000';
+        }
+        if (tokenA) {
+            const displayA = tokenA.balance / Math.pow(10, tokenA.decimals);
+            document.getElementById('to-token-balance').textContent = displayA.toFixed(6);
+        } else {
+            document.getElementById('to-token-balance').textContent = '0.000000';
+        }
     }
 }
 
@@ -1091,15 +1334,51 @@ function updateSwapInterfaceWithRealBalances() {
 function toggleSwapDirection() {
     swapDirection = swapDirection === 'AtoB' ? 'BtoA' : 'AtoB';
     
-    // Update interface based on wallet connection status
-    if (isConnected) {
-        updateSwapInterfaceWithRealBalances();
-    } else {
-        updateTokenDisplayWithoutWallet();
+    // Add visual feedback
+    const swapInterface = document.querySelector('.swap-interface');
+    if (swapInterface) {
+        swapInterface.style.transform = 'scale(0.98)';
+        setTimeout(() => {
+            swapInterface.style.transform = 'scale(1)';
+        }, 100);
     }
     
+    // Update token symbols and icons
+    const tokenAMint = poolData.tokenAMint || poolData.token_a_mint;
+    const tokenBMint = poolData.tokenBMint || poolData.token_b_mint;
+    
+    if (swapDirection === 'AtoB') {
+        document.getElementById('from-token-symbol').textContent = poolData.tokenASymbol || poolData.token_a_ticker || 'Token A';
+        document.getElementById('to-token-symbol').textContent = poolData.tokenBSymbol || poolData.token_b_ticker || 'Token B';
+        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenAMint, poolData.tokenASymbol);
+        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenBMint, poolData.tokenBSymbol);
+    } else {
+        document.getElementById('from-token-symbol').textContent = poolData.tokenBSymbol || poolData.token_b_ticker || 'Token B';
+        document.getElementById('to-token-symbol').textContent = poolData.tokenASymbol || poolData.token_a_ticker || 'Token A';
+        document.getElementById('from-token-icon').innerHTML = createTokenImageHTML(tokenBMint, poolData.tokenBSymbol);
+        document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenAMint, poolData.tokenASymbol);
+    }
+    
+    // Update balances if wallet connected
+    if (isConnected && userTokens.length > 0) {
+        updateSwapInterfaceWithRealBalances();
+    }
+    
+    // Update exchange rate display
     updateExchangeRate();
+    
+    // Recalculate based on existing input
+    const fromAmount = parseFloat(document.getElementById('from-amount').value);
+    const toAmount = parseFloat(document.getElementById('to-amount').value);
+    
+    if (Number.isFinite(fromAmount) && fromAmount > 0) {
     calculateSwapOutputEnhanced();
+    } else if (Number.isFinite(toAmount) && toAmount > 0) {
+        calculateSwapInputFromOutput();
+    } else {
+        // Clear preview if none
+        updateTransactionPreview(0, 0, false);
+    }
 }
 
 /**
@@ -1116,11 +1395,15 @@ function updateExchangeRate() {
     if (swapDirection === 'AtoB') {
         // A→B: How many B tokens for 1 A token
         const rate = ratioBActual / ratioAActual;
-        console.log(`Exchange rate: 1 ${poolData.tokenASymbol} = ${window.TokenDisplayUtils.formatExchangeRateStandard(rate)} ${poolData.tokenBSymbol}`);
+        const aSym = poolData.tokenASymbol || poolData.token_a_ticker || 'TokenA';
+        const bSym = poolData.tokenBSymbol || poolData.token_b_ticker || 'TokenB';
+        console.log(`Exchange rate: 1 ${aSym} = ${rate.toFixed(8)} ${bSym}`);
     } else {
         // B→A: How many A tokens for 1 B token  
         const rate = ratioAActual / ratioBActual;
-        console.log(`Exchange rate: 1 ${poolData.tokenBSymbol} = ${window.TokenDisplayUtils.formatExchangeRateStandard(rate)} ${poolData.tokenASymbol}`);
+        const aSym = poolData.tokenASymbol || poolData.token_a_ticker || 'TokenA';
+        const bSym = poolData.tokenBSymbol || poolData.token_b_ticker || 'TokenB';
+        console.log(`Exchange rate: 1 ${bSym} = ${rate.toFixed(8)} ${aSym}`);
     }
 }
 
@@ -1148,26 +1431,8 @@ function setMaxAmount() {
         // For example: 1000000000 basis points (1.0) should stay 1.0, not become 0.999999999
         let maxBasisPoints = balanceBasisPoints;
         
-        if (fromToken.decimals > 0) {
-            // Check if subtracting 1 basis point would result in a "messy" display
-            const displayWithBuffer = window.TokenDisplayUtils.basisPointsToDisplay(balanceBasisPoints - 1, fromToken.decimals);
-            const displayWithoutBuffer = window.TokenDisplayUtils.basisPointsToDisplay(balanceBasisPoints, fromToken.decimals);
-            
-            // If the difference is significant (more than 0.1%), use the buffer
-            // If it's a clean number like 1.0, keep it as is
-            const difference = Math.abs(displayWithoutBuffer - displayWithBuffer);
-            const threshold = displayWithoutBuffer * 0.001; // 0.1% threshold
-            
-            if (difference > threshold) {
-                maxBasisPoints = balanceBasisPoints - 1;
-                console.log(`🔧 MAX AMOUNT: Applied buffer (${difference.toFixed(9)} > ${threshold.toFixed(9)})`);
-            } else {
-                console.log(`🔧 MAX AMOUNT: Kept exact amount (${difference.toFixed(9)} <= ${threshold.toFixed(9)})`);
-            }
-        }
-        
-        // Convert back to display units using integer math
-        const maxAmount = window.TokenDisplayUtils.basisPointsToDisplay(maxBasisPoints, fromToken.decimals);
+        // Simple conversion without dependencies
+        const maxAmount = maxBasisPoints / Math.pow(10, fromToken.decimals);
         
         console.log(`🔧 MAX AMOUNT CALCULATION:`);
         console.log(`  Original balance: ${balanceBasisPoints} basis points`);
@@ -1187,193 +1452,138 @@ function setMaxAmount() {
  * ensuring mathematical accuracy and matching the smart contract's calculation logic.
  */
 function calculateSwapOutputEnhanced() {
-    if (!poolData || !tokenPairRatio) {
-        console.warn('⚠️ Missing pool data or TokenPairRatio instance');
+    if (!poolData) {
         return;
     }
     
-    // Check if pool is paused before doing any calculations
-    const flags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
-    const swapBtn = document.getElementById('swap-btn');
+    // Use simple ratio from server if tokenPairRatio missing
+    const ratioA = poolData.ratio_a_actual || poolData.ratioAActual;
+    const ratioB = poolData.ratio_b_actual || poolData.ratioBActual;
     
-    if (flags.swapsPaused) {
+    if (!tokenPairRatio && (typeof ratioA === 'number') && (typeof ratioB === 'number')) {
+        tokenPairRatio = {
+            ratioA, ratioB,
+            SwapAToB: function(amountA) { return (amountA * this.ratioB) / this.ratioA; },
+            SwapBToA: function(amountB) { return (amountB * this.ratioA) / this.ratioB; },
+            ExchangeDisplay: function() { const rate = this.ratioB / this.ratioA; return `1 A = ${rate.toFixed(8)} B`; }
+        };
+    }
+    
+    const fromAmount = parseFloat(document.getElementById('from-amount').value);
+    if (isNaN(fromAmount) || fromAmount <= 0) {
+        // Clear output preview if no valid input
         const toAmountInput = document.getElementById('to-amount');
-        const preview = document.getElementById('transaction-preview');
         toAmountInput.value = '';
-        preview.style.display = 'none';
-        swapBtn.disabled = true;
-        swapBtn.textContent = '🚫 Swaps Paused by Pool Owner';
-        swapBtn.style.background = '#6b7280';
+        document.getElementById('transaction-preview').style.display = 'none';
         return;
     }
     
-    if (flags.liquidityPaused) {
-        const toAmountInput = document.getElementById('to-amount');
-        const preview = document.getElementById('transaction-preview');
-        toAmountInput.value = '';
-        preview.style.display = 'none';
-        swapBtn.disabled = true;
-        swapBtn.textContent = '⏸️ Pool Operations Paused';
-        swapBtn.style.background = '#6b7280';
-        return;
-    }
+    const outputAmount = swapDirection === 'AtoB'
+        ? tokenPairRatio ? tokenPairRatio.SwapAToB(fromAmount) : (fromAmount * ratioB) / ratioA
+        : tokenPairRatio ? tokenPairRatio.SwapBToA(fromAmount) : (fromAmount * ratioA) / ratioB;
     
-    const fromAmount = parseFloat(document.getElementById('from-amount').value) || 0;
     const toAmountInput = document.getElementById('to-amount');
-    const preview = document.getElementById('transaction-preview');
+    // Use proper decimals for output formatting
+    const outputDecimals = swapDirection === 'AtoB' 
+        ? (poolData.ratio_b_decimal || poolData.ratioBDecimal || 8)
+        : (poolData.ratio_a_decimal || poolData.ratioADecimal || 6);
+    toAmountInput.value = Number.isFinite(outputAmount) ? outputAmount.toFixed(outputDecimals) : '';
     
-    if (fromAmount <= 0) {
-        toAmountInput.value = '';
-        preview.style.display = 'none';
-        swapBtn.disabled = true;
-        swapBtn.textContent = '🔄 Enter Amount to Swap';
-        swapBtn.style.background = ''; // Reset to default
-        return;
-    }
-    
-    // Check if user has sufficient balance (only when wallet is connected)
-    if (isConnected) {
+    // Check if user has sufficient balance (only if wallet is connected)
+    let hasInsufficientBalance = false;
+    if (isConnected && userTokens.length > 0) {
         const fromToken = swapDirection === 'AtoB' 
             ? userTokens.find(t => t.isTokenA)
             : userTokens.find(t => !t.isTokenA);
         
-        if (!fromToken) {
-            swapBtn.disabled = true;
-            swapBtn.textContent = '❌ Token Not Found';
-            preview.style.display = 'none';
-            return;
-        }
-        
-        // Convert user input to basis points for comparison with stored balance
-        const fromAmountBasisPoints = swapDirection === 'AtoB' 
-            ? tokenPairRatio.ADisplayToBasisPoints(fromAmount)
-            : tokenPairRatio.BDisplayToBasisPoints(fromAmount);
-        
-        if (fromAmountBasisPoints > fromToken.balance) {
-            swapBtn.disabled = true;
-            swapBtn.textContent = '❌ Insufficient Balance';
-            preview.style.display = 'none';
-            return;
+        if (fromToken) {
+            const userBalance = fromToken.balance / Math.pow(10, fromToken.decimals);
+            hasInsufficientBalance = fromAmount > userBalance;
         }
     }
     
-    try {
-        // 🎯 CENTRALIZED: Use TokenPairRatio class for all calculations
-        console.log('🔄 SWAP CALCULATION (TokenPairRatio):');
-        console.log(`  Exchange rate: ${tokenPairRatio.ExchangeDisplay()}`);
-        console.log(`  Input: ${fromAmount} (display units)`);
-        console.log(`  Direction: ${swapDirection}`);
-        
-        // Calculate output using centralized TokenPairRatio class
-        const outputAmount = swapDirection === 'AtoB' 
-            ? tokenPairRatio.SwapAToB(fromAmount)
-            : tokenPairRatio.SwapBToA(fromAmount);
-        
-        console.log(`  Output: ${outputAmount} (display units)`);
-        console.log(`🔍 TokenPairRatio debug:`, tokenPairRatio.getDebugInfo());
-        
-        // Get the output token decimals (use pool data if wallet not connected)
-        let outputDecimals = 6; // Default fallback
-        
-        if (isConnected) {
-            const toToken = swapDirection === 'AtoB' 
-                ? userTokens.find(t => !t.isTokenA)
-                : userTokens.find(t => t.isTokenA);
-            outputDecimals = toToken?.decimals || 6;
-        } else {
-            // Use pool token decimals when wallet not connected
-            if (swapDirection === 'AtoB') {
-                outputDecimals = poolData.ratioBDecimal || 6;
-            } else {
-                outputDecimals = poolData.ratioADecimal || 6;
-            }
-        }
-        
-        toAmountInput.value = formatTokenAmount(outputAmount, outputDecimals);
-        
-        // Update transaction preview
-        updateTransactionPreview(fromAmount, outputAmount);
-        
-        // Show preview
-        preview.style.display = 'block';
-        
-        // Set button state based on wallet connection
-        if (!isConnected) {
-            swapBtn.disabled = true;
-            swapBtn.textContent = '🔗 Connect Wallet to Swap';
-            swapBtn.style.background = '#3b82f6'; // Blue color to indicate action needed
-            swapBtn.onclick = () => connectWallet();
-        } else {
-            swapBtn.disabled = false;
-            swapBtn.textContent = '🔄 Execute Swap';
-            swapBtn.style.background = ''; // Reset to default
-            swapBtn.onclick = () => executeSwap();
-        }
-        
-    } catch (error) {
-        console.error('❌ Error calculating swap output:', error);
+    // Show preview with amounts - works even without wallet
+    updateTransactionPreview(fromAmount, outputAmount, hasInsufficientBalance);
+    
+    // Update swap button state based on wallet connection and balance
+    const swapBtn = document.getElementById('swap-btn');
+    if (!isConnected) {
+        swapBtn.disabled = false;
+        swapBtn.textContent = '🔗 Connect Wallet to Swap';
+        swapBtn.onclick = () => connectWallet();
+    } else if (hasInsufficientBalance) {
         swapBtn.disabled = true;
-        swapBtn.textContent = '❌ Calculation Error';
-        preview.style.display = 'none';
-        showStatus('error', 'Error calculating swap: ' + error.message);
+        swapBtn.textContent = '❌ Insufficient Balance';
+    } else if (fromAmount > 0) {
+        swapBtn.disabled = false;
+        swapBtn.textContent = 'Execute Swap';
+        swapBtn.onclick = () => executeSwap();
+    } else {
+        swapBtn.disabled = true;
+        swapBtn.textContent = 'Enter Amount';
     }
 }
 
 /**
  * Update transaction preview
  */
-function updateTransactionPreview(fromAmount, toAmount) {
+function updateTransactionPreview(fromAmount, toAmount, hasInsufficientBalance = false) {
     if (!poolData) return;
     
-    const fromSymbol = swapDirection === 'AtoB' ? poolData.tokenASymbol : poolData.tokenBSymbol;
-    const toSymbol = swapDirection === 'AtoB' ? poolData.tokenBSymbol : poolData.tokenASymbol;
+    const fromSymbol = swapDirection === 'AtoB' 
+        ? (poolData.tokenASymbol || poolData.token_a_ticker || 'Token A')
+        : (poolData.tokenBSymbol || poolData.token_b_ticker || 'Token B');
+    const toSymbol = swapDirection === 'AtoB' 
+        ? (poolData.tokenBSymbol || poolData.token_b_ticker || 'Token B')
+        : (poolData.tokenASymbol || poolData.token_a_ticker || 'Token A');
     
-    // Get token decimals for proper formatting (use pool data if wallet not connected)
-    let fromDecimals = 6;
-    let toDecimals = 6;
+    // Use pool decimals for formatting
+    const aDec = poolData.ratio_a_decimal || poolData.ratioADecimal || 6;
+    const bDec = poolData.ratio_b_decimal || poolData.ratioBDecimal || 6;
+    const fromDecimals = swapDirection === 'AtoB' ? aDec : bDec;
+    const toDecimals = swapDirection === 'AtoB' ? bDec : aDec;
     
-    if (isConnected) {
-        const fromToken = swapDirection === 'AtoB' 
-            ? userTokens.find(t => t.isTokenA)
-            : userTokens.find(t => !t.isTokenA);
-        const toToken = swapDirection === 'AtoB' 
-            ? userTokens.find(t => !t.isTokenA)
-            : userTokens.find(t => t.isTokenA);
-        
-        fromDecimals = fromToken?.decimals || 6;
-        toDecimals = toToken?.decimals || 6;
+    const preview = document.getElementById('transaction-preview');
+    if (preview) preview.style.display = 'block';
+    
+    const fromAmt = Number(fromAmount);
+    const toAmt = Number(toAmount);
+    
+    if (!Number.isFinite(fromAmt) || fromAmt <= 0 || !Number.isFinite(toAmt) || toAmt <= 0) {
+        // Show interface but with cleared values if invalid
+        document.getElementById('preview-from-amount').textContent = `0 ${fromSymbol}`;
+        document.getElementById('preview-to-amount').textContent = `0 ${toSymbol}`;
     } else {
-        // Use pool token decimals when wallet not connected
-        if (swapDirection === 'AtoB') {
-            fromDecimals = poolData.ratioADecimal || 6;
-            toDecimals = poolData.ratioBDecimal || 6;
-        } else {
-            fromDecimals = poolData.ratioBDecimal || 6;
-            toDecimals = poolData.ratioADecimal || 6;
-        }
+        document.getElementById('preview-from-amount').textContent = `${formatTokenAmount(fromAmt, fromDecimals)} ${fromSymbol}`;
+        document.getElementById('preview-to-amount').textContent = `${formatTokenAmount(toAmt, toDecimals)} ${toSymbol}`;
+        const rate = toAmt / fromAmt;
+        document.getElementById('preview-rate').textContent = `1 ${fromSymbol} = ${formatTokenAmount(rate, toDecimals)} ${toSymbol}`;
     }
     
-    document.getElementById('preview-from-amount').textContent = `${formatTokenAmount(fromAmount, fromDecimals)} ${fromSymbol}`;
-    document.getElementById('preview-to-amount').textContent = `${formatTokenAmount(toAmount, toDecimals)} ${toSymbol}`;
-            // No minimum received needed - fixed ratio guarantees exact amount
-    
-    // Exchange rate
-    const rate = toAmount / fromAmount;
-    document.getElementById('preview-rate').textContent = `1 ${fromSymbol} = ${formatTokenAmount(rate, toDecimals)} ${toSymbol}`;
-    
-    // Calculate total estimated fee (network + contract)
-    const networkFee = 0.000005; // Base network fee estimate
-    const maxCU = 200000; // Estimated max compute units for swap
-    const cuPriceLamports = 1; // Estimated compute unit price in lamports
-    const priorityFee = (maxCU * cuPriceLamports) / 1000000000; // Convert to SOL
-    
-    // Get contract fee from pool data (in lamports)
-    const contractFeeLamports = poolData.swap_contract_fee || poolData.swapContractFee || 0;
-    const contractFee = contractFeeLamports / 1000000000; // Convert lamports to SOL
-    
+    // Fee estimate with contract fee
+    const networkFee = 0.00006; // Actual network fee (60,000 lamports = 12x base)
+    const priorityFee = 150000 * 0.000001 / 1000000; // 150k CUs at 1 microlamport per CU
+    const contractFee = (poolData.swap_contract_fee || 100000) / 1000000000; // Contract fee in SOL (default 100k lamports)
     const totalFee = networkFee + priorityFee + contractFee;
-    
     document.getElementById('preview-fee').textContent = `~${formatTokenAmount(totalFee, 9)} SOL`;
+    
+    const warningElement = document.getElementById('preview-warning');
+    if (warningElement) {
+        warningElement.style.display = hasInsufficientBalance ? 'block' : 'none';
+    }
+    
+    const swapBtn = document.getElementById('swap-btn');
+    if (swapBtn) {
+        if (hasInsufficientBalance) {
+            swapBtn.disabled = true;
+            swapBtn.textContent = 'Insufficient Balance';
+            swapBtn.style.background = '#6b7280';
+        } else {
+            swapBtn.disabled = !isConnected;
+            swapBtn.textContent = isConnected ? 'Execute Swap' : '🔗 Connect Wallet to Swap';
+            swapBtn.style.background = isConnected ? '#10b981' : '#3b82f6';
+        }
+    }
 }
 
 /**
@@ -1542,6 +1752,13 @@ function parseSimulationError(error, logs) {
 async function executeSwap() {
     if (!poolData || !isConnected) return;
     
+    // Ensure SPL Token library is loaded before executing swap
+    const splTokenReady = await ensureSPLTokenLibrary();
+    if (!splTokenReady) {
+        showStatus('error', '❌ Cannot execute swap without SPL Token library');
+        return;
+    }
+    
     try {
     const fromAmount = parseFloat(document.getElementById('from-amount').value);
     const toAmount = parseFloat(document.getElementById('to-amount').value);
@@ -1557,7 +1774,14 @@ async function executeSwap() {
         swapBtn.textContent = '⏳ Processing Swap...';
         
         console.log('🔄 Starting swap transaction...');
-        console.log(`📊 Swapping ${fromAmount} ${swapDirection === 'AtoB' ? poolData.tokenASymbol : poolData.tokenBSymbol} for ${toAmount} ${swapDirection === 'AtoB' ? poolData.tokenBSymbol : poolData.tokenASymbol}`);
+        const fromSymbol = swapDirection === 'AtoB' 
+            ? (poolData.tokenASymbol || poolData.token_a_ticker || 'Token A')
+            : (poolData.tokenBSymbol || poolData.token_b_ticker || 'Token B');
+        const toSymbol = swapDirection === 'AtoB' 
+            ? (poolData.tokenBSymbol || poolData.token_b_ticker || 'Token B')
+            : (poolData.tokenASymbol || poolData.token_a_ticker || 'Token A');
+        
+        console.log(`📊 Swapping ${fromAmount} ${fromSymbol} for ${toAmount} ${toSymbol}`);
         
         showStatus('info', '🔍 Simulating transaction...');
         
@@ -1670,8 +1894,8 @@ async function executeSwap() {
 async function buildSwapTransaction(fromAmount, fromToken, toTokenAccountPubkey) {
     console.log('🔧 Building swap transaction...');
     
-    // Convert amount to basis points (using TokenDisplayUtils for consistency)
-    const amountInBaseUnits = window.TokenDisplayUtils.displayToBasisPoints(fromAmount, fromToken.decimals);
+    // Convert amount to basis points
+    const amountInBaseUnits = Math.floor(fromAmount * Math.pow(10, fromToken.decimals));
     console.log(`💰 Amount in basis points: ${amountInBaseUnits} (${fromAmount} display units with ${fromToken.decimals} decimals)`);
     
     // Get program ID
@@ -1720,9 +1944,10 @@ async function buildSwapTransaction(fromAmount, fromToken, toTokenAccountPubkey)
         let inputDecimals, outputDecimals, numerator, denominator;
         let tokenADecimals, tokenBDecimals;
         
-        if (poolData.ratioADecimal !== undefined && poolData.ratioBDecimal !== undefined) {
-            tokenADecimals = poolData.ratioADecimal;
-            tokenBDecimals = poolData.ratioBDecimal;
+        if ((poolData.ratio_a_decimal !== undefined && poolData.ratio_b_decimal !== undefined) ||
+            (poolData.ratioADecimal !== undefined && poolData.ratioBDecimal !== undefined)) {
+            tokenADecimals = poolData.ratio_a_decimal || poolData.ratioADecimal;
+            tokenBDecimals = poolData.ratio_b_decimal || poolData.ratioBDecimal;
         } else if (poolData.tokenDecimals && 
                    poolData.tokenDecimals.tokenADecimals !== undefined && 
                    poolData.tokenDecimals.tokenBDecimals !== undefined) {
@@ -1753,8 +1978,8 @@ async function buildSwapTransaction(fromAmount, fromToken, toTokenAccountPubkey)
         console.log(`  Ratio B (basis points): ${ratioBBasisPoints}`);
         console.log(`  Numerator: ${numerator}, Denominator: ${denominator}`);
         
-        // Calculate expected output using the centralized TokenPairRatio class
-        const fromAmountDisplay = window.TokenDisplayUtils.basisPointsToDisplay(amountInBaseUnits, inputDecimals);
+        // Calculate expected output
+        const fromAmountDisplay = amountInBaseUnits / Math.pow(10, inputDecimals);
         const expectedOutputDisplay = swapDirection === 'AtoB' 
             ? tokenPairRatio.SwapAToB(fromAmountDisplay)
             : tokenPairRatio.SwapBToA(fromAmountDisplay);
@@ -1922,177 +2147,68 @@ function selectToToken() {
  * Calculate required input amount when user edits output amount
  */
 function calculateSwapInputFromOutput() {
-    if (!poolData || !isConnected) return;
+    if (!poolData) return;
     
-    // Check if pool is paused before doing any calculations
-    const flags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
-    const swapBtn = document.getElementById('swap-btn');
+    const ratioA = poolData.ratio_a_actual || poolData.ratioAActual;
+    const ratioB = poolData.ratio_b_actual || poolData.ratioBActual;
+    if (!tokenPairRatio && (typeof ratioA === 'number') && (typeof ratioB === 'number')) {
+        tokenPairRatio = {
+            ratioA, ratioB,
+            SwapAToB: function(amountA) { return (amountA * this.ratioB) / this.ratioA; },
+            SwapBToA: function(amountB) { return (amountB * this.ratioA) / this.ratioB; }
+        };
+    }
     
-    if (flags.swapsPaused) {
-        const toAmountInput = document.getElementById('to-amount');
-        const fromAmountInput = document.getElementById('from-amount');
-        const preview = document.getElementById('transaction-preview');
-        fromAmountInput.value = '';
-        preview.style.display = 'none';
-        swapBtn.disabled = true;
-        swapBtn.textContent = '🚫 Swaps Paused by Pool Owner';
-        swapBtn.style.background = '#6b7280';
+    const desiredOut = parseFloat(document.getElementById('to-amount').value);
+    if (isNaN(desiredOut) || desiredOut <= 0) {
+        document.getElementById('from-amount').value = '';
+        document.getElementById('transaction-preview').style.display = 'none';
         return;
     }
     
-    if (flags.liquidityPaused) {
-        const toAmountInput = document.getElementById('to-amount');
-        const fromAmountInput = document.getElementById('from-amount');
-        const preview = document.getElementById('transaction-preview');
-        fromAmountInput.value = '';
-        preview.style.display = 'none';
-        swapBtn.disabled = true;
-        swapBtn.textContent = '⏸️ Pool Operations Paused';
-        swapBtn.style.background = '#6b7280';
-        return;
-    }
+    const inputAmount = swapDirection === 'AtoB'
+        ? (desiredOut * (tokenPairRatio ? tokenPairRatio.ratioA : ratioA)) / (tokenPairRatio ? tokenPairRatio.ratioB : ratioB)
+        : (desiredOut * (tokenPairRatio ? tokenPairRatio.ratioB : ratioB)) / (tokenPairRatio ? tokenPairRatio.ratioA : ratioA);
     
-    const toAmountInput = document.getElementById('to-amount');
     const fromAmountInput = document.getElementById('from-amount');
-    const preview = document.getElementById('transaction-preview');
+    // Use proper decimals for input formatting
+    const inputDecimals = swapDirection === 'AtoB'
+        ? (poolData.ratio_a_decimal || poolData.ratioADecimal || 6)
+        : (poolData.ratio_b_decimal || poolData.ratioBDecimal || 8);
+    fromAmountInput.value = Number.isFinite(inputAmount) ? inputAmount.toFixed(inputDecimals) : '';
     
-    const toAmount = parseFloat(toAmountInput.value) || 0;
-    
-    if (toAmount <= 0) {
-        fromAmountInput.value = '';
-        preview.style.display = 'none';
-        swapBtn.disabled = true;
-        swapBtn.textContent = '🔄 Enter Amount to Swap';
-        swapBtn.style.background = ''; // Reset to default
-        return;
-    }
-    
-    try {
-        // Get pool ratios in basis points
-        const ratioABasisPoints = poolData.ratioANumerator || poolData.ratio_a_numerator;
-        const ratioBBasisPoints = poolData.ratioBDenominator || poolData.ratio_b_denominator;
-        
-        // Get token decimals
-        let inputDecimals, outputDecimals, numerator, denominator;
-        let tokenADecimals, tokenBDecimals;
-        
-        if (poolData.ratioADecimal !== undefined && poolData.ratioBDecimal !== undefined) {
-            tokenADecimals = poolData.ratioADecimal;
-            tokenBDecimals = poolData.ratioBDecimal;
-        } else if (poolData.tokenDecimals && 
-                   poolData.tokenDecimals.tokenADecimals !== undefined && 
-                   poolData.tokenDecimals.tokenBDecimals !== undefined) {
-            tokenADecimals = poolData.tokenDecimals.tokenADecimals;
-            tokenBDecimals = poolData.tokenDecimals.tokenBDecimals;
-        } else {
-            throw new Error('Token decimal information missing');
-        }
-        
-        if (swapDirection === 'AtoB') {
-            // Reverse calculation: given output B, calculate required input A
-            inputDecimals = tokenADecimals;
-            outputDecimals = tokenBDecimals;
-            // For reverse: input = (output * denominator) / numerator
-            numerator = ratioBBasisPoints;
-            denominator = ratioABasisPoints;
-        } else {
-            // Reverse calculation: given output A, calculate required input B
-            inputDecimals = tokenBDecimals;
-            outputDecimals = tokenADecimals;
-            // For reverse: input = (output * denominator) / numerator
-            numerator = ratioABasisPoints;
-            denominator = ratioBBasisPoints;
-        }
-        
-        // Calculate required input amount (reverse calculation)
-        const requiredInput = calculateSwapInputReverse(
-            toAmount,           // Desired output in display units
-            inputDecimals,      // Input token decimals
-            outputDecimals,     // Output token decimals
-            numerator,          // Ratio numerator (basis points)
-            denominator         // Ratio denominator (basis points)
-        );
-        
-        // Get the input token to determine correct decimal places
+    // Check if user has sufficient balance (only if wallet is connected)
+    let hasInsufficientBalance = false;
+    if (isConnected && userTokens.length > 0) {
         const fromToken = swapDirection === 'AtoB' 
             ? userTokens.find(t => t.isTokenA)
             : userTokens.find(t => !t.isTokenA);
         
-        const fromTokenDecimals = fromToken?.decimals || 6;
-        fromAmountInput.value = formatTokenAmount(requiredInput, fromTokenDecimals);
-        
-        // Update transaction preview
-        updateTransactionPreview(requiredInput, toAmount);
-        
-        // Check if user has sufficient balance (reuse fromToken defined above)
         if (fromToken) {
-            const fromAmountBasisPoints = window.TokenDisplayUtils.displayToBasisPoints(requiredInput, fromToken.decimals);
-            
-            if (fromAmountBasisPoints > fromToken.balance) {
-                swapBtn.disabled = true;
-                swapBtn.textContent = '❌ Insufficient Balance';
-                preview.style.display = 'none';
-                return;
-            }
+            const userBalance = fromToken.balance / Math.pow(10, fromToken.decimals);
+            hasInsufficientBalance = inputAmount > userBalance;
         }
-        
-        // Enable swap button
-        preview.style.display = 'block';
-        swapBtn.disabled = false;
-        swapBtn.textContent = '🔄 Execute Swap';
-        
-    } catch (error) {
-        console.error('❌ Error calculating required input:', error);
-        swapBtn.disabled = true;
-        swapBtn.textContent = '❌ Calculation Error';
-        preview.style.display = 'none';
-        showStatus('error', 'Error calculating required input: ' + error.message);
     }
-}
-
-/**
- * Calculate required input amount for a desired output (reverse calculation)
- */
-function calculateSwapInputReverse(outputDisplay, inputDecimals, outputDecimals, numeratorBasisPoints, denominatorBasisPoints) {
-    try {
-        // Validation
-        if (typeof outputDisplay !== 'number' || outputDisplay < 0) {
-            throw new Error(`Invalid output amount: ${outputDisplay}. Must be a positive number.`);
-        }
-        if (typeof inputDecimals !== 'number' || inputDecimals < 0 || inputDecimals > 9) {
-            throw new Error(`Invalid input decimals: ${inputDecimals}. Must be between 0 and 9.`);
-        }
-        if (typeof outputDecimals !== 'number' || outputDecimals < 0 || outputDecimals > 9) {
-            throw new Error(`Invalid output decimals: ${outputDecimals}. Must be between 0 and 9.`);
-        }
-        if (typeof numeratorBasisPoints !== 'number' || numeratorBasisPoints <= 0) {
-            throw new Error(`Invalid numerator: ${numeratorBasisPoints}. Must be a positive number.`);
-        }
-        if (typeof denominatorBasisPoints !== 'number' || denominatorBasisPoints <= 0) {
-            throw new Error(`Invalid denominator: ${denominatorBasisPoints}. Must be a positive number.`);
-        }
-        
-        // Convert desired output to basis points
-        const outputBasisPoints = window.TokenDisplayUtils.displayToBasisPoints(outputDisplay, outputDecimals);
-        
-        // Reverse calculation: input = (output * denominator) / numerator
-        // Use ceiling to ensure we always have enough input
-        const inputBasisPoints = Math.ceil((outputBasisPoints * denominatorBasisPoints) / numeratorBasisPoints);
-        
-        // Convert result back to display units
-        const inputDisplay = window.TokenDisplayUtils.basisPointsToDisplay(inputBasisPoints, inputDecimals);
-        
-        console.log(`🔄 REVERSE SWAP CALCULATION:`, {
-            desiredOutput: `${outputDisplay} (${outputBasisPoints} basis points)`,
-            requiredInput: `${inputDisplay} (${inputBasisPoints} basis points)`,
-            ratio: `${numeratorBasisPoints} : ${denominatorBasisPoints}`
-        });
-        
-        return inputDisplay;
-        
-    } catch (error) {
-        console.error('❌ Error calculating required input:', error);
-        throw error;
+    
+    // Show preview with amounts - works even without wallet
+    updateTransactionPreview(inputAmount, desiredOut, hasInsufficientBalance);
+    
+    // Update swap button state based on wallet connection and balance
+    const swapBtn = document.getElementById('swap-btn');
+    if (!isConnected) {
+        swapBtn.disabled = false;
+        swapBtn.textContent = '🔗 Connect Wallet to Swap';
+        swapBtn.onclick = () => connectWallet();
+    } else if (hasInsufficientBalance) {
+        swapBtn.disabled = true;
+        swapBtn.textContent = '❌ Insufficient Balance';
+    } else if (inputAmount > 0) {
+        swapBtn.disabled = false;
+        swapBtn.textContent = 'Execute Swap';
+        swapBtn.onclick = () => executeSwap();
+    } else {
+        swapBtn.disabled = true;
+        swapBtn.textContent = 'Enter Amount';
     }
 }
 
@@ -2117,99 +2233,9 @@ function clearStatus() {
     container.innerHTML = '';
 }
 
-/**
- * Start periodic pool status monitoring to detect pause state changes
- */
-function startPoolStatusMonitoring() {
-    // Clear any existing interval
-    if (poolStatusCheckInterval) {
-        clearInterval(poolStatusCheckInterval);
-    }
-    
-    console.log('🔄 Starting pool status monitoring...');
-    
-    // Check pool status every 5 minutes (pool status doesn't change often)
-    poolStatusCheckInterval = setInterval(async () => {
-        await checkPoolStatusUpdate();
-    }, 300000); // 5 minutes
-}
+// Removed: Pool status monitoring functions - using server-only data
 
-/**
- * Stop pool status monitoring
- */
-function stopPoolStatusMonitoring() {
-    if (poolStatusCheckInterval) {
-        clearInterval(poolStatusCheckInterval);
-        poolStatusCheckInterval = null;
-        console.log('⏹️ Pool status monitoring stopped');
-    }
-}
-
-/**
- * Check for pool status updates and refresh UI if needed
- */
-async function checkPoolStatusUpdate() {
-    if (!poolAddress || !poolData) return;
-    
-    try {
-        console.log('🔍 Checking pool status for updates...');
-        
-        // Get fresh pool data (force RPC to get latest)
-        const cacheResult = await window.PoolCacheManager.fetchFromSolanaRPC(poolAddress);
-        let freshPoolData = null;
-        
-        if (cacheResult) {
-            // The RPC data is base64 encoded, so we need to decode it first
-            const base64Data = cacheResult.data.value.data[0];
-            const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-            
-            freshPoolData = window.TradingDataService.parsePoolState(
-                binaryData, 
-                poolAddress
-            );
-        }
-        
-        if (freshPoolData && freshPoolData.flags !== undefined) {
-            const oldFlags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
-            const newFlags = window.TokenDisplayUtils.interpretPoolFlags(freshPoolData);
-            
-            // Check if pause status changed
-            const pauseStatusChanged = 
-                oldFlags.swapsPaused !== newFlags.swapsPaused || 
-                oldFlags.liquidityPaused !== newFlags.liquidityPaused;
-            
-            if (pauseStatusChanged) {
-                console.log('🚨 Pool pause status changed!');
-                console.log('  Old flags:', oldFlags);
-                console.log('  New flags:', newFlags);
-                
-                // Update pool data
-                poolData = freshPoolData;
-                
-                // Refresh displays
-                updatePoolDisplay();
-                updateSwapInterfaceWithRealBalances();
-                
-                // Show notification about status change
-                if (newFlags.swapsPaused && !oldFlags.swapsPaused) {
-                    showStatus('error', '🚫 Pool swaps have been paused by the pool owner.');
-                } else if (!newFlags.swapsPaused && oldFlags.swapsPaused) {
-                    showStatus('success', '✅ Pool swaps have been resumed by the pool owner.');
-                }
-                
-                if (newFlags.liquidityPaused && !oldFlags.liquidityPaused) {
-                    showStatus('error', '⏸️ Pool liquidity operations have been paused by the pool owner.');
-                } else if (!newFlags.liquidityPaused && oldFlags.liquidityPaused) {
-                    showStatus('success', '✅ Pool liquidity operations have been resumed by the pool owner.');
-                }
-            }
-        }
-        
-    } catch (error) {
-        console.warn('⚠️ Error checking pool status update:', error);
-        // Don't show error to user - this is background monitoring
-    }
-}
+// Removed: checkPoolStatusUpdate function - using server-only data
 
 // Helper functions from liquidity.js for pool display
 /**
@@ -2243,7 +2269,7 @@ function addExpandablePoolStateDisplay() {
         overflow: hidden;
     `;
     
-    const flags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
+    const flags = interpretPoolFlags(poolData);
     
     // 🛡️ SECURITY FIX: Use safe DOM manipulation for expandable section
     expandableSection.innerHTML = ''; // Clear existing content
@@ -2313,7 +2339,7 @@ function addExpandablePoolStateDisplay() {
 function generatePoolStateFields() {
     if (!poolData) return '';
     
-    const flags = window.TokenDisplayUtils.interpretPoolFlags(poolData);
+    const flags = interpretPoolFlags(poolData);
     
     return `
         <!-- Basic Pool Information -->
@@ -2461,231 +2487,9 @@ function updateCacheStatusDisplay(cacheResult) {
 // Render-first bootstrap: instant localStorage UI, then background init
 let SOLANA_RPC_ALLOWED_AT = 0;
 
-async function instantRenderFromCacheOnly() {
-    const startTime = performance.now();
-    console.log(`[${new Date().toISOString()}] ⚡ Starting instant render from localStorage only`);
-    
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        poolAddress = urlParams.get('pool') || sessionStorage.getItem('selectedPoolAddress');
-        if (poolAddress) { sessionStorage.setItem('selectedPoolAddress', poolAddress); }
+// Removed: instantRenderFromCacheOnly function - using server-only data
 
-        // Load DIRECTLY from localStorage - NO PoolCacheManager calls to avoid delays
-        let local = null;
-        let cachedExtras = null;
-        let parsedPoolData = null;
-        
-        try {
-            const cacheData = JSON.parse(localStorage.getItem('frt_pool_cache') || '{}');
-            if (cacheData.pools && cacheData.pools[poolAddress]) {
-                local = cacheData.pools[poolAddress];
-                cachedExtras = local.extras;
-                console.log(`⚡ Found cached pool data for instant render (direct localStorage access)`);
-                
-                // Skip parsing during instant render to avoid any delays
-                // Parsing will happen later during full initialization
-                console.log(`⚡ Skipping pool data parsing during instant render for maximum speed`);
-            } else {
-                console.log(`⚡ No cached pool data found for instant render - will show placeholder`);
-            }
-        } catch (e) {
-            console.warn('⚠️ Error loading from localStorage during instant render:', e);
-        }
-
-        // FULL UI RENDER FROM CACHE - just like testswap.html
-        if (local && cachedExtras) {
-            console.log(`⚡ Rendering complete UI from cache`);
-            
-            // Update token symbols and icons
-            const fromSymbol = cachedExtras.tokenASymbol || 'TOKEN A';
-            const toSymbol = cachedExtras.tokenBSymbol || 'TOKEN B';
-            
-            // From token
-            const fromTokenSymbol = document.getElementById('from-token-symbol');
-            const fromTokenIcon = document.getElementById('from-token-icon');
-            if (fromTokenSymbol) fromTokenSymbol.textContent = fromSymbol;
-            if (fromTokenIcon) fromTokenIcon.textContent = fromSymbol.charAt(0);
-            
-            // To token  
-            const toTokenSymbol = document.getElementById('to-token-symbol');
-            const toTokenIcon = document.getElementById('to-token-icon');
-            if (toTokenSymbol) toTokenSymbol.textContent = toSymbol;
-            if (toTokenIcon) toTokenIcon.textContent = toSymbol.charAt(0);
-
-            // Calculate and display exchange rate
-            if (typeof cachedExtras.ratioADecimal === 'number' && typeof cachedExtras.ratioBDecimal === 'number' &&
-                typeof cachedExtras.ratioANumerator === 'number' && typeof cachedExtras.ratioBDenominator === 'number') {
-                
-                const ratioAActual = cachedExtras.ratioANumerator / Math.pow(10, cachedExtras.ratioADecimal);
-                const ratioBActual = cachedExtras.ratioBDenominator / Math.pow(10, cachedExtras.ratioBDecimal);
-                const exchangeRate = ratioAActual / (ratioBActual || 1);
-                const rateText = `1 ${toSymbol} = ${Number.isFinite(exchangeRate) ? exchangeRate.toLocaleString('en-US') : '-'} ${fromSymbol}`;
-                
-                const previewRate = document.getElementById('preview-rate');
-                if (previewRate) previewRate.textContent = rateText;
-                
-                // Store exchange rate for calculations
-                window.instantRenderExchangeRate = exchangeRate;
-                window.instantRenderTokenA = fromSymbol;
-                window.instantRenderTokenB = toSymbol;
-                
-                console.log(`⚡ Exchange rate set: ${rateText}`);
-            }
-
-            // Show cache status
-            const cacheAge = local.generated_at ? 
-                Math.round((Date.now() - new Date(local.generated_at).getTime()) / 1000) : 'unknown';
-            
-            const cacheSource = document.getElementById('cache-source');
-            if (cacheSource) {
-                cacheSource.textContent = `🗄️ localStorage (${cacheAge}s old)`;
-            }
-
-            // Render complete pool info
-            const poolDetails = document.getElementById('pool-details');
-            if (poolDetails) {
-                let poolInfoHtml = `
-                    <div class="pool-metric">
-                        <div class="metric-label">Pool Address</div>
-                        <div class="metric-value">${poolAddress.slice(0,8)}...${poolAddress.slice(-8)}</div>
-                    </div>
-                    <div class="pool-metric">
-                        <div class="metric-label">Token Pair</div>
-                        <div class="metric-value">${fromSymbol}/${toSymbol}</div>
-                    </div>
-                    <div class="pool-metric">
-                        <div class="metric-label">Cache Age</div>
-                        <div class="metric-value">${cacheAge}s old</div>
-                    </div>
-                    <div class="pool-metric">
-                        <div class="metric-label">Render Source</div>
-                        <div class="metric-value">localStorage instant</div>
-                    </div>
-                `;
-                
-                // Add basic cached data if available (no parsing needed)
-                if (cachedExtras) {
-                    poolInfoHtml += `
-                        <div class="pool-metric">
-                            <div class="metric-label">Token A Decimals</div>
-                            <div class="metric-value">${cachedExtras.ratioADecimal || 'N/A'}</div>
-                        </div>
-                        <div class="pool-metric">
-                            <div class="metric-label">Token B Decimals</div>
-                            <div class="metric-value">${cachedExtras.ratioBDecimal || 'N/A'}</div>
-                        </div>
-                        <div class="pool-metric">
-                            <div class="metric-label">Status</div>
-                            <div class="metric-value">Instant Render Ready</div>
-                        </div>
-                    `;
-                }
-                
-                poolDetails.innerHTML = poolInfoHtml;
-                poolDetails.style.display = 'grid';
-            }
-
-            // Enable swap calculations with cached data
-            window.enableInstantSwapCalculations = true;
-        }
-
-        // Show swap interface immediately 
-        const loadingEl = document.getElementById('swap-loading');
-        const formEl = document.getElementById('swap-form');
-        if (loadingEl) loadingEl.style.display = 'none';
-        if (formEl) formEl.style.display = 'grid';
-
-        // Enable inputs for instant calculations, but keep swap button disabled
-        const fromAmt = document.getElementById('from-amount');
-        const toAmt = document.getElementById('to-amount');
-        const swapBtn = document.getElementById('swap-btn');
-        
-        if (fromAmt) {
-            fromAmt.disabled = false;
-            fromAmt.placeholder = '0.000000';
-        }
-        if (toAmt) {
-            toAmt.disabled = false; 
-            toAmt.placeholder = '0.000000';
-        }
-        if (swapBtn) { 
-            swapBtn.disabled = true; 
-            swapBtn.textContent = '🔄 Connect Wallet to Swap'; 
-        }
-
-        const renderTime = performance.now() - startTime;
-        console.log(`[${new Date().toISOString()}] ⚡ Instant render completed in ${renderTime.toFixed(2)}ms`);
-        
-        // Attach instant calculation handlers
-        attachInstantCalculationHandlers();
-        
-        // Show success message
-        const statusEl = document.getElementById('status-message');
-        if (statusEl) {
-            statusEl.innerHTML = `<div class="status-success">⚡ Page rendered instantly in ${renderTime.toFixed(0)}ms from localStorage cache</div>`;
-            statusEl.style.display = 'block';
-        }
-    } catch (error) {
-        console.warn('⚠️ Error in instant render:', error);
-    }
-}
-
-// Instant swap calculations using cached data (no heavy libs needed)
-function calculateSwapOutputInstant() {
-    if (!window.enableInstantSwapCalculations || !window.instantRenderExchangeRate) return;
-    
-    const fromAmount = parseFloat(document.getElementById('from-amount').value) || 0;
-    if (fromAmount <= 0) {
-        document.getElementById('to-amount').value = '';
-        updatePreviewInstant();
-        return;
-    }
-    
-    const toAmount = fromAmount / window.instantRenderExchangeRate;
-    document.getElementById('to-amount').value = toAmount.toFixed(8);
-    updatePreviewInstant();
-}
-
-function calculateSwapInputFromOutputInstant() {
-    if (!window.enableInstantSwapCalculations || !window.instantRenderExchangeRate) return;
-    
-    const toAmount = parseFloat(document.getElementById('to-amount').value) || 0;
-    if (toAmount <= 0) {
-        document.getElementById('from-amount').value = '';
-        updatePreviewInstant();
-        return;
-    }
-    
-    const fromAmount = toAmount * window.instantRenderExchangeRate;
-    document.getElementById('from-amount').value = fromAmount.toFixed(8);
-    updatePreviewInstant();
-}
-
-function updatePreviewInstant() {
-    const fromAmount = document.getElementById('from-amount').value;
-    const toAmount = document.getElementById('to-amount').value;
-    
-    const previewFromAmount = document.getElementById('preview-from-amount');
-    const previewToAmount = document.getElementById('preview-to-amount');
-    
-    if (previewFromAmount) previewFromAmount.textContent = fromAmount || '-';
-    if (previewToAmount) previewToAmount.textContent = toAmount || '-';
-}
-
-// Attach instant calculation handlers
-function attachInstantCalculationHandlers() {
-    const fromAmountInput = document.getElementById('from-amount');
-    const toAmountInput = document.getElementById('to-amount');
-    
-    if (fromAmountInput) {
-        fromAmountInput.addEventListener('input', calculateSwapOutputInstant);
-    }
-    if (toAmountInput) {
-        toAmountInput.addEventListener('input', calculateSwapInputFromOutputInstant);
-    }
-    
-    console.log('⚡ Instant calculation handlers attached');
-}
+// Removed: Instant calculation functions - using server-only data with proper initialization
 
 function loadScriptDeferred(src) {
     return new Promise((resolve, reject) => {
@@ -2698,176 +2502,53 @@ function loadScriptDeferred(src) {
     });
 }
 
-async function deferredLoadHeavyLibraries() {
-    // Load config first (lightweight) if not already present
-    if (!window.TRADING_CONFIG && !document.querySelector('script[src*="config.js"]')) {
-        try { await loadScriptDeferred('config.js'); } catch (_) {}
-    }
-    const loads = [];
-    if (!window.solanaWeb3 && !document.querySelector('script[src*="solana-web3.min.js"]')) {
-        loads.push(loadScriptDeferred('libs/solana-web3.min.js'));
-    }
-    if (!window.SPL_TOKEN_LOADED && !document.querySelector('script[src*="spl-token.min.js"]')) {
-        loads.push(loadScriptDeferred('libs/spl-token.min.js'));
-    }
-    if (!window.TradingDataService && !document.querySelector('script[src*="data-service.js"]')) {
-        loads.push(loadScriptDeferred('data-service.js'));
-    }
-    if (!window.ERROR_CODES && !document.querySelector('script[src*="error-codes.js"]')) {
-        loads.push(loadScriptDeferred('error-codes.js'));
-    }
-    if (!window.TokenPairRatio && !document.querySelector('script[src*="utils.js"]')) {
-        loads.push(loadScriptDeferred('utils.js'));
-    }
-    await Promise.allSettled(loads);
-}
+// Removed: deferredLoadHeavyLibraries function - not needed for server-only rendering
+// Removed: fetchFromServerCacheOnly and triggerSolanaRefresh functions - using server-only data
 
-async function fetchFromServerCacheOnly() {
+async function setupBasicUI() {
+    console.log(`[${new Date().toISOString()}] ⚡ Setting up basic UI (server-only mode)`);
+    
     try {
-        if (!poolAddress) return null;
-        if (!window.PoolCacheManager?.fetchFromServerCache) return null;
-        // Bound server fetch to 500ms to avoid blocking perception
-        const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 500));
-        const result = await window.PoolCacheManager.fetchFromServerCache(poolAddress);
-        const bounded = await Promise.race([Promise.resolve(result), timeout]);
-        if (bounded?.data) {
-            // Persist into local cache for next instant render
-            await window.PoolCacheManager.updateLocalStorageCache(poolAddress, bounded);
-            const cacheSource = document.getElementById('cache-source');
-            if (cacheSource) cacheSource.textContent = '🗄️ server-cache (saved to localStorage)';
+        const urlParams = new URLSearchParams(window.location.search);
+        poolAddress = urlParams.get('pool') || sessionStorage.getItem('selectedPoolAddress');
+        if (poolAddress) { 
+            sessionStorage.setItem('selectedPoolAddress', poolAddress); 
         }
-        return bounded;
-    } catch (e) {
-        console.warn('⚠️ Server cache fetch failed:', e?.message);
-        return null;
-    }
-}
 
-async function triggerSolanaRefresh() {
-    try {
-        if (!poolAddress) return;
-        if (!window.TRADING_CONFIG) { try { await loadScriptDeferred('config.js'); } catch (_) {} }
-        if (!window.PoolCacheManager?.connection) {
-            // Safe connection creation; will be replaced by initializeSwapPage flow
-            try {
-                const connection = (window.solanaWeb3) ? new window.solanaWeb3.Connection(window.TRADING_CONFIG?.rpcUrl || '', { commitment: (window.TRADING_CONFIG?.commitment || 'confirmed'), disableRetryOnRateLimit: true }) : null;
-                await window.PoolCacheManager.initialize(window.TRADING_CONFIG || {}, connection);
-            } catch (_) {}
-        }
-        const rpcResult = await window.PoolCacheManager.fetchFromSolanaRPC(poolAddress);
-        if (rpcResult?.data) {
-            await window.PoolCacheManager.updateLocalStorageCache(poolAddress, rpcResult);
-            const cacheSource = document.getElementById('cache-source');
-            if (cacheSource) cacheSource.textContent = '📡 solana (refreshed)';
-        }
-        // If app not fully initialized, do full init now (but don't block UI)
-        setTimeout(async () => {
-            if (typeof initializeSwapPage === 'function') {
-                try { await initializeSwapPage(); } catch (_) {}
-            }
-        }, 0);
-    } catch (e) {
-        console.warn('⚠️ Solana refresh failed:', e?.message);
+        // Show loading state
+        const fromTokenSymbol = document.getElementById('from-token-symbol');
+        const toTokenSymbol = document.getElementById('to-token-symbol');
+        if (fromTokenSymbol) fromTokenSymbol.textContent = 'Loading...';
+        if (toTokenSymbol) toTokenSymbol.textContent = 'Loading...';
+        
+        const previewRate = document.getElementById('preview-rate');
+        if (previewRate) previewRate.textContent = 'Loading exchange rate...';
+        
+        const cacheSource = document.getElementById('cache-source');
+        if (cacheSource) cacheSource.textContent = '📡 Loading from server...';
+        
+        // Initialize wallet button state
+        updateWalletButton();
+        
+        console.log(`⚡ Basic UI setup completed`);
+        
+    } catch (error) {
+        console.warn('⚠️ Error during basic UI setup:', error);
     }
 }
 
 function bootstrapRenderFirst() {
-    console.log(`[${new Date().toISOString()}] 🚀 Bootstrap: Starting render-first approach`);
+    // Start timing for render performance measurement
+    window.renderStartTime = performance.now();
+    console.log(`[${new Date().toISOString()}] 🚀 Bootstrap: Starting immediate server-only render`);
     
-    // Step 1: IMMEDIATE instant cache render (no delays, no heavy libs)
-    instantRenderFromCacheOnly();
-
-    // Step 2: Delay ALL heavy operations to ensure instant render completes first
-    const runAfterIdle = (fn) => {
-        if ('requestIdleCallback' in window) { 
-            window.requestIdleCallback(() => fn(), { timeout: 2000 }); 
-        } else { 
-            setTimeout(fn, 100); // Increased delay to ensure render completes
-        }
-    };
-    
-    // Wait for multiple frames to ensure DOM is fully rendered
-    const afterMultipleFrames = (fn) => {
-        requestAnimationFrame(() => 
-            requestAnimationFrame(() => 
-                requestAnimationFrame(() => fn())
-            )
-        );
-    };
-
-    // Delay heavy operations by 500ms to ensure instant render shows first
-    setTimeout(() => {
-        afterMultipleFrames(async () => {
-            console.log(`[${new Date().toISOString()}] 📚 Starting background heavy library loading...`);
-            
-            // Set RPC gate to prevent any RPC calls during render
-            if (typeof window.FRT_RPC_ALLOWED_AT !== 'number') {
-                window.FRT_RPC_ALLOWED_AT = Date.now() + 10000; // 10 second delay
-            }
-            
-            const t0 = performance.now();
-            await deferredLoadHeavyLibraries();
-            console.log(`[${new Date().toISOString()}] ⬇️ Heavy libraries loaded in ${Math.round(performance.now() - t0)}ms`);
-
-            // Further delay full app init to avoid competing with user interaction
-            runAfterIdle(async () => {
-                try {
-                    console.log(`[${new Date().toISOString()}] 🚀 Starting full initializeSwapPage (background)`);
-                    await initializeSwapPage();
-                } catch (e) {
-                    console.warn('⚠️ initializeSwapPage error (will continue):', e?.message);
-                }
-            });
-
-            // Allow Solana RPC after 10 seconds (much longer delay)
-            SOLANA_RPC_ALLOWED_AT = Date.now() + 10000;
-            window.FRT_RPC_ALLOWED_AT = SOLANA_RPC_ALLOWED_AT;
-
-            // Background server cache check (non-blocking)
-            const urlParams = new URLSearchParams(window.location.search);
-            const backgroundPoolAddress = urlParams.get('pool') || sessionStorage.getItem('selectedPoolAddress');
-            if (backgroundPoolAddress) {
-                try {
-                    const local = await window.PoolCacheManager?.fetchFromLocalStorage?.(backgroundPoolAddress);
-                    if (!local && typeof fetchFromServerCacheOnly === 'function') { 
-                        await fetchFromServerCacheOnly(); 
-                    }
-                } catch (e) {
-                    console.warn('⚠️ Background server cache check failed:', e?.message);
-                }
-            }
-
-            // Schedule Solana fetch after delay (non-blocking)
-            setTimeout(() => { 
-                try { triggerSolanaRefresh(); } catch (_) {}
-            }, Math.max(0, SOLANA_RPC_ALLOWED_AT - Date.now()));
-
-            // Schedule periodic 5-minute refreshes (non-blocking)
-            setInterval(() => { 
-                try { triggerSolanaRefresh(); } catch (_) {}
-            }, 5 * 60 * 1000);
-        });
-    }, 500); // 500ms delay before starting any heavy operations
+    // Setup basic UI and immediately start loading pool data - NO delays, NO library loading
+    setupBasicUI();
+    initializeSwapPage();
 }
 
 document.addEventListener('DOMContentLoaded', bootstrapRenderFirst);
 
-// Cleanup when page unloads
-window.addEventListener('beforeunload', () => {
-    stopPoolStatusMonitoring();
-});
-
-// Also cleanup when user navigates away
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-        console.log('🔄 Page hidden, pausing pool status monitoring');
-        stopPoolStatusMonitoring();
-    } else {
-        console.log('🔄 Page visible, resuming pool status monitoring');
-        if (poolData && isConnected) {
-            startPoolStatusMonitoring();
-        }
-    }
-});
+// Removed: All monitoring cleanup logic - using server-only data
 
 console.log('🔄 Enhanced Swap JavaScript loaded successfully'); 

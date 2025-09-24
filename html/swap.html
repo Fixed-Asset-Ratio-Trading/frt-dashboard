@@ -479,6 +479,40 @@
             color: #666;
         }
         
+        /* Wallet Connect Button Styles */
+        .wallet-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .wallet-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .wallet-btn:active {
+            transform: translateY(0);
+        }
+        
+        .wallet-btn.connected {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        
+        .wallet-btn.disconnected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
         /* Phase 2.1: Pool State Display Styles */
         .pool-state-section {
             background: #f8f9fa;
@@ -557,7 +591,12 @@
         
         <!-- Swap Interface Section -->
         <div class="swap-interface-section">
-            <h2 style="color: #333; margin-bottom: 15px;">🔄 Token Swap Interface</h2>
+            <div class="swap-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="color: #333; margin: 0;">🔄 Token Swap Interface</h2>
+                <button id="wallet-connect-btn" class="wallet-btn" onclick="toggleWalletConnection()">
+                    <span id="wallet-btn-text">🔗 Connect Wallet</span>
+                </button>
+            </div>
             <p style="color: #666; margin-bottom: 20px;">Click the token selector to switch between tokens, then enter the amount you want to swap. The output amount updates automatically. Connect your wallet when ready to execute the swap.</p>
             
             <div id="swap-loading" class="loading">
@@ -647,6 +686,9 @@
                     </div>
                     <div class="preview-info" style="color: #10b981; font-size: 12px; margin-top: 8px; text-align: center;">
                         🎯 Fixed ratio - you receive exactly the calculated amount
+                    </div>
+                    <div class="preview-warning" id="preview-warning" style="display: none;">
+                        ⚠️ Insufficient balance to complete this transaction
                     </div>
                 </div>
             </div>
