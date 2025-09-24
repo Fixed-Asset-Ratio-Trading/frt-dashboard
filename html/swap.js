@@ -1929,7 +1929,11 @@ async function executeSwap() {
         showStatus('success', `🎉 Swap completed! Transaction: ${signature.slice(0, 8)}...`);
         
         // Refresh user tokens after successful swap
+        console.log('🔄 Refreshing token balances after swap...');
         await loadUserTokensForPool();
+        
+        // Update the interface to show new balances
+        updateSwapInterfaceWithRealBalances();
         
         // Reset form
         document.getElementById('from-amount').value = '';
@@ -2491,13 +2495,25 @@ async function refreshPoolStatus() {
             refreshBtn.textContent = '⏳ Refreshing...';
         }
         
-        console.log('🔄 Manually refreshing pool status...');
-        showStatus('info', '🔄 Refreshing pool status...');
+        console.log('🔄 Manually refreshing pool status and balances...');
+        showStatus('info', '🔄 Refreshing pool data and balances...');
         
-        // Force refresh pool data
-        await checkPoolStatusUpdate();
+        // Get pool address
+        const urlParams = new URLSearchParams(window.location.search);
+        const poolAddress = urlParams.get('pool');
         
-        showStatus('success', '✅ Pool status refreshed successfully');
+        if (poolAddress) {
+            // Reload pool data from server
+            await loadPoolDataFromServerOnly(poolAddress);
+        }
+        
+        // Refresh wallet balances if connected
+        if (isConnected) {
+            await checkWalletBalance();
+            await loadUserTokensForPool();
+        }
+        
+        showStatus('success', '✅ Pool status and balances refreshed');
         setTimeout(clearStatus, 3000);
         
     } catch (error) {
