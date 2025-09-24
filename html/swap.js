@@ -1850,26 +1850,50 @@ async function executeSwap() {
         
         showStatus('info', '📝 Requesting wallet signature...');
         
-        // Ensure the wallet fills a fresh recent blockhash to avoid mismatches
-        try { delete transaction.recentBlockhash; } catch (_) {}
-        try { delete transaction.lastValidBlockHeight; } catch (_) {}
+        // Keep the blockhash for wallet to use in simulation
+        // Comment out the blockhash deletion to prevent "Blockhash not found" errors
+        // try { delete transaction.recentBlockhash; } catch (_) {}
+        // try { delete transaction.lastValidBlockHeight; } catch (_) {}
         try { transaction.feePayer = wallet.publicKey; } catch (_) {}
-        console.log('🧼 Preparing transaction for wallet: cleared recentBlockhash so wallet fetches a fresh one');
+        console.log('📝 Transaction ready for wallet with blockhash:', transaction.recentBlockhash);
 
-        // Sign and send transaction (wallet will simulate with its own fresh blockhash)
+        // Sign and send transaction
         const signatureResult = await wallet.signAndSendTransaction(transaction);
         console.log('✅ Swap transaction sent:', signatureResult);
         
         // Extract signature string from result
         const signature = signatureResult.signature || signatureResult;
         
-        showStatus('info', '⏳ Confirming transaction...');
+        // Show countdown timer for confirmation (90 seconds max)
+        let countdown = 90;
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                showStatus('info', `⏳ Confirming transaction... (${countdown}s remaining)`);
+            } else {
+                clearInterval(countdownInterval);
+                showStatus('warning', '⚠️ Transaction confirmation taking longer than expected...');
+            }
+        }, 1000);
         
-        // Wait for confirmation
-        const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+        showStatus('info', `⏳ Confirming transaction... (${countdown}s remaining)`);
         
-        if (confirmation.value.err) {
-            throw new Error(`Swap failed: ${JSON.stringify(confirmation.value.err)}`);
+        try {
+            // Wait for confirmation with timeout
+            const confirmationPromise = connection.confirmTransaction(signature, 'confirmed');
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Transaction confirmation timeout after 90 seconds')), 90000)
+            );
+            
+            const confirmation = await Promise.race([confirmationPromise, timeoutPromise]);
+            clearInterval(countdownInterval);
+            
+            if (confirmation.value?.err) {
+                throw new Error(`Swap failed: ${JSON.stringify(confirmation.value.err)}`);
+            }
+        } catch (error) {
+            clearInterval(countdownInterval);
+            throw error;
         }
         
         console.log('✅ Swap completed successfully!');
