@@ -333,6 +333,7 @@ sync_files() {
         --exclude='*.log' \
         --exclude='*.tmp' \
         --exclude='.DS_Store' \
+        --exclude='config.json' \
         "$PROJECT_ROOT/html/" "$REMOTE_HOST:$REMOTE_HTML_DIR/"
     
     echo -e "${GREEN}✅ Files synced successfully${NC}"
@@ -356,15 +357,16 @@ CHAINSTACK_HTTPS_ENDPOINT=https://solana-mainnet.core.chainstack.com/36d9fd24855
 CHAINSTACK_WSS_ENDPOINT=wss://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602
 
 # Password-protected endpoints (for future use if needed)
-CHAINSTACK_HTTPS_BASE=https://solana-mainnet.core.chainstack.com
-CHAINSTACK_WSS_BASE=wss://solana-mainnet.core.chainstack.com
-CHAINSTACK_USERNAME=condescending-fermi
-CHAINSTACK_PASSWORD=jockey-snore-detest-uproar-fleshy-faucet
+# CHAINSTACK_HTTPS_BASE=https://solana-mainnet.core.chainstack.com
+# CHAINSTACK_WSS_BASE=wss://solana-mainnet.core.chainstack.com
+# CHAINSTACK_USERNAME=[REMOVED - Use environment variables]
+# CHAINSTACK_PASSWORD=[REMOVED - Use environment variables]
 
 # Usage notes:
 # - Direct endpoints are configured for origin/IP filtering
 # - Password-protected endpoints available as backup
 # - Never commit these credentials to version control
+# - Use environment variables for sensitive credentials
 EOF"
     
     # Set secure permissions
@@ -379,6 +381,25 @@ EOF"
 update_config() {
     echo -e "${YELLOW}⚙️ Updating remote configuration for Solana Mainnet with Chainstack...${NC}"
     
+    # Read existing credentials from current config.json if it exists
+    echo "   Checking for existing credentials..."
+    EXISTING_USERNAME=""
+    EXISTING_PASSWORD=""
+    
+    if ssh "$REMOTE_HOST" "test -f $REMOTE_HTML_DIR/config.json"; then
+        echo "   Found existing config.json, preserving credentials..."
+        EXISTING_CREDS=$(ssh "$REMOTE_HOST" "jq -r '.solana.auth // empty' $REMOTE_HTML_DIR/config.json 2>/dev/null || echo 'null'")
+        if [ "$EXISTING_CREDS" != "null" ] && [ "$EXISTING_CREDS" != "" ]; then
+            EXISTING_USERNAME=$(echo "$EXISTING_CREDS" | jq -r '.username // empty' 2>/dev/null || echo "")
+            EXISTING_PASSWORD=$(echo "$EXISTING_CREDS" | jq -r '.password // empty' 2>/dev/null || echo "")
+            if [ -n "$EXISTING_USERNAME" ] && [ -n "$EXISTING_PASSWORD" ]; then
+                echo "   ✅ Found existing credentials for user: $EXISTING_USERNAME"
+            fi
+        fi
+    else
+        echo "   No existing config.json found, will create new one"
+    fi
+    
     # Create config for HTTPS deployment with Chainstack mainnet settings
     ssh "$REMOTE_HOST" "cat > $REMOTE_HTML_DIR/config.json << 'EOF'
 {
@@ -388,7 +409,11 @@ update_config() {
     \"commitment\": \"confirmed\",
     \"disableRetryOnRateLimit\": false,
     \"network\": \"mainnet-beta\",
-    \"provider\": \"chainstack\"
+    \"provider\": \"chainstack\"$(if [ -n "$EXISTING_USERNAME" ] && [ -n "$EXISTING_PASSWORD" ]; then echo ",
+    \"auth\": {
+      \"username\": \"$EXISTING_USERNAME\",
+      \"password\": \"$EXISTING_PASSWORD\"
+    }"; fi)
   },
   \"program\": {
     \"programId\": \"quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD\",
@@ -422,6 +447,15 @@ update_config() {
   \"_description\": \"Centralized configuration for Fixed Ratio Trading project - Mainnet deployment\"
 }
 EOF"
+    
+    # Report credential status
+    if [ -n "$EXISTING_USERNAME" ] && [ -n "$EXISTING_PASSWORD" ]; then
+        echo -e "${GREEN}✅ Chainstack credentials preserved in new config${NC}"
+        echo "   🔑 Username: $EXISTING_USERNAME"
+    else
+        echo -e "${YELLOW}⚠️ No existing credentials found${NC}"
+        echo "   Server will use default RPC endpoints without authentication"
+    fi
     
     echo -e "${GREEN}✅ Remote configuration updated for Solana Mainnet with Chainstack${NC}"
     echo "   🌐 Network: Solana Mainnet Beta"

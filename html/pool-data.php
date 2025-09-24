@@ -405,34 +405,55 @@ function parsePoolState($binaryData) {
 }
 
 /**
- * Base58 encode function using GMP
+ * Base58 encode function with GMP and BCMath fallback
  */
 function base58_encode($data) {
     $alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
     
-    if (!extension_loaded('gmp')) {
-        // Fallback: return hex representation for debugging
+    if (extension_loaded('gmp')) {
+        // Use GMP for proper base58 encoding (preferred)
+        $num = gmp_init('0');
+        for ($i = 0; $i < strlen($data); $i++) {
+            $num = gmp_add(gmp_mul($num, 256), ord($data[$i]));
+        }
+        
+        $result = '';
+        while (gmp_cmp($num, 0) > 0) {
+            list($num, $remainder) = gmp_div_qr($num, 58);
+            $result = $alphabet[gmp_intval($remainder)] . $result;
+        }
+        
+        // Handle leading zeros
+        for ($i = 0; $i < strlen($data) && ord($data[$i]) === 0; $i++) {
+            $result = '1' . $result;
+        }
+        
+        return $result;
+    } elseif (extension_loaded('bcmath')) {
+        // BCMath fallback
+        $num = '0';
+        for ($i = 0; $i < strlen($data); $i++) {
+            $num = bcadd(bcmul($num, '256'), ord($data[$i]));
+        }
+        
+        $result = '';
+        while (bccomp($num, '0') > 0) {
+            $remainder = bcmod($num, '58');
+            $num = bcdiv($num, '58');
+            $result = $alphabet[intval($remainder)] . $result;
+        }
+        
+        // Handle leading zeros
+        for ($i = 0; $i < strlen($data) && ord($data[$i]) === 0; $i++) {
+            $result = '1' . $result;
+        }
+        
+        return $result;
+    } else {
+        // Last resort: return hex with error message
+        error_log("ERROR: Neither GMP nor BCMath extensions available for base58 encoding");
         return 'hex:' . bin2hex($data);
     }
-    
-    // Use GMP for proper base58 encoding
-    $num = gmp_init('0');
-    for ($i = 0; $i < strlen($data); $i++) {
-        $num = gmp_add(gmp_mul($num, 256), ord($data[$i]));
-    }
-    
-    $result = '';
-    while (gmp_cmp($num, 0) > 0) {
-        list($num, $remainder) = gmp_div_qr($num, 58);
-        $result = $alphabet[gmp_intval($remainder)] . $result;
-    }
-    
-    // Handle leading zeros
-    for ($i = 0; $i < strlen($data) && ord($data[$i]) === 0; $i++) {
-        $result = '1' . $result;
-    }
-    
-    return $result;
 }
 
 /**

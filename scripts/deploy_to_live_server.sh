@@ -107,13 +107,58 @@ echo -e "${GREEN}✅ SSH connection successful${NC}"
 setup_php_cache() {
     echo -e "${YELLOW}📁 Setting up PHP cache directories...${NC}"
     
-    # Create cache directory for token images
-    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_HTML_DIR/cache/token-images && chown -R www-data:www-data $REMOTE_HTML_DIR/cache && chmod -R 755 $REMOTE_HTML_DIR/cache"
+    # Create all required cache directories
+    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_HTML_DIR/cache/token-images"
+    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_HTML_DIR/cache/token-metadata"
+    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_HTML_DIR/cache/pool_data"
     
-    # Ensure PHP can write to cache directory
+    # Set proper ownership and permissions
+    ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_HTML_DIR/cache"
+    ssh "$REMOTE_HOST" "chmod -R 755 $REMOTE_HTML_DIR/cache"
+    
+    # Ensure PHP can write to cache directories
     ssh "$REMOTE_HOST" "chmod -R 775 $REMOTE_HTML_DIR/cache/token-images"
+    ssh "$REMOTE_HOST" "chmod -R 775 $REMOTE_HTML_DIR/cache/token-metadata"
+    ssh "$REMOTE_HOST" "chmod -R 775 $REMOTE_HTML_DIR/cache/pool_data"
     
     echo -e "${GREEN}✅ PHP cache directories configured${NC}"
+}
+
+# Function to sync cache metadata overrides
+sync_cache_metadata() {
+    echo -e "${YELLOW}📁 Syncing cache metadata overrides...${NC}"
+    
+    # Check if token-metadata cache directory exists locally
+    if [ -d "$PROJECT_ROOT/html/cache/token-metadata" ]; then
+        echo "   Syncing token metadata overrides..."
+        rsync -avz \
+            "$PROJECT_ROOT/html/cache/token-metadata/" \
+            "$REMOTE_HOST:$REMOTE_HTML_DIR/cache/token-metadata/"
+        
+        # Set proper permissions for metadata files
+        ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_HTML_DIR/cache/token-metadata"
+        ssh "$REMOTE_HOST" "chmod -R 644 $REMOTE_HTML_DIR/cache/token-metadata/*"
+        
+        echo -e "${GREEN}✅ Token metadata overrides synced${NC}"
+    else
+        echo "   No token metadata overrides found locally"
+    fi
+    
+    # Check if token-image-overrides.txt exists and sync it
+    if [ -f "$PROJECT_ROOT/html/token-image-overrides.txt" ]; then
+        echo "   Syncing token image overrides file..."
+        rsync -avz \
+            "$PROJECT_ROOT/html/token-image-overrides.txt" \
+            "$REMOTE_HOST:$REMOTE_HTML_DIR/"
+        
+        # Set proper permissions
+        ssh "$REMOTE_HOST" "chown www-data:www-data $REMOTE_HTML_DIR/token-image-overrides.txt"
+        ssh "$REMOTE_HOST" "chmod 644 $REMOTE_HTML_DIR/token-image-overrides.txt"
+        
+        echo -e "${GREEN}✅ Token image overrides file synced${NC}"
+    else
+        echo "   No token image overrides file found locally"
+    fi
 }
 
 # Function to check server status
@@ -190,11 +235,15 @@ sync_files() {
         --exclude='*.log' \
         --exclude='*.tmp' \
         --exclude='.DS_Store' \
-        --exclude='cache/' \
+        --exclude='cache/token-images/' \
+        --exclude='cache/pool_data/' \
+        --exclude='config.json' \
         "$PROJECT_ROOT/html/" "$REMOTE_HOST:$REMOTE_HTML_DIR/"
     
     # Set proper permissions
-    ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_HTML_DIR && chmod -R 644 $REMOTE_HTML_DIR/* && chmod 755 $REMOTE_HTML_DIR"
+    ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_HTML_DIR"
+    ssh "$REMOTE_HOST" "find $REMOTE_HTML_DIR -type d -exec chmod 755 {} \;"
+    ssh "$REMOTE_HOST" "find $REMOTE_HTML_DIR -type f -exec chmod 644 {} \;"
     
     # Make PHP files executable
     ssh "$REMOTE_HOST" "chmod 755 $REMOTE_HTML_DIR/*.php"
@@ -206,16 +255,39 @@ sync_files() {
 update_config() {
     echo -e "${YELLOW}⚙️ Updating remote configuration for Solana Mainnet...${NC}"
     
-    # Create config for HTTPS deployment with mainnet settings
+    # Read existing credentials from current config.json if it exists
+    echo "   Checking for existing credentials..."
+    EXISTING_USERNAME=""
+    EXISTING_PASSWORD=""
+    
+    if ssh "$REMOTE_HOST" "test -f $REMOTE_HTML_DIR/config.json"; then
+        echo "   Found existing config.json, preserving credentials..."
+        EXISTING_CREDS=$(ssh "$REMOTE_HOST" "jq -r '.solana.auth // empty' $REMOTE_HTML_DIR/config.json 2>/dev/null || echo 'null'")
+        if [ "$EXISTING_CREDS" != "null" ] && [ "$EXISTING_CREDS" != "" ]; then
+            EXISTING_USERNAME=$(echo "$EXISTING_CREDS" | jq -r '.username // empty' 2>/dev/null || echo "")
+            EXISTING_PASSWORD=$(echo "$EXISTING_CREDS" | jq -r '.password // empty' 2>/dev/null || echo "")
+            if [ -n "$EXISTING_USERNAME" ] && [ -n "$EXISTING_PASSWORD" ]; then
+                echo "   ✅ Found existing credentials for user: $EXISTING_USERNAME"
+            fi
+        fi
+    else
+        echo "   No existing config.json found, will create new one"
+    fi
+    
+    # Create config for HTTPS deployment with mainnet settings using Chainstack
     ssh "$REMOTE_HOST" "cat > $REMOTE_HTML_DIR/config.json << 'EOF'
 {
   \"solana\": {
-    \"rpcUrl\": \"https://api.mainnet-beta.solana.com\",
-    \"wsUrl\": \"wss://api.mainnet-beta.solana.com\",
+    \"rpcUrl\": \"https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602\",
+    \"wsUrl\": \"wss://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602\",
     \"commitment\": \"confirmed\",
     \"disableRetryOnRateLimit\": false,
     \"network\": \"mainnet-beta\",
-    \"provider\": \"solana-labs\"
+    \"provider\": \"chainstack\"$(if [ -n "$EXISTING_USERNAME" ] && [ -n "$EXISTING_PASSWORD" ]; then echo ",
+    \"auth\": {
+      \"username\": \"$EXISTING_USERNAME\",
+      \"password\": \"$EXISTING_PASSWORD\"
+    }"; fi)
   },
   \"program\": {
     \"programId\": \"quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD\",
@@ -227,7 +299,7 @@ update_config() {
     \"auctionHouseProgramId\": \"hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk\",
     \"lastUpdated\": \"$(date +%Y-%m-%d)\",
     \"deploymentType\": \"mainnet\",
-    \"remoteRpcUrl\": \"https://api.mainnet-beta.solana.com\"
+    \"remoteRpcUrl\": \"https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602\"
   },
   \"wallets\": {
     \"expectedBackpackWallet\": \"5GGZiMwU56rYL1L52q7Jz7ELkSN4iYyQqdv418hxPh6t\"
@@ -250,31 +322,63 @@ update_config() {
 }
 EOF"
     
+    # Report credential status
+    if [ -n "$EXISTING_USERNAME" ] && [ -n "$EXISTING_PASSWORD" ]; then
+        echo -e "${GREEN}✅ Chainstack credentials preserved in new config${NC}"
+        echo "   🔑 Username: $EXISTING_USERNAME"
+    else
+        echo -e "${YELLOW}⚠️ No existing credentials found${NC}"
+        echo "   Server will use default RPC endpoints without authentication"
+    fi
+    
     echo -e "${GREEN}✅ Remote configuration updated for Solana Mainnet${NC}"
     echo "   🌐 Network: Solana Mainnet Beta"
-    echo "   🔗 RPC Provider: Solana Labs (Public)"
-    echo "   🔗 RPC URL: https://api.mainnet-beta.solana.com"
+    echo "   🔗 RPC Provider: Chainstack (Authenticated)"
+    echo "   🔗 RPC URL: https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602"
     echo "   📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD"
 }
 
-# Function to test token-image.php functionality
-test_token_image_service() {
-    echo -e "${YELLOW}🖼️ Testing token image service...${NC}"
+# Function to test PHP services functionality
+test_php_services() {
+    echo -e "${YELLOW}🖼️ Testing PHP services...${NC}"
     
-    # Test with SOL token (well-known token)
-    echo "   Testing with SOL token..."
+    # Test token-image.php with SOL token (well-known token)
+    echo "   Testing token-image.php with SOL token..."
     if curl -k -s --connect-timeout 10 "https://$DOMAIN/token-image.php?mint=So11111111111111111111111111111111111111112" | file - | grep -q "image"; then
         echo -e "${GREEN}✅ Token image service is working${NC}"
     else
         echo -e "${YELLOW}⚠️ Token image service test inconclusive${NC}"
     fi
     
-    # Check cache directory permissions
-    echo "   Checking cache directory..."
-    if ssh "$REMOTE_HOST" "test -d $REMOTE_HTML_DIR/cache/token-images && test -w $REMOTE_HTML_DIR/cache/token-images"; then
-        echo -e "${GREEN}✅ Cache directory is writable${NC}"
+    # Test pool-data.php with a known pool address (if available)
+    echo "   Testing pool-data.php..."
+    POOL_TEST_RESPONSE=$(curl -k -s --connect-timeout 10 "https://$DOMAIN/pool-data.php?poolAddress=test" 2>/dev/null)
+    if echo "$POOL_TEST_RESPONSE" | grep -q "error.*Invalid pool address format"; then
+        echo -e "${GREEN}✅ Pool data service is responding correctly${NC}"
     else
-        echo -e "${RED}❌ Cache directory issues detected${NC}"
+        echo -e "${YELLOW}⚠️ Pool data service test inconclusive${NC}"
+    fi
+    
+    # Check all cache directories
+    echo "   Checking cache directories..."
+    if ssh "$REMOTE_HOST" "test -d $REMOTE_HTML_DIR/cache/token-images && test -w $REMOTE_HTML_DIR/cache/token-images"; then
+        echo -e "${GREEN}✅ Token images cache directory is writable${NC}"
+    else
+        echo -e "${RED}❌ Token images cache directory issues detected${NC}"
+        setup_php_cache
+    fi
+    
+    if ssh "$REMOTE_HOST" "test -d $REMOTE_HTML_DIR/cache/token-metadata && test -w $REMOTE_HTML_DIR/cache/token-metadata"; then
+        echo -e "${GREEN}✅ Token metadata cache directory is writable${NC}"
+    else
+        echo -e "${RED}❌ Token metadata cache directory issues detected${NC}"
+        setup_php_cache
+    fi
+    
+    if ssh "$REMOTE_HOST" "test -d $REMOTE_HTML_DIR/cache/pool_data && test -w $REMOTE_HTML_DIR/cache/pool_data"; then
+        echo -e "${GREEN}✅ Pool data cache directory is writable${NC}"
+    else
+        echo -e "${RED}❌ Pool data cache directory issues detected${NC}"
         setup_php_cache
     fi
 }
@@ -285,9 +389,10 @@ case $ACTION in
         echo -e "${BLUE}🔧 Initial live server setup...${NC}"
         sync_files
         setup_php_cache
+        sync_cache_metadata
         update_config
         restart_services
-        test_token_image_service
+        test_php_services
         ;;
     "status")
         check_server_status
@@ -303,9 +408,10 @@ case $ACTION in
         echo -e "${BLUE}🔄 Updating and deploying dashboard...${NC}"
         sync_files
         setup_php_cache
+        sync_cache_metadata
         update_config
         restart_services
-        test_token_image_service
+        test_php_services
         ;;
 esac
 
@@ -320,10 +426,12 @@ echo "  🖥️ Remote Host: $REMOTE_HOST"
 echo "  📁 Remote Directory: $REMOTE_BASE_DIR"
 echo "  🔌 Server Port: 443 (HTTPS)"
 echo "  🖼️ Token Images: https://$DOMAIN/token-image.php"
+echo "  📊 Pool Data: https://$DOMAIN/pool-data.php"
 echo ""
 echo -e "${BLUE}🌐 Solana Network Configuration:${NC}"
 echo "  🔗 Network: Mainnet Beta"
-echo "  📡 RPC URL: https://api.mainnet-beta.solana.com"
+echo "  📡 RPC URL: https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602"
+echo "  🔗 Provider: Chainstack (Authenticated)"
 echo "  📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD"
 echo ""
 echo -e "${BLUE}📋 Management Commands:${NC}"
@@ -342,4 +450,10 @@ echo "  1. 🌐 Open https://$DOMAIN in your browser"
 echo "  2. 🔄 Run './scripts/deploy_to_live_server.sh --update' when you make local changes"
 echo "  3. 📊 Monitor with './scripts/deploy_to_live_server.sh --status'"
 echo "  4. 🖼️ Test token images at https://$DOMAIN/token-image.php?mint=So11111111111111111111111111111111111111112"
+echo "  5. 📊 Test pool data at https://$DOMAIN/pool-data.php?poolAddress=<pool_address>"
+echo ""
+echo -e "${YELLOW}🔐 Chainstack Credentials:${NC}"
+echo "  Credentials are automatically preserved from existing config.json during deployment."
+echo "  If credentials exist in the current server config, they will be maintained."
+echo "  To add credentials initially, manually update the server's config.json file."
 echo ""

@@ -298,10 +298,31 @@
         let TOKEN_MINT = TEST_TOKENS[currentTokenIndex].mint;
         let TOKEN_SYMBOL = TEST_TOKENS[currentTokenIndex].symbol;
         
-        // Chainstack RPC configuration
-        const CHAINSTACK_RPC = 'https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602';
-        const CHAINSTACK_AUTH_RPC = 'https://solana-mainnet.core.chainstack.com';
-        const CHAINSTACK_AUTH = btoa('condescending-fermi:jockey-snore-detest-uproar-fleshy-faucet');
+        // Chainstack RPC configuration - will be loaded from config.json
+        let CHAINSTACK_RPC = 'https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602';
+        let CHAINSTACK_AUTH_RPC = 'https://solana-mainnet.core.chainstack.com';
+        let CHAINSTACK_AUTH = '';
+        
+        // Load credentials from centralized config.json
+        async function loadCredentials() {
+            try {
+                const response = await fetch('./config.json');
+                if (response.ok) {
+                    const config = await response.json();
+                    if (config.solana && config.solana.rpcUrl) {
+                        CHAINSTACK_RPC = config.solana.rpcUrl;
+                    }
+                    if (config.solana && config.solana.auth && config.solana.auth.username && config.solana.auth.password) {
+                        CHAINSTACK_AUTH = btoa(config.solana.auth.username + ':' + config.solana.auth.password);
+                        // Extract base URL from rpcUrl for auth requests
+                        const url = new URL(config.solana.rpcUrl);
+                        CHAINSTACK_AUTH_RPC = `${url.protocol}//${url.hostname}`;
+                    }
+                }
+            } catch (error) {
+                console.log('No credentials in config.json, using defaults');
+            }
+        }
 
         // Different image sources to test
         function getImageSources(tokenMint) {
@@ -618,7 +639,8 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadCredentials(); // Load credentials first
             populateTokenDropdown(); // Populate dropdown first
             updateTokenInfo();
             runTests();

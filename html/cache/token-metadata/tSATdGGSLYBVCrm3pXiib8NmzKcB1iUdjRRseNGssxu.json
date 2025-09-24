@@ -1,0 +1,28 @@
+{
+    "mint": "tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu",
+    "timestamp": 1758542839,
+    "metadata": {
+        "symbol": "tSAT",
+        "name": "Satoshi a BTC Stablecoin",
+        "decimals": 2,
+        "source": "manual_override",
+        "Image": "https://example.com/tsat-logo.png",
+        "additionalMetadata": [
+            {
+                "name": "Satoshi a BTC Stablecoin",
+                "symbol": "tSAT",
+                "description": "A Bitcoin-backed stablecoin representing satoshis",
+                "image": "https://example.com/tsat-logo.png",
+                "tags": ["Bitcoin", "Stablecoin", "Satoshi"],
+                "extensions": {
+                    "website": "https://tsat.network",
+                    "twitter": "https://x.com/tSATNetwork"
+                },
+                "creator": {
+                    "name": "frt15",
+                    "site": "https://frt15.net"
+                }
+            }
+        ]
+    }
+}

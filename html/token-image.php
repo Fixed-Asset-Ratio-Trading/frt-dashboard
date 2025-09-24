@@ -20,8 +20,20 @@ header('Access-Control-Allow-Headers: Content-Type');
 $CACHE_DIR = __DIR__ . '/cache/token-images';
 $METADATA_CACHE_DIR = __DIR__ . '/cache/token-metadata';
 $CACHE_DURATION = 60 * 24 * 60 * 60; // 60 days
+// Load RPC configuration from centralized config
 $CHAINSTACK_RPC = 'https://api.mainnet-beta.solana.com';
-$CHAINSTACK_AUTH = base64_encode('condescending-fermi:jockey-snore-detest-uproar-fleshy-faucet');
+$CHAINSTACK_AUTH = '';
+
+// Try to load configuration from config.json
+if (file_exists(__DIR__ . '/config.json')) {
+    $config = json_decode(file_get_contents(__DIR__ . '/config.json'), true);
+    if ($config && isset($config['solana']['rpcUrl'])) {
+        $CHAINSTACK_RPC = $config['solana']['rpcUrl'];
+    }
+    if ($config && isset($config['solana']['auth']['username'], $config['solana']['auth']['password'])) {
+        $CHAINSTACK_AUTH = base64_encode($config['solana']['auth']['username'] . ':' . $config['solana']['auth']['password']);
+    }
+}
 $DEFAULT_IMAGE = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#667eea"/><text x="50" y="60" text-anchor="middle" fill="white" font-size="30">?</text></svg>');
 
 // Create cache directories

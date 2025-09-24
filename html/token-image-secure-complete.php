@@ -21,8 +21,20 @@ header('Access-Control-Allow-Headers: Content-Type');
 // Configuration
 $CACHE_DIR = __DIR__ . '/cache/token-images';
 $CACHE_DURATION = 60 * 24 * 60 * 60; // 60 days
+// Load RPC configuration from centralized config
 $CHAINSTACK_RPC = 'https://api.mainnet-beta.solana.com';
-$CHAINSTACK_AUTH = base64_encode('condescending-fermi:jockey-snore-detest-uproar-fleshy-faucet');
+$CHAINSTACK_AUTH = '';
+
+// Try to load configuration from config.json
+if (file_exists(__DIR__ . '/config.json')) {
+    $config = json_decode(file_get_contents(__DIR__ . '/config.json'), true);
+    if ($config && isset($config['solana']['rpcUrl'])) {
+        $CHAINSTACK_RPC = $config['solana']['rpcUrl'];
+    }
+    if ($config && isset($config['solana']['auth']['username'], $config['solana']['auth']['password'])) {
+        $CHAINSTACK_AUTH = base64_encode($config['solana']['auth']['username'] . ':' . $config['solana']['auth']['password']);
+    }
+}
 
 // Security: Allowed MIME types and their file signatures (magic bytes)
 $ALLOWED_MIME_TYPES = [
