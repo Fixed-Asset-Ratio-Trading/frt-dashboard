@@ -383,37 +383,58 @@ update_config() {
     
     # Read existing credentials from current config.json if it exists
     echo "   Checking for existing credentials..."
-    EXISTING_USERNAME=""
-    EXISTING_PASSWORD=""
+    EXISTING_RPC_URL=""
+    EXISTING_WS_URL=""
+    EXISTING_REMOTE_RPC_URL=""
     
     if ssh "$REMOTE_HOST" "test -f $REMOTE_HTML_DIR/config.json"; then
         echo "   Found existing config.json, preserving credentials..."
-        EXISTING_CREDS=$(ssh "$REMOTE_HOST" "jq -r '.solana.auth // empty' $REMOTE_HTML_DIR/config.json 2>/dev/null || echo 'null'")
-        if [ "$EXISTING_CREDS" != "null" ] && [ "$EXISTING_CREDS" != "" ]; then
-            EXISTING_USERNAME=$(echo "$EXISTING_CREDS" | jq -r '.username // empty' 2>/dev/null || echo "")
-            EXISTING_PASSWORD=$(echo "$EXISTING_CREDS" | jq -r '.password // empty' 2>/dev/null || echo "")
-            if [ -n "$EXISTING_USERNAME" ] && [ -n "$EXISTING_PASSWORD" ]; then
-                echo "   ✅ Found existing credentials for user: $EXISTING_USERNAME"
-            fi
+        EXISTING_RPC_URL=$(ssh "$REMOTE_HOST" "jq -r '.solana.rpcUrl // empty' $REMOTE_HTML_DIR/config.json 2>/dev/null || echo ''")
+        EXISTING_WS_URL=$(ssh "$REMOTE_HOST" "jq -r '.solana.wsUrl // empty' $REMOTE_HTML_DIR/config.json 2>/dev/null || echo ''")
+        EXISTING_REMOTE_RPC_URL=$(ssh "$REMOTE_HOST" "jq -r '.metaplex.remoteRpcUrl // empty' $REMOTE_HTML_DIR/config.json 2>/dev/null || echo ''")
+        
+        # Check if URLs contain credentials (username:password@)
+        if [[ "$EXISTING_RPC_URL" == *"@"* ]]; then
+            echo "   ✅ Found existing authenticated RPC URLs"
+            CREDENTIALS_FOUND=true
+        else
+            echo "   No authenticated URLs found, using defaults"
+            CREDENTIALS_FOUND=false
         fi
     else
         echo "   No existing config.json found, will create new one"
+        CREDENTIALS_FOUND=false
     fi
     
+    # Set URLs based on whether credentials were found
+    if [ "$CREDENTIALS_FOUND" = true ]; then
+        RPC_URL="$EXISTING_RPC_URL"
+        WS_URL="$EXISTING_WS_URL"
+        REMOTE_RPC_URL="$EXISTING_REMOTE_RPC_URL"
+        FALLBACK_URLS="[
+      \"https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602\",
+      \"https://api.mainnet-beta.solana.com\"
+    ]"
+    else
+        RPC_URL="https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602"
+        WS_URL="wss://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602"
+        REMOTE_RPC_URL="https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602"
+        FALLBACK_URLS="[
+      \"https://api.mainnet-beta.solana.com\"
+    ]"
+    fi
+
     # Create config for HTTPS deployment with Chainstack mainnet settings
     ssh "$REMOTE_HOST" "cat > $REMOTE_HTML_DIR/config.json << 'EOF'
 {
   \"solana\": {
-    \"rpcUrl\": \"https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602\",
-    \"wsUrl\": \"wss://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602\",
+    \"rpcUrl\": \"$RPC_URL\",
+    \"wsUrl\": \"$WS_URL\",
+    \"fallbackRpcUrls\": $FALLBACK_URLS,
     \"commitment\": \"confirmed\",
     \"disableRetryOnRateLimit\": false,
     \"network\": \"mainnet-beta\",
-    \"provider\": \"chainstack\"$(if [ -n "$EXISTING_USERNAME" ] && [ -n "$EXISTING_PASSWORD" ]; then echo ",
-    \"auth\": {
-      \"username\": \"$EXISTING_USERNAME\",
-      \"password\": \"$EXISTING_PASSWORD\"
-    }"; fi)
+    \"provider\": \"chainstack\"
   },
   \"program\": {
     \"programId\": \"quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD\",
@@ -425,7 +446,7 @@ update_config() {
     \"auctionHouseProgramId\": \"hausS13jsjafwWwGqZTUQRmWyvyxn9EQpqMwV1PBBmk\",
     \"lastUpdated\": \"$(date +%Y-%m-%d)\",
     \"deploymentType\": \"mainnet\",
-           \"remoteRpcUrl\": \"https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602\"
+           \"remoteRpcUrl\": \"$REMOTE_RPC_URL\"
   },
   \"wallets\": {
     \"expectedBackpackWallet\": \"5GGZiMwU56rYL1L52q7Jz7ELkSN4iYyQqdv418hxPh6t\"
@@ -449,9 +470,9 @@ update_config() {
 EOF"
     
     # Report credential status
-    if [ -n "$EXISTING_USERNAME" ] && [ -n "$EXISTING_PASSWORD" ]; then
+    if [ "$CREDENTIALS_FOUND" = true ]; then
         echo -e "${GREEN}✅ Chainstack credentials preserved in new config${NC}"
-        echo "   🔑 Username: $EXISTING_USERNAME"
+        echo "   🔑 Using authenticated RPC URLs"
     else
         echo -e "${YELLOW}⚠️ No existing credentials found${NC}"
         echo "   Server will use default RPC endpoints without authentication"

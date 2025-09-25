@@ -1,0 +1,17 @@
+HTTP/2 200 
+server: nginx/1.24.0 (Ubuntu)
+date: Thu, 25 Sep 2025 11:50:13 GMT
+content-type: application/json
+access-control-allow-origin: *
+access-control-allow-methods: GET
+access-control-allow-headers: Content-Type
+cache-control: public, max-age=60
+x-cache-status: miss
+x-generated-at: 2025-09-25T11:50:13+00:00
+strict-transport-security: max-age=31536000; includeSubDomains
+x-frame-options: DENY
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+
+{"schema_version":"1.0.0","generated_at":"2025-09-25T11:50:13+00:00","pool_address":"AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj","rpc_response":{"context":{"apiVersion":"2.3.8","slot":369161641},"value":{"data":["Nj6ss5W6xaQMS7G0pH69hmkNze0j5l1Dth5fMNlJBEANLRLA6vdR5qSy5BSZ2W+3YuGyMJKf1wsY+PFppUA30k11pL\/zNURyZxqU9XhQSr8gj\/fRtDjp6GtKZg9aQtWdPwlBNuBruQOvP+HIDMkkfgweFf0A9PwNW0geKV0CcF8QeSyhvDjLyQZS\/2i4PeyN1J\/y\/wg\/xL2MLN0QxIxjJ+PKNq6QyanvZBNp7YsajcxjFXJo6fJ8i+NnZHkf1GF9WC\/6RgEb0H8q\/yX3Csp4REUFBBosBWrlL2xhBy8Vd\/AA5AtUAgAAAADh9QUAAAAATJP+WfB1BwA1FgAAAAAAAP\/9\/\/\/+QUBdxgAAAAAAjCQEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEBdxgAAAAAAvLYUAAAAAAD8E9sAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","base64"],"executable":false,"lamports":18296860,"owner":"quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD","rentEpoch":1.8446744073709552e+19,"space":438}},"parsed_pool_data":{"owner":"4ekSqR4pNZ5hp4cRyicji1Yj7ZCphgkYQhwZf2ib9Wko","token_a_mint":"tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu","token_b_mint":"6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU","token_a_vault":"5F4sTM9VWevacLNgP977f7XCjgLmPsbv1Et3W52exsnW","token_b_vault":"27Jh3PwrEuGfTwxTp7omAKCq5KhgUFHHSRh5ikesLuBU","lp_token_a_mint":"GLCPPvmgxDTQtRKjT4MTdvtMnfCTFBPLWoCV9774uFzC","lp_token_b_mint":"6wFJvgrjCddsd71A34Y99JFymw9xhjuqHKreafFfCGP1","ratio_a_numerator":10000000000,"ratio_b_denominator":100000000,"total_token_a_liquidity":2099999999431500,"total_token_b_liquidity":5685,"pool_authority_bump_seed":255,"token_a_vault_bump_seed":253,"token_b_vault_bump_seed":255,"lp_token_a_mint_bump_seed":255,"lp_token_b_mint_bump_seed":254,"flags":65,"contract_liquidity_fee":13000000,"swap_contract_fee":271500,"collected_fees_token_a":0,"collected_fees_token_b":0,"total_fees_withdrawn_token_a":0,"total_fees_withdrawn_token_b":0,"collected_liquidity_fees":13000000,"collected_swap_contract_fees":1357500,"total_sol_fees_collected":14357500,"last_consolidation_timestamp":0,"total_consolidations":0,"total_fees_consolidated":0,"flags_decoded":{"one_to_many_ratio":true,"liquidity_paused":false,"swaps_paused":false,"withdrawal_protection":false,"single_lp_token_mode":false,"swap_owner_only":false},"address":"AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj","ratio_a_decimal":2,"ratio_b_decimal":8,"ratio_a_actual":100000000,"ratio_b_actual":1,"token_a_ticker":"tSAT","token_b_ticker":"tBTC","token_a_description":"Satoshi a BTC Stablecoin","token_b_description":"Threshold Bitcoin TBTC"}}

@@ -20,32 +20,67 @@ header('Access-Control-Allow-Headers: Content-Type');
 $CACHE_DIR = __DIR__ . '/cache/token-images';
 $METADATA_CACHE_DIR = __DIR__ . '/cache/token-metadata';
 $CACHE_DURATION = 60 * 24 * 60 * 60; // 60 days
-// Load RPC configuration from centralized config
-$CHAINSTACK_RPC = 'https://api.mainnet-beta.solana.com';
-$CHAINSTACK_AUTH = '';
+// Load RPC configuration from centralized config (same as pool-data.php)
+$RPC_URL = 'https://api.mainnet-beta.solana.com';
+$FALLBACK_RPC_URLS = [];
 
-// Try to load configuration from config.json
 if (file_exists(__DIR__ . '/config.json')) {
     $config = json_decode(file_get_contents(__DIR__ . '/config.json'), true);
     if ($config && isset($config['solana']['rpcUrl'])) {
-        $CHAINSTACK_RPC = $config['solana']['rpcUrl'];
+        $RPC_URL = $config['solana']['rpcUrl'];
     }
-    if ($config && isset($config['solana']['auth']['username'], $config['solana']['auth']['password'])) {
-        $CHAINSTACK_AUTH = base64_encode($config['solana']['auth']['username'] . ':' . $config['solana']['auth']['password']);
+    if ($config && isset($config['solana']['fallbackRpcUrls'])) {
+        $FALLBACK_RPC_URLS = $config['solana']['fallbackRpcUrls'];
     }
 }
 $DEFAULT_IMAGE = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#667eea"/><text x="50" y="60" text-anchor="middle" fill="white" font-size="30">?</text></svg>');
+$RPC_ERROR_IMAGE = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#dc2626"/><text x="50" y="60" text-anchor="middle" fill="white" font-size="30">E</text></svg>');
 
-// Create cache directories
+// Create cache directories with fallback (same as pool-data.php)
+$effectiveCacheDir = $CACHE_DIR;
+$effectiveMetadataCacheDir = $METADATA_CACHE_DIR;
+
+// Check if main cache directory is writable
+if (!is_writable(dirname($CACHE_DIR))) {
+    $tempCacheDir = sys_get_temp_dir() . '/frt_token_images_cache';
+    if (!file_exists($tempCacheDir)) {
+        @mkdir($tempCacheDir, 0777, true);
+    }
+    if (is_writable($tempCacheDir)) {
+        $effectiveCacheDir = $tempCacheDir;
+        error_log("Cache directory $CACHE_DIR not writable, falling back to $effectiveCacheDir");
+    }
+}
+
+// Check if metadata cache directory is writable
+if (!is_writable(dirname($METADATA_CACHE_DIR))) {
+    $tempMetadataCacheDir = sys_get_temp_dir() . '/frt_token_metadata_cache';
+    if (!file_exists($tempMetadataCacheDir)) {
+        @mkdir($tempMetadataCacheDir, 0777, true);
+    }
+    if (is_writable($tempMetadataCacheDir)) {
+        $effectiveMetadataCacheDir = $tempMetadataCacheDir;
+        error_log("Metadata cache directory $METADATA_CACHE_DIR not writable, falling back to $effectiveMetadataCacheDir");
+    }
+}
+
+// Update global variables
+$CACHE_DIR = $effectiveCacheDir;
+$METADATA_CACHE_DIR = $effectiveMetadataCacheDir;
+
+// Create directories if they don't exist
 if (!file_exists($CACHE_DIR)) {
-    mkdir($CACHE_DIR, 0755, true);
+    @mkdir($CACHE_DIR, 0755, true);
 }
 if (!file_exists($METADATA_CACHE_DIR)) {
-    mkdir($METADATA_CACHE_DIR, 0755, true);
+    @mkdir($METADATA_CACHE_DIR, 0755, true);
 }
 
 // Get mint parameter
 $mint = $_GET['mint'] ?? '';
+$cacheMetadata = isset($_GET['cache_metadata']) && $_GET['cache_metadata'] == '1';
+
+
 if (!$mint || !preg_match('/^[A-Za-z0-9]{32,}$/', $mint)) {
     error_log("Invalid mint: $mint");
     header('Content-Type: image/svg+xml');
@@ -57,8 +92,8 @@ if (!$mint || !preg_match('/^[A-Za-z0-9]{32,}$/', $mint)) {
 $cacheFile = $CACHE_DIR . '/' . $mint . '.cache';
 $imageFile = $CACHE_DIR . '/' . $mint . '.img';
 
-// Check cache
-if (file_exists($cacheFile) && file_exists($imageFile) && (time() - filemtime($cacheFile)) < $CACHE_DURATION) {
+// Check cache (but skip if forcing metadata cache)
+if (!$cacheMetadata && file_exists($cacheFile) && file_exists($imageFile) && (time() - filemtime($cacheFile)) < $CACHE_DURATION) {
     $cacheData = json_decode(file_get_contents($cacheFile), true);
     if ($cacheData && isset($cacheData['content_type'])) {
         header('Content-Type: ' . $cacheData['content_type']);
@@ -67,6 +102,8 @@ if (file_exists($cacheFile) && file_exists($imageFile) && (time() - filemtime($c
         readfile($imageFile);
         exit;
     }
+} else if ($cacheMetadata) {
+    error_log("Skipping image cache check to force metadata caching for: $mint");
 }
 
 /**
@@ -552,8 +589,8 @@ function processImageOverrides() {
 /**
  * Fetch token image using the comprehensive fallback strategy
  */
-function fetchTokenImage($mint) {
-    global $CHAINSTACK_RPC, $CHAINSTACK_AUTH;
+function fetchTokenImage($mint, $forceMetaplexCache = false) {
+    global $RPC_URL, $FALLBACK_RPC_URLS;
     
     // 0. Process manual overrides if file exists (runs once per request cycle)
     static $overridesProcessed = false;
@@ -579,23 +616,56 @@ function fetchTokenImage($mint) {
         }
     }
     
-    // 1. Try DexScreener first (fastest)
-    $dexUrl = "https://dd.dexscreener.com/ds-data/tokens/solana/$mint.png";
-    $result = fetchImage($dexUrl);
-    if ($result) {
-        error_log("Found image via DexScreener: $mint");
-        return $result;
+    // 1. Try cached metadata first (fastest if available)
+    $cachedMetadata = loadTokenMetadataCache($mint);
+    if ($cachedMetadata) {
+        error_log("Found cached metadata for $mint, checking for image URLs");
+        
+        // Look for image URLs in the cached metadata
+        $imageUris = findImageUrisInData($cachedMetadata);
+        foreach ($imageUris as $imageUri) {
+            if ($imageUri && $imageUri !== 'https://example.com/tsat-logo.png') { // Skip placeholder URLs
+                $result = fetchImage($imageUri);
+                if ($result) {
+                    error_log("Found image via cached metadata: $mint -> $imageUri");
+                    return $result;
+                }
+                
+                // Try IPFS conversion if original fails
+                $httpUri = ipfsToHttp($imageUri);
+                if ($httpUri !== $imageUri) {
+                    $result = fetchImage($httpUri);
+                    if ($result) {
+                        error_log("Found image via cached metadata (IPFS converted): $mint -> $httpUri");
+                        return $result;
+                    }
+                }
+            }
+        }
     }
     
-    // 2. Try Jupiter Token List
-    $result = fetchFromJupiterTokenList($mint);
-    if ($result) {
-        return $result;
+    // Skip external sources if we want to force Metaplex caching
+    if (!$forceMetaplexCache) {
+        // 2. Try DexScreener (fastest external source)
+        $dexUrl = "https://dd.dexscreener.com/ds-data/tokens/solana/$mint.png";
+        $result = fetchImage($dexUrl);
+        if ($result) {
+            error_log("Found image via DexScreener: $mint");
+            return $result;
+        }
+
+        // 3. Try Jupiter Token List
+        $result = fetchFromJupiterTokenList($mint);
+        if ($result) {
+            return $result;
+        }
+    } else {
+        error_log("Skipping external sources to force Metaplex metadata caching for: $mint");
     }
     
-    // 3. Try Metaplex metadata with comprehensive URI scanning
+    // 4. Try Metaplex metadata with comprehensive URI scanning
     try {
-        // Get metadata PDA via RPC
+        // Get metadata PDA via RPC with fallback support
         $rpcPayload = [
             'jsonrpc' => '2.0',
             'id' => 1,
@@ -628,7 +698,19 @@ function fetchTokenImage($mint) {
             ]
         ]);
         
-        $response = @file_get_contents($CHAINSTACK_RPC, false, $context);
+        // Try primary RPC first, then fallbacks
+        $rpcUrls = array_merge([$RPC_URL], $FALLBACK_RPC_URLS);
+        $response = false;
+        
+        foreach ($rpcUrls as $currentRpcUrl) {
+            error_log("Trying RPC endpoint for $mint: $currentRpcUrl");
+            $response = @file_get_contents($currentRpcUrl, false, $context);
+            if ($response !== false) {
+                error_log("RPC success for $mint via: $currentRpcUrl");
+                break;
+            }
+            error_log("RPC failed for $mint via: $currentRpcUrl");
+        }
         if ($response) {
             $data = json_decode($response, true);
             error_log("RPC response for $mint: " . substr($response, 0, 200) . "...");
@@ -849,7 +931,12 @@ function fetchTokenImage($mint) {
                 error_log("No metadata accounts found for mint: $mint - RPC returned: " . substr($response, 0, 500));
             }
         } else {
-            error_log("RPC call failed for mint: $mint - no response from server");
+            error_log("RPC call failed for mint: $mint - all endpoints failed");
+            // Return red "E" SVG for RPC failures
+            return [
+                'data' => base64_decode(substr($GLOBALS['RPC_ERROR_IMAGE'], strlen('data:image/svg+xml;base64,'))),
+                'content_type' => 'image/svg+xml'
+            ];
         }
     } catch (Exception $e) {
         error_log("Metaplex lookup error: " . $e->getMessage());
@@ -860,7 +947,7 @@ function fetchTokenImage($mint) {
 }
 
 // Fetch the image
-$imageData = fetchTokenImage($mint);
+$imageData = fetchTokenImage($mint, $cacheMetadata);
 
 if ($imageData) {
     // Cache the result

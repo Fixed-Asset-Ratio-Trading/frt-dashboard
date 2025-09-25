@@ -1,0 +1,17 @@
+HTTP/2 503 
+server: nginx/1.24.0 (Ubuntu)
+date: Thu, 25 Sep 2025 11:55:42 GMT
+content-type: application/json
+access-control-allow-origin: *
+access-control-allow-methods: GET
+access-control-allow-headers: Content-Type
+x-request-id: 8663a2f58ab0
+x-rpc-primary: https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602
+x-rpc-fallbacks: 
+strict-transport-security: max-age=31536000; includeSubDomains
+x-frame-options: DENY
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+
+{"error":"Service temporarily unavailable - unable to acquire lock and no cached data available","pool_address":"AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj"}

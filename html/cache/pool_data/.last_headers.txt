@@ -1,0 +1,19 @@
+HTTP/2 200 
+server: nginx/1.24.0 (Ubuntu)
+date: Thu, 25 Sep 2025 12:22:03 GMT
+content-type: application/json
+access-control-allow-origin: *
+access-control-allow-methods: GET
+access-control-allow-headers: Content-Type
+x-request-id: 040803a57246
+x-rpc-primary: https://solana-mainnet.core.chainstack.com/36d9fd2485573cf7fc3ec854be754602
+x-rpc-fallbacks: 
+cache-control: public, max-age=60
+x-cache-status: hit
+x-generated-at: 2025-09-25T12:18:07+00:00
+strict-transport-security: max-age=31536000; includeSubDomains
+x-frame-options: DENY
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+

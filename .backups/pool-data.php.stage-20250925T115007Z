@@ -17,40 +17,11 @@ header('Content-Type: application/json');
 
 // Configuration
 $CACHE_DIR = __DIR__ . '/cache/pool_data';
-$CACHE_DURATION = 20 * 60; // 20 minutes in seconds
-$REFRESH_CACHE_DURATION = 2 * 60; // 2 minutes in seconds for refresh requests
+$CACHE_DURATION = 24 * 60 * 60; // 24 hours in seconds
 $METRICS_FILE = $CACHE_DIR . '/metrics.log';
-$DEBUG_LOG_FILE = $CACHE_DIR . '/debug.log';
 $SCHEMA_VERSION = '1.0.0';
 $PROGRAM_ID = 'quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD'; // FRT Program ID
 $RPC_TIMEOUT = 15; // seconds
-$LOCK_TIMEOUT = 30; // Maximum time to wait for lock in seconds
-
-// Request-scoped ID for tracing
-try {
-	$REQUEST_ID = bin2hex(random_bytes(6));
-} catch (Exception $e) {
-	$REQUEST_ID = uniqid('req_', true);
-}
-
-// Choose a lock directory that is writable; fall back to /tmp if needed
-$LOCK_DIR = $CACHE_DIR;
-if (!is_dir($LOCK_DIR) || !is_writable($LOCK_DIR)) {
-	$LOCK_DIR = sys_get_temp_dir() . '/frt_pool_locks';
-	if (!file_exists($LOCK_DIR)) {
-		@mkdir($LOCK_DIR, 0777, true);
-	}
-}
-
-// If the configured cache directory exists but isn't writable by PHP, fall back to /tmp
-if (is_dir($CACHE_DIR) && !is_writable($CACHE_DIR)) {
-	$CACHE_DIR = sys_get_temp_dir() . '/frt_pool_cache';
-	if (!file_exists($CACHE_DIR)) {
-		@mkdir($CACHE_DIR, 0777, true);
-	}
-	$METRICS_FILE = $CACHE_DIR . '/metrics.log';
-	$DEBUG_LOG_FILE = $CACHE_DIR . '/debug.log';
-}
 
 // Get RPC URL from config with fallbacks
 $RPC_URL = 'https://api.mainnet-beta.solana.com';
@@ -65,16 +36,10 @@ if (file_exists(__DIR__ . '/config.json')) {
     }
 }
 
-// Expose request id and rpc settings via headers for debugging
-header('X-Request-Id: ' . $REQUEST_ID);
-header('X-RPC-Primary: ' . $RPC_URL);
-header('X-RPC-Fallbacks: ' . (empty($FALLBACK_RPC_URLS) ? '' : implode(',', $FALLBACK_RPC_URLS)));
-
 // Create cache directory if it doesn't exist
 if (!file_exists($CACHE_DIR)) {
     if (!mkdir($CACHE_DIR, 0755, true)) {
         error_log("Failed to create cache directory: $CACHE_DIR");
-        debugLog('cache_dir_create_failed', ['dir' => $CACHE_DIR]);
         http_response_code(500);
         echo json_encode(['error' => 'Server configuration error']);
         exit;
@@ -113,7 +78,7 @@ function logMetrics($poolAddress, $action, $responseTimeMs = null, $fileSizeByte
     global $METRICS_FILE;
     
     $logEntry = [
-        'timestamp' => gmdate('c'), // Use UTC timestamp
+        'timestamp' => date('c'),
         'pool_address' => substr($poolAddress, 0, 8) . '...', // Truncate for privacy
         'action' => $action,
         'response_time_ms' => $responseTimeMs,
@@ -123,112 +88,6 @@ function logMetrics($poolAddress, $action, $responseTimeMs = null, $fileSizeByte
     
     $logLine = json_encode($logEntry) . "\n";
     @file_put_contents($METRICS_FILE, $logLine, FILE_APPEND | LOCK_EX);
-}
-
-/**
- * Debug logging (line-delimited JSON)
- */
-function debugLog($message, $context = []) {
-	global $DEBUG_LOG_FILE, $REQUEST_ID;
-
-	$entry = [
-		'timestamp' => gmdate('c'),
-		'request_id' => $REQUEST_ID,
-		'message' => $message,
-		'context' => $context
-	];
-
-	$line = json_encode($entry) . "\n";
-	@file_put_contents($DEBUG_LOG_FILE, $line, FILE_APPEND | LOCK_EX);
-}
-
-/**
- * Acquire a file-based lock for thread-safe operations
- */
-function acquireLock($poolAddress, $timeout = 30) {
-    global $LOCK_DIR;
-    
-    $filename = sanitizeFilename($poolAddress);
-    $lockFile = $LOCK_DIR . '/' . $filename . '.lock';
-    
-    $startTime = time();
-    $lockHandle = null;
-    
-    while (time() - $startTime < $timeout) {
-        $lockHandle = @fopen($lockFile, 'c+');
-        if ($lockHandle && flock($lockHandle, LOCK_EX | LOCK_NB)) {
-            // Write process ID and timestamp to lock file
-            ftruncate($lockHandle, 0);
-            fwrite($lockHandle, json_encode([
-                'pid' => getmypid(),
-                'timestamp' => gmdate('c'),
-                'pool_address' => $poolAddress
-            ]));
-            fflush($lockHandle);
-            
-            logMetrics($poolAddress, 'lock_acquired', (time() - $startTime) * 1000);
-            return $lockHandle;
-        } else {
-            debugLog('lock_busy', ['lockFile' => $lockFile]);
-        }
-        
-        if ($lockHandle) {
-            fclose($lockHandle);
-        }
-        
-        // Wait a bit before retrying
-        usleep(100000); // 100ms
-    }
-    
-    logMetrics($poolAddress, 'lock_timeout', $timeout * 1000, null, 'Failed to acquire lock within timeout');
-    return false;
-}
-
-/**
- * Release a file-based lock
- */
-function releaseLock($lockHandle, $poolAddress) {
-    if ($lockHandle) {
-        flock($lockHandle, LOCK_UN);
-        fclose($lockHandle);
-        
-        // Clean up lock file
-        global $LOCK_DIR;
-        $filename = sanitizeFilename($poolAddress);
-        $lockFile = $LOCK_DIR . '/' . $filename . '.lock';
-        @unlink($lockFile);
-        
-        logMetrics($poolAddress, 'lock_released');
-        return true;
-    }
-    return false;
-}
-
-/**
- * Check if cache needs refresh based on refresh parameter and time constraints
- */
-function needsRefresh($poolAddress, $forceRefresh = false) {
-    global $CACHE_DIR, $REFRESH_CACHE_DURATION;
-    
-    if (!$forceRefresh) {
-        return false;
-    }
-    
-    $filename = sanitizeFilename($poolAddress);
-    $cacheFile = $CACHE_DIR . '/' . $filename . '.json';
-    
-    if (!file_exists($cacheFile)) {
-        return true; // No cache file exists
-    }
-    
-    // Check if enough time has passed since last refresh
-    $fileAge = time() - filemtime($cacheFile);
-    if ($fileAge < $REFRESH_CACHE_DURATION) {
-        logMetrics($poolAddress, 'refresh_too_soon', null, null, "File age: {$fileAge}s, min: {$REFRESH_CACHE_DURATION}s");
-        return false;
-    }
-    
-    return true;
 }
 
 /**
@@ -338,7 +197,7 @@ function tryRpcEndpoint($poolAddress, $rpcUrl, $startTime) {
 /**
  * Save pool data to cache with atomic write
  */
-function saveToCache($poolAddress, $rpcResponse, $parsedPoolData = null) {
+function saveToCache($poolAddress, $rpcResponse) {
     global $CACHE_DIR, $SCHEMA_VERSION;
     
     $filename = sanitizeFilename($poolAddress);
@@ -347,13 +206,10 @@ function saveToCache($poolAddress, $rpcResponse, $parsedPoolData = null) {
     
     $cacheData = [
         'schema_version' => $SCHEMA_VERSION,
-        'generated_at' => gmdate('c'), // Use UTC timestamp
+        'generated_at' => date('c'),
         'pool_address' => $poolAddress,
         'rpc_response' => $rpcResponse
     ];
-    if ($parsedPoolData !== null) {
-        $cacheData['parsed_pool_data'] = $parsedPoolData;
-    }
     
     $jsonData = json_encode($cacheData, JSON_PRETTY_PRINT);
     
@@ -373,42 +229,6 @@ function saveToCache($poolAddress, $rpcResponse, $parsedPoolData = null) {
     @chmod($cacheFile, 0644);
     
     logMetrics($poolAddress, 'cache_write', null, strlen($jsonData));
-    return true;
-}
-
-/**
- * Update existing cache file with parsed_pool_data (best-effort)
- */
-function updateCacheWithParsedData($poolAddress, $parsedPoolData) {
-    global $CACHE_DIR, $SCHEMA_VERSION;
-    $filename = sanitizeFilename($poolAddress);
-    $cacheFile = $CACHE_DIR . '/' . $filename . '.json';
-    $tempFile = $cacheFile . '.tmp';
-    
-    if (!file_exists($cacheFile)) {
-        return false;
-    }
-    $jsonData = @file_get_contents($cacheFile);
-    if ($jsonData === false) {
-        return false;
-    }
-    $cacheData = json_decode($jsonData, true);
-    if (!$cacheData || !isset($cacheData['schema_version']) || $cacheData['schema_version'] !== $SCHEMA_VERSION) {
-        return false;
-    }
-    $cacheData['parsed_pool_data'] = $parsedPoolData;
-    $newJson = json_encode($cacheData, JSON_PRETTY_PRINT);
-    if ($newJson === false) {
-        return false;
-    }
-    if (file_put_contents($tempFile, $newJson, LOCK_EX) === false) {
-        return false;
-    }
-    if (!@rename($tempFile, $cacheFile)) {
-        @unlink($tempFile);
-        return false;
-    }
-    @chmod($cacheFile, 0644);
     return true;
 }
 
@@ -764,21 +584,14 @@ function fetchTokenMetadata($mintAddress, $rpcUrl) {
 // Main execution starts here
 $startTime = microtime(true);
 
-// Get and validate parameters
+// Get and validate pool address parameter
 $poolAddress = $_GET['poolAddress'] ?? '';
-$refreshRequested = isset($_GET['refresh']) && $_GET['refresh'] == '1';
-debugLog('request_received', [
-    'poolAddress_prefix' => substr($poolAddress, 0, 8) . '...',
-    'refresh' => $refreshRequested,
-    'remote_addr' => $_SERVER['REMOTE_ADDR'] ?? null,
-    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null
-]);
 
 if (empty($poolAddress)) {
     http_response_code(400);
     echo json_encode([
         'error' => 'Missing poolAddress parameter',
-        'usage' => 'pool-data.php?poolAddress=<base58_address>&refresh=1 (optional)'
+        'usage' => 'pool-data.php?poolAddress=<base58_address>'
     ]);
     exit;
 }
@@ -786,7 +599,6 @@ if (empty($poolAddress)) {
 if (!validatePoolAddress($poolAddress)) {
     http_response_code(400);
     logMetrics($poolAddress, 'invalid_address', null, null, 'Invalid format');
-    debugLog('invalid_address', ['provided' => $poolAddress]);
     echo json_encode([
         'error' => 'Invalid pool address format',
         'provided' => $poolAddress
@@ -794,16 +606,10 @@ if (!validatePoolAddress($poolAddress)) {
     exit;
 }
 
-// Check if refresh is needed
-$shouldRefresh = needsRefresh($poolAddress, $refreshRequested);
-debugLog('refresh_check', ['shouldRefresh' => $shouldRefresh]);
-
 // Try to load from cache first
 $cachedData = loadFromCache($poolAddress);
-debugLog('cache_checked', ['hit' => $cachedData !== false]);
 
-// If we have cached data and no refresh is needed, return it
-if ($cachedData !== false && !$shouldRefresh) {
+if ($cachedData !== false) {
     // Cache hit - check if we need to enrich with parsed data
     if (!isset($cachedData['parsed_pool_data'])) {
         try {
@@ -829,8 +635,6 @@ if ($cachedData !== false && !$shouldRefresh) {
             $parsedPoolData['token_b_description'] = $tokenBMetadata['name'];
             
             $cachedData['parsed_pool_data'] = $parsedPoolData;
-            // Persist parsed data so subsequent hits skip parse/metadata
-            updateCacheWithParsedData($poolAddress, $parsedPoolData);
             
             logMetrics($poolAddress, 'cache_enriched', null, null, null);
         } catch (Exception $e) {
@@ -842,103 +646,32 @@ if ($cachedData !== false && !$shouldRefresh) {
     header('X-Cache-Status: hit');
     header('X-Generated-At: ' . $cachedData['generated_at']);
     
-        echo json_encode($cachedData);
-        debugLog('served_cache', ['status' => 'hit', 'generated_at' => $cachedData['generated_at'] ?? null]);
+    echo json_encode($cachedData);
     exit;
 }
 
-// Need to refresh or cache miss - try to acquire lock
-$lockHandle = null;
-if ($shouldRefresh || $cachedData === false) {
-    $lockHandle = acquireLock($poolAddress, $LOCK_TIMEOUT);
-    debugLog('lock_attempt', ['acquired' => (bool)$lockHandle]);
-    
-    if (!$lockHandle) {
-        // Failed to acquire lock - if we have cached data, return it
-        if ($cachedData !== false) {
-            logMetrics($poolAddress, 'lock_failed_return_cache', null, null, 'Returning cached data due to lock failure');
-            
-            header('Cache-Control: public, max-age=60');
-            header('X-Cache-Status: hit-lock-failed');
-            header('X-Generated-At: ' . $cachedData['generated_at']);
-            
-            echo json_encode($cachedData);
-            debugLog('served_cache', ['status' => 'hit-lock-failed', 'generated_at' => $cachedData['generated_at'] ?? null]);
-            exit;
-        } else {
-            // No cached data and can't acquire lock
-            http_response_code(503);
-            echo json_encode([
-                'error' => 'Service temporarily unavailable - unable to acquire lock and no cached data available',
-                'pool_address' => $poolAddress
-            ]);
-            debugLog('lock_failed_no_cache');
-            exit;
-        }
-    }
-    
-    // Check cache again after acquiring lock (another thread might have updated it)
-    $cachedData = loadFromCache($poolAddress);
-    if ($cachedData !== false && !needsRefresh($poolAddress, $refreshRequested)) {
-        // Another thread updated the cache while we were waiting for the lock
-        releaseLock($lockHandle, $poolAddress);
-        
-        header('Cache-Control: public, max-age=60');
-        header('X-Cache-Status: hit-after-lock');
-        header('X-Generated-At: ' . $cachedData['generated_at']);
-        
-        echo json_encode($cachedData);
-        debugLog('served_cache', ['status' => 'hit-after-lock', 'generated_at' => $cachedData['generated_at'] ?? null]);
-        exit;
-    }
-}
-
-// Cache miss or refresh needed - fetch from RPC
-logMetrics($poolAddress, $cachedData === false ? 'cache_miss' : 'cache_refresh');
-debugLog('fetching_from_rpc', ['reason' => $cachedData === false ? 'miss' : 'refresh']);
+// Cache miss - fetch from RPC
+logMetrics($poolAddress, 'cache_miss');
 
 $rpcData = fetchPoolDataFromRPC($poolAddress);
-debugLog('rpc_result', ['ok' => $rpcData !== false && $rpcData !== null]);
 
 if ($rpcData === false) {
-    // RPC fetch failed - release lock and return error or cached data
-    if ($lockHandle) {
-        releaseLock($lockHandle, $poolAddress);
-    }
-    
-    // If we have cached data, return it even if it's old
-    if ($cachedData !== false) {
-        logMetrics($poolAddress, 'rpc_failed_return_cache', null, null, 'RPC failed, returning cached data');
-        
-        header('Cache-Control: public, max-age=60');
-        header('X-Cache-Status: stale-rpc-failed');
-        header('X-Generated-At: ' . $cachedData['generated_at']);
-        
-        echo json_encode($cachedData);
-        exit;
-    }
-    
+    // RPC fetch failed
     http_response_code(504);
     echo json_encode([
         'error' => 'Failed to fetch pool data from Solana RPC',
         'pool_address' => $poolAddress
     ]);
-    debugLog('rpc_failed');
     exit;
 }
 
 if ($rpcData === null) {
-    // Pool doesn't exist or is invalid - release lock
-    if ($lockHandle) {
-        releaseLock($lockHandle, $poolAddress);
-    }
-    
+    // Pool doesn't exist or is invalid
     http_response_code(404);
     echo json_encode([
         'error' => 'Pool not found or invalid',
         'pool_address' => $poolAddress
     ]);
-    debugLog('pool_not_found_or_invalid');
     exit;
 }
 
@@ -979,26 +712,18 @@ try {
     $parsedPoolData['token_b_description'] = $tokenBMetadata['name'];
     
     logMetrics($poolAddress, 'pool_parsed_successfully', null, null, null);
-    debugLog('parsed_success');
 } catch (Exception $e) {
     logMetrics($poolAddress, 'pool_parse_failed', null, null, $e->getMessage());
-    debugLog('parsed_failed', ['error' => $e->getMessage()]);
     // Continue with raw data if parsing fails
 }
 
-// Save to cache including parsed data to speed future hits (best-effort)
-saveToCache($poolAddress, $rpcData, $parsedPoolData);
-debugLog('cache_saved');
-
-// Release lock after saving to cache
-if ($lockHandle) {
-    releaseLock($lockHandle, $poolAddress);
-}
+// Save to cache (non-blocking - don't fail if cache write fails)
+saveToCache($poolAddress, $rpcData);
 
 // Prepare response with both raw and parsed data
 $responseData = [
     'schema_version' => $SCHEMA_VERSION,
-    'generated_at' => gmdate('c'), // Use UTC timestamp
+    'generated_at' => date('c'),
     'pool_address' => $poolAddress,
     'rpc_response' => $rpcData
 ];
@@ -1010,13 +735,11 @@ if ($parsedPoolData !== null) {
 
 // Serve fresh data
 header('Cache-Control: public, max-age=60');
-header('X-Cache-Status: ' . ($shouldRefresh ? 'refreshed' : 'miss'));
+header('X-Cache-Status: miss');
 header('X-Generated-At: ' . $responseData['generated_at']);
-header('X-Request-Id: ' . $REQUEST_ID);
 
 $totalTime = (microtime(true) - $startTime) * 1000;
 logMetrics($poolAddress, 'request_complete', $totalTime, strlen(json_encode($responseData)));
-debugLog('request_complete', ['ms' => $totalTime]);
 
 echo json_encode($responseData);
 ?>

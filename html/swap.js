@@ -715,8 +715,8 @@ async function disconnectWallet() {
         // Clear token balances
         const fromBalance = document.getElementById('from-token-balance');
         const toBalance = document.getElementById('to-token-balance');
-        if (fromBalance) fromBalance.textContent = '0.000000';
-        if (toBalance) toBalance.textContent = '0.000000';
+        if (fromBalance) fromBalance.textContent = '0';
+        if (toBalance) toBalance.textContent = '0';
         
         showStatus('success', 'Wallet disconnected');
         
@@ -983,6 +983,118 @@ async function loadUserTokensForPool() {
 }
 
 /**
+ * Format number with commas for human readability
+ */
+function formatNumberWithCommas(number, decimals = 2) {
+    if (typeof number !== 'number' || !isFinite(number)) return '0';
+    
+    // For very small numbers, show more decimals (no grouping in fraction)
+    if (Math.abs(number) < 0.001 && number !== 0) {
+        const s = number.toFixed(8).replace(/\.?0+$/, '');
+        const [intPart, fracPart] = s.split('.');
+        const groupedInt = Number(intPart).toLocaleString();
+        return fracPart ? `${groupedInt}.${fracPart}` : groupedInt;
+    }
+    
+    // For whole numbers or near-whole numbers, don't show unnecessary decimals
+    if (Math.abs(number - Math.round(number)) < 0.0001) {
+        return Math.round(number).toLocaleString();
+    }
+    
+    // Group only the integer part; keep fractional part ungrouped
+    const fixed = number.toFixed(decimals).replace(/\.?0+$/, '');
+    const [intPart, fracPart] = fixed.split('.');
+    const groupedInt = Number(intPart).toLocaleString();
+    return fracPart ? `${groupedInt}.${fracPart}` : groupedInt;
+}
+
+/**
+ * Get proper display token order based on UX design documentation
+ */
+function getDisplayTokenOrder(poolData) {
+    const tokenASymbol = poolData.token_a_ticker || poolData.token_a_mint?.slice(0, 4) || 'TOKEN A';
+    const tokenBSymbol = poolData.token_b_ticker || poolData.token_b_mint?.slice(0, 4) || 'TOKEN B';
+    
+    // Calculate ratios from server data
+    const ratioA = poolData.ratio_a_actual || (poolData.ratio_a_numerator / Math.pow(10, poolData.ratio_a_decimal || 6));
+    const ratioB = poolData.ratio_b_actual || (poolData.ratio_b_denominator / Math.pow(10, poolData.ratio_b_decimal || 6));
+    
+    // The stored ratio represents "ratio units of TokenA per 1 unit of TokenB"
+    const tokensA_per_tokenB = ratioA / ratioB;
+    const tokensB_per_tokenA = ratioB / ratioA;
+    
+    // Format liquidity amounts
+    const tokenALiquidity = poolData.total_token_a_liquidity || 0;
+    const tokenBLiquidity = poolData.total_token_b_liquidity || 0;
+    const tokenADecimal = poolData.ratio_a_decimal || 6;
+    const tokenBDecimal = poolData.ratio_b_decimal || 6;
+    const tokenALiquidityDisplay = tokenALiquidity / Math.pow(10, tokenADecimal);
+    const tokenBLiquidityDisplay = tokenBLiquidity / Math.pow(10, tokenBDecimal);
+    
+    // Check for one-to-many ratio flag
+    const flags = interpretPoolFlags(poolData);
+    
+    if (flags.oneToManyRatio) {
+        // For one-to-many pools, choose direction that gives whole numbers
+        const isWholeNumberAtoB = Number.isInteger(tokensA_per_tokenB) && tokensA_per_tokenB >= 1;
+        const isWholeNumberBtoA = Number.isInteger(tokensB_per_tokenA) && tokensB_per_tokenA >= 1;
+        
+        if (isWholeNumberBtoA) {
+            // TokenA is base (1 TokenA = X TokenB)
+            return {
+                baseToken: tokenASymbol,
+                quoteToken: tokenBSymbol,
+                baseLiquidity: formatNumberWithCommas(tokenALiquidityDisplay, 6),
+                quoteLiquidity: formatNumberWithCommas(tokenBLiquidityDisplay, 6),
+                exchangeRate: Math.floor(tokensB_per_tokenA), // Ensure whole number
+                displayPair: `${tokenASymbol}/${tokenBSymbol}`,
+                rateText: `1 ${tokenASymbol} = ${formatNumberWithCommas(Math.floor(tokensB_per_tokenA), 0)} ${tokenBSymbol}`,
+                isReversed: false
+            };
+        } else if (isWholeNumberAtoB) {
+            // TokenB is base (1 TokenB = X TokenA)
+            return {
+                baseToken: tokenBSymbol,
+                quoteToken: tokenASymbol,
+                baseLiquidity: formatNumberWithCommas(tokenBLiquidityDisplay, 6),
+                quoteLiquidity: formatNumberWithCommas(tokenALiquidityDisplay, 6),
+                exchangeRate: Math.floor(tokensA_per_tokenB), // Ensure whole number
+                displayPair: `${tokenBSymbol}/${tokenASymbol}`,
+                rateText: `1 ${tokenBSymbol} = ${formatNumberWithCommas(Math.floor(tokensA_per_tokenB), 0)} ${tokenASymbol}`,
+                isReversed: true
+            };
+        }
+    }
+    
+    // Standard logic: show the more valuable token (ratio >= 1) as base
+    if (tokensA_per_tokenB >= 1.0) {
+        // Many TokenA per 1 TokenB → TokenB is more valuable → TokenB is base
+        return {
+            baseToken: tokenBSymbol,
+            quoteToken: tokenASymbol,
+            baseLiquidity: formatNumberWithCommas(tokenBLiquidityDisplay, 6),
+            quoteLiquidity: formatNumberWithCommas(tokenALiquidityDisplay, 6),
+            exchangeRate: tokensA_per_tokenB,
+            displayPair: `${tokenBSymbol}/${tokenASymbol}`,
+            rateText: `1 ${tokenBSymbol} = ${formatNumberWithCommas(tokensA_per_tokenB, 2)} ${tokenASymbol}`,
+            isReversed: true
+        };
+    } else {
+        // Many TokenB per 1 TokenA → TokenA is more valuable → TokenA is base
+        return {
+            baseToken: tokenASymbol,
+            quoteToken: tokenBSymbol,
+            baseLiquidity: formatNumberWithCommas(tokenALiquidityDisplay, 6),
+            quoteLiquidity: formatNumberWithCommas(tokenBLiquidityDisplay, 6),
+            exchangeRate: tokensB_per_tokenA,
+            displayPair: `${tokenASymbol}/${tokenBSymbol}`,
+            rateText: `1 ${tokenASymbol} = ${formatNumberWithCommas(tokensB_per_tokenA, 2)} ${tokenBSymbol}`,
+            isReversed: false
+        };
+    }
+}
+
+/**
  * Update pool display
  */
 function updatePoolDisplay() {
@@ -1001,39 +1113,12 @@ function updatePoolDisplay() {
         refreshBtn.style.display = 'inline-flex';
     }
     
-     // ✅ SIMPLE: Use server data directly without dependencies (like test page)
-     const tokenASymbol = poolData.token_a_ticker || poolData.token_a_mint?.slice(0, 4) || 'TOKEN A';
-     const tokenBSymbol = poolData.token_b_ticker || poolData.token_b_mint?.slice(0, 4) || 'TOKEN B';
-     
-     // Calculate exchange rate from server data
-     const ratioA = poolData.ratio_a_actual || (poolData.ratio_a_numerator / Math.pow(10, poolData.ratio_a_decimal || 6));
-     const ratioB = poolData.ratio_b_actual || (poolData.ratio_b_denominator / Math.pow(10, poolData.ratio_b_decimal || 6));
-     const exchangeRate = ratioB / ratioA;
-     
-     // Format liquidity
-     const tokenALiquidity = poolData.total_token_a_liquidity || 0;
-     const tokenBLiquidity = poolData.total_token_b_liquidity || 0;
-     const tokenADecimal = poolData.ratio_a_decimal || 6;
-     const tokenBDecimal = poolData.ratio_b_decimal || 6;
-     const tokenALiquidityFormatted = (tokenALiquidity / Math.pow(10, tokenADecimal)).toFixed(6);
-     const tokenBLiquidityFormatted = (tokenBLiquidity / Math.pow(10, tokenBDecimal)).toFixed(6);
-     
-     // Use the simple flags interpretation function
-     const flags = interpretPoolFlags(poolData);
+    // Use the proper display token order function
+    const display = getDisplayTokenOrder(poolData);
+    const flags = interpretPoolFlags(poolData);
+    display.isOneToManyRatio = flags.oneToManyRatio;
     
-    const display = {
-         baseToken: tokenASymbol,
-         quoteToken: tokenBSymbol,
-         displayPair: `${tokenASymbol} / ${tokenBSymbol}`,
-         rateText: `1 ${tokenASymbol} = ${exchangeRate.toFixed(8)} ${tokenBSymbol}`,
-         exchangeRate: exchangeRate,
-         baseLiquidity: `${tokenALiquidityFormatted} ${tokenASymbol}`,
-         quoteLiquidity: `${tokenBLiquidityFormatted} ${tokenBSymbol}`,
-         isReversed: false,
-        isOneToManyRatio: flags.oneToManyRatio
-    };
-    
-    console.log('🔧 SWAP CORRECTED:', display);
+    console.log('🔧 SWAP DISPLAY CORRECTED:', display);
     
 
     
@@ -1122,7 +1207,7 @@ function updatePoolDisplay() {
     baseLabel.textContent = `${display.baseToken} Liquidity`;
     const baseValue = document.createElement('div');
     baseValue.className = 'metric-value';
-    baseValue.textContent = display.baseLiquidity;
+    baseValue.textContent = `${display.baseLiquidity} ${display.baseToken}`;
     baseMetric.appendChild(baseLabel);
     baseMetric.appendChild(baseValue);
     poolDetails.appendChild(baseMetric);
@@ -1135,7 +1220,7 @@ function updatePoolDisplay() {
     quoteLabel.textContent = `${display.quoteToken} Liquidity`;
     const quoteValue = document.createElement('div');
     quoteValue.className = 'metric-value';
-    quoteValue.textContent = display.quoteLiquidity;
+    quoteValue.textContent = `${display.quoteLiquidity} ${display.quoteToken}`;
     quoteMetric.appendChild(quoteLabel);
     quoteMetric.appendChild(quoteValue);
     poolDetails.appendChild(quoteMetric);
@@ -1290,8 +1375,8 @@ function updateTokenDisplayWithoutWallet() {
         document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenBMint, tokenBSymbol);
         
         // Show balance or placeholder message
-        document.getElementById('from-token-balance').textContent = '0.000000';
-        document.getElementById('to-token-balance').textContent = '0.000000';
+        document.getElementById('from-token-balance').textContent = '0';
+        document.getElementById('to-token-balance').textContent = '0';
     } else {
         document.getElementById('from-token-symbol').textContent = tokenBSymbol;
         document.getElementById('to-token-symbol').textContent = tokenASymbol;
@@ -1303,8 +1388,8 @@ function updateTokenDisplayWithoutWallet() {
         document.getElementById('to-token-icon').innerHTML = createTokenImageHTML(tokenAMint, tokenASymbol);
         
         // Show balance or placeholder message
-        document.getElementById('from-token-balance').textContent = '0.000000';
-        document.getElementById('to-token-balance').textContent = '0.000000';
+        document.getElementById('from-token-balance').textContent = '0';
+        document.getElementById('to-token-balance').textContent = '0';
     }
 }
 
@@ -1322,29 +1407,29 @@ function updateSwapInterfaceWithRealBalances() {
         // From = Token A, To = Token B
         if (tokenA) {
             const displayA = tokenA.balance / Math.pow(10, tokenA.decimals);
-            document.getElementById('from-token-balance').textContent = displayA.toFixed(6);
-    } else {
-            document.getElementById('from-token-balance').textContent = '0.000000';
+            document.getElementById('from-token-balance').textContent = formatNumberWithCommas(displayA, 6);
+        } else {
+            document.getElementById('from-token-balance').textContent = '0';
         }
         if (tokenB) {
             const displayB = tokenB.balance / Math.pow(10, tokenB.decimals);
-            document.getElementById('to-token-balance').textContent = displayB.toFixed(6);
-    } else {
-            document.getElementById('to-token-balance').textContent = '0.000000';
+            document.getElementById('to-token-balance').textContent = formatNumberWithCommas(displayB, 6);
+        } else {
+            document.getElementById('to-token-balance').textContent = '0';
         }
     } else {
         // From = Token B, To = Token A
         if (tokenB) {
             const displayB = tokenB.balance / Math.pow(10, tokenB.decimals);
-            document.getElementById('from-token-balance').textContent = displayB.toFixed(6);
+            document.getElementById('from-token-balance').textContent = formatNumberWithCommas(displayB, 6);
         } else {
-            document.getElementById('from-token-balance').textContent = '0.000000';
+            document.getElementById('from-token-balance').textContent = '0';
         }
         if (tokenA) {
             const displayA = tokenA.balance / Math.pow(10, tokenA.decimals);
-            document.getElementById('to-token-balance').textContent = displayA.toFixed(6);
+            document.getElementById('to-token-balance').textContent = formatNumberWithCommas(displayA, 6);
         } else {
-            document.getElementById('to-token-balance').textContent = '0.000000';
+            document.getElementById('to-token-balance').textContent = '0';
         }
     }
 }
