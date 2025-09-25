@@ -157,12 +157,14 @@ function interpretPoolFlags(poolData) {
 /**
  * Load pool data from server only and render immediately (like test page)
  */
-async function loadPoolDataFromServerOnly(poolAddress) {
+async function loadPoolDataFromServerOnly(poolAddress, forceRefresh = false) {
     try {
         console.log('📡 Fetching pool data from server:', poolAddress);
         showStatus('info', 'Loading pool information from server...');
         
-        const response = await fetch(`./pool-data.php?poolAddress=${poolAddress}`);
+        // Add refresh parameter if requested
+        const refreshParam = forceRefresh ? '&refresh=1' : '';
+        const response = await fetch(`./pool-data.php?poolAddress=${poolAddress}${refreshParam}`);
         
         if (!response.ok) {
             throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
@@ -1975,6 +1977,21 @@ async function executeSwap() {
         document.getElementById('to-amount').value = '';
         document.getElementById('transaction-preview').style.display = 'none';
         
+        // Schedule pool data refresh 3 seconds after swap completion
+        setTimeout(async () => {
+            try {
+                console.log('🔄 Auto-refreshing pool data 3 seconds after swap completion...');
+                const urlParams = new URLSearchParams(window.location.search);
+                const poolAddress = urlParams.get('pool');
+                if (poolAddress) {
+                    await loadPoolDataFromServerOnly(poolAddress, true);
+                    console.log('✅ Pool data auto-refreshed after swap');
+                }
+            } catch (error) {
+                console.warn('⚠️ Failed to auto-refresh pool data after swap:', error);
+            }
+        }, 3000);
+        
     } catch (error) {
         console.error('❌ Swap failed:', error);
         // Surface wallet/cluster logs if available
@@ -2558,8 +2575,8 @@ async function refreshPoolStatus() {
         const poolAddress = urlParams.get('pool');
         
         if (poolAddress) {
-            // Reload pool data from server
-            await loadPoolDataFromServerOnly(poolAddress);
+            // Reload pool data from server with refresh parameter
+            await loadPoolDataFromServerOnly(poolAddress, true);
         }
         
         // Refresh wallet balances if connected
