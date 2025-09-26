@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satoshi - Measure in sats, own more Bitcoin</title>
+    <link rel="icon" href="images/tSAT_TokenImages/tSatoshi64x64and16x16.ico" type="image/x-icon">
+    
+    <!-- Bitcoin.org inspired fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            padding: 20px 0;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 400;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: #f7931a;
+        }
+
+        /* Hero Section - Kaspa inspired */
+        .hero {
+            text-align: center;
+            padding: 160px 0 80px 0; /* Add top padding to account for fixed header */
+            color: white;
+        }
+
+        .hero-image {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 30px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero-image img {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #f7931a, #ffb347);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-slogan {
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin-bottom: 40px;
+            color: #e0e7ff;
+        }
+
+        .hero-description {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto 50px;
+            color: #cbd5e1;
+            line-height: 1.8;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 60px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            color: white;
+            box-shadow: 0 4px 15px rgba(247, 147, 26, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(247, 147, 26, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* Content Sections */
+        .content {
+            background: white;
+            margin: 0 -20px;
+            padding: 80px 20px;
+        }
+
+        .section {
+            max-width: 1200px;
+            margin: 0 auto 80px;
+        }
+
+        .section h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #1e3c72;
+        }
+
+        .section h3 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #2a5298;
+        }
+
+        .section p {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: #4a5568;
+            line-height: 1.8;
+        }
+
+        /* Value Proposition Grid */
+        .value-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 50px 0;
+        }
+
+        .value-card {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 30px;
+            border-radius: 12px;
+            border-left: 4px solid #f7931a;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .value-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .value-card h4 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #1e3c72;
+        }
+
+        .value-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .value-card li {
+            margin-bottom: 10px;
+            padding-left: 20px;
+            position: relative;
+            color: #4a5568;
+        }
+
+        .value-card li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #f7931a;
+            font-weight: bold;
+        }
+
+        /* How it Works */
+        .how-it-works {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 60px 0;
+            margin: 60px 0;
+            border-radius: 20px;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .step {
+            text-align: center;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .step:hover {
+            transform: translateY(-5px);
+        }
+
+        .step-number {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0 auto 20px;
+        }
+
+        .step h4 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #1e3c72;
+        }
+
+        /* Sats Definition */
+        .sats-definition {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 50px;
+            border-radius: 20px;
+            margin: 60px 0;
+            text-align: center;
+        }
+
+        .sats-definition h3 {
+            color: #f7931a;
+            margin-bottom: 20px;
+        }
+
+        .sats-definition .highlight {
+            font-size: 1.3rem;
+            font-weight: 600;
+            background: rgba(247, 147, 26, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border-left: 4px solid #f7931a;
+        }
+
+        /* Proof of Reserves */
+        .proof-reserves {
+            background: #f8fafc;
+            padding: 60px 0;
+            margin: 60px 0;
+            border-radius: 20px;
+        }
+
+        .transaction {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .transaction h5 {
+            color: #1e3c72;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .transaction a {
+            color: #f7931a;
+            text-decoration: none;
+            font-family: monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+
+        .transaction a:hover {
+            text-decoration: underline;
+        }
+
+        /* FAQ */
+        .faq {
+            margin: 60px 0;
+        }
+
+        .faq-item {
+            background: white;
+            margin: 20px 0;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .faq-question {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .faq-question:hover {
+            background: linear-gradient(135deg, #2a5298, #1e3c72);
+        }
+
+        .faq-answer {
+            padding: 20px;
+            color: #4a5568;
+            line-height: 1.8;
+        }
+
+        /* Footer */
+        footer {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 60px 0 30px;
+            margin-top: 80px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-section h4 {
+            color: #f7931a;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+
+        .footer-section a {
+            color: #cbd5e1;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 10px;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section a:hover {
+            color: #f7931a;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            header {
+                padding: 15px 0;
+            }
+
+            .hero {
+                padding: 140px 0 60px 0; /* Adjust for smaller fixed header */
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-slogan {
+                font-size: 1.2rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .logo {
+                font-size: 20px;
+            }
+
+            .logo img {
+                width: 32px;
+                height: 32px;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .section h2 {
+                font-size: 2rem;
+            }
+
+            .value-grid,
+            .steps {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 0 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <a href="#" class="logo">
+                <img src="images/tSAT_TokenImages/tSatoshi_64x64.png" alt="tSAT Logo">
+                tSAT
+            </a>
+            <ul class="nav-links">
+                <li><a href="#how-it-works">How it Works</a></li>
+                <li><a href="#backing">Backing</a></li>
+                <li><a href="#proof-reserves">Proof of Reserves</a></li>
+                <li><a href="#faq">FAQ</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-image">
+                <img src="images/tSAT_TokenImages/tSatoshi_512x512.png" alt="tSAT Token">
+            </div>
+            <h1>Satoshi</h1>
+            <p class="hero-slogan">Measure in sats, own more Bitcoin</p>
+            <p class="hero-description">
+                A fully Bitcoin‑backed token designed to make stacking feel intuitive, transparent, and scalable—sat by sat.
+                Mint and redeem 1:1 with BTC, track holdings in sats, and build a stack without the decimals.
+                Satoshi tokens allow people to grow their bitcoin stack while looking at big numbers - you see 100 sats, not 0.00000100, and start your growth journey today.
+            </p>
+            <div class="cta-buttons">
+                <a href="https://frt15.net/swap.html?pool=AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" class="btn btn-primary">Get Satoshi</a>
+                <a href="#proof-reserves" class="btn btn-secondary">View Proof‑of‑Reserves</a>
+            </div>
+        </div>
+    </section>
+
+    <div class="content">
+        <div class="container">
+            <!-- Sats Definition -->
+            <section class="sats-definition">
+                <h3>What are "sats"?</h3>
+                <p>A "sat" (short for satoshi) is the smallest unit of Bitcoin, named after Bitcoin's pseudonymous creator, Satoshi Nakamoto.</p>
+                <div class="highlight">
+                    1 Bitcoin = 100,000,000 sats<br>
+                    1 sat = 0.00000001 BTC
+                </div>
+                <p>Instead of thinking in tiny decimals like 0.00001 BTC, you can think in whole numbers like 1,000 sats. This makes tracking your Bitcoin growth more intuitive and motivating!</p>
+            </section>
+
+            <!-- Value Proposition -->
+            <section class="section">
+                <h2>Why Satoshi Tokens?</h2>
+                <div class="value-grid">
+                    <div class="value-card">
+                        <h4>🔢 Big‑number clarity</h4>
+                        <ul>
+                            <li>Display balances in sats to make progress obvious and motivating</li>
+                            <li>See 100,000 sats instead of 0.001 BTC</li>
+                            <li>Track growth with whole numbers, not decimals</li>
+                            <li>Psychology of abundance drives engagement</li>
+                        </ul>
+                    </div>
+                    <div class="value-card">
+                        <h4>₿ Bitcoin‑native integrity</h4>
+                        <ul>
+                            <li>Fully backed with on‑chain, verifiable reserves</li>
+                            <li>1:1 redeemability with tBTC at any time</li>
+                            <li>Secured by immutable smart contract</li>
+                            <li>No trust required - verify everything on-chain</li>
+                        </ul>
+                    </div>
+                    <div class="value-card">
+                        <h4>⚡ Instant utility</h4>
+                        <ul>
+                            <li>Fast transfers with low fees</li>
+                            <li>Broad wallet compatibility on Solana</li>
+                            <li>Perfect for DeFi applications</li>
+                            <li>Seamless integration with existing tools</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- How it Works -->
+            <section id="how-it-works" class="how-it-works">
+                <div class="container">
+                    <h2>How it Works</h2>
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <h4>Deposit tBTC to mint tSAT</h4>
+                            <p>Swap your tBTC tokens for tSAT tokens at a fixed 1:100,000,000 ratio. Every tSAT represents one satoshi of Bitcoin.</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <h4>Transfer tSATs to anyone</h4>
+                            <p>Send tSAT tokens to any Solana wallet with fast, low-cost transactions. Perfect for payments, DeFi, or holding.</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <h4>Redeem tSATs for tBTC</h4>
+                            <p>Convert your tSATs back to tBTC any time from locked reserves with guaranteed 1:1 backing.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Backing and Reserves -->
+            <section id="backing" class="section">
+                <h2>Backing and Reserves</h2>
+                <p>Every Satoshi token represents one satoshi of Bitcoin and is fully collateralized by Threshold Network's tBTC reserves. The backing is secured through an immutable smart contract framework with the following key features:</p>
+                
+                <div class="value-grid">
+                    <div class="value-card">
+                        <h4>🔒 Custody</h4>
+                        <ul>
+                            <li>Held by a smart contract with fixed rules</li>
+                            <li>No human intervention possible</li>
+                            <li>Immutable contract logic</li>
+                            <li>Transparent and verifiable</li>
+                        </ul>
+                    </div>
+                    <div class="value-card">
+                        <h4>🔍 Anyone can Audit</h4>
+                        <ul>
+                            <li>All transactions are public on Solana</li>
+                            <li>Real-time reserve verification</li>
+                            <li>Open-source smart contracts</li>
+                            <li>Community-driven oversight</li>
+                        </ul>
+                    </div>
+                    <div class="value-card">
+                        <h4>📊 Token Mechanics</h4>
+                        <ul>
+                            <li>Fixed 100,000,000 tSAT = 1 tBTC ratio</li>
+                            <li>Maximum supply: 21T tSAT (210,000 BTC equivalent)</li>
+                            <li>Only 1% of all Bitcoin can become tSAT</li>
+                            <li>Market forces will balance supply and demand</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h3>Security Features</h3>
+                <p>The tSAT protocol implements multiple layers of security:</p>
+                <ul style="margin: 20px 0; padding-left: 20px;">
+                    <li><strong>Governance-controlled upgrade authority:</strong> Managed by multi-signature address with transparent upgrade process</li>
+                    <li><strong>Fixed Ratio Trading integration:</strong> Locked liquidity ensures 1:1 redeemability</li>
+                    <li><strong>Burned LP tokens:</strong> All liquidity provider tokens have been permanently destroyed, locking the reserves</li>
+                    <li><strong>Open-source verification:</strong> All code is publicly available on GitHub</li>
+                </ul>
+            </section>
+
+            <!-- Proof of Reserves -->
+            <section id="proof-reserves" class="proof-reserves">
+                <div class="container">
+                    <h2>Proof‑of‑Reserves</h2>
+                    <p>All tSAT tokens are verifiably backed by tBTC reserves locked in the Fixed Ratio Trading smart contract. Here's the complete transaction history:</p>
+                    
+                    <div class="transaction">
+                        <h5>1. Token Mint (21,000,000,000,000 tSAT created)</h5>
+                        <p>Initial minting of all tSAT tokens with maximum supply cap.</p>
+                        <a href="https://solscan.io/tx/2JUaZMSi1XgXbzPsP7ud4rcV3d2621nmWL5ay3Nuex2LjdhDE7V4G9DjcxVSHjGpmm61dAx5GtcVd62JY1B8LTrR" target="_blank">
+                            2JUaZMSi1XgXbzPsP7ud4rcV3d2621nmWL5ay3Nuex2LjdhDE7V4G9DjcxVSHjGpmm61dAx5GtcVd62JY1B8LTrR
+                        </a>
+                    </div>
+
+                    <div class="transaction">
+                        <h5>2. Tokens Locked in Fixed Ratio Trading Contract</h5>
+                        <p>All 21T tSAT tokens transferred to Fixed Ratio Trading smart contract, receiving LP tokens in return.</p>
+                        <a href="https://solscan.io/tx/2iW5itDKKr3B9NU2WjqBtMMhG6EWLqFwnFTDhCzWsPfzmS85zSKhWBX4DxyXzksR8G31LEfZkcSAGr9YJDJCwc9K" target="_blank">
+                            2iW5itDKKr3B9NU2WjqBtMMhG6EWLqFwnFTDhCzWsPfzmS85zSKhWBX4DxyXzksR8G31LEfZkcSAGr9YJDJCwc9K
+                        </a>
+                    </div>
+
+                    <div class="transaction">
+                        <h5>3. LP Tokens Permanently Burned</h5>
+                        <p>All liquidity provider tokens burned, permanently locking tSAT tokens in the contract unless someone trades tBTC for them.</p>
+                        <a href="https://solscan.io/tx/PtHnPnFotbY1EJbQdY3gGcgmqJaXj6ewXPhZkTmMAvyxiq95BgBeVv6vk9ma4b6bFPszMGUUNjKhSF27WCNrU1k" target="_blank">
+                            PtHnPnFotbY1EJbQdY3gGcgmqJaXj6ewXPhZkTmMAvyxiq95BgBeVv6vk9ma4b6bFPszMGUUNjKhSF27WCNrU1k
+                        </a>
+                    </div>
+
+                    <div class="transaction">
+                        <h5>4. Upgrade Authority Transferred to Multi-Sig</h5>
+                        <p>Token upgrade authority transferred to multi-signature address ensuring transparent governance and planned upgrades.</p>
+                        <a href="https://solscan.io/tx/45yr7uxLWLk2CjpiUNpkJgZnHUN9hXVMveu3HHwzxyWiR47tfZotbLynuWpzTVzVFK37JWkRGQSVArmE5m6WGZB2" target="_blank">
+                            45yr7uxLWLk2CjpiUNpkJgZnHUN9hXVMveu3HHwzxyWiR47tfZotbLynuWpzTVzVFK37JWkRGQSVArmE5m6WGZB2
+                        </a>
+                    </div>
+
+                    <p style="margin-top: 30px;"><strong>Fixed Ratio Trading is open source:</strong> <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank" style="color: #f7931a;">https://github.com/Fixed-Asset-Ratio-Trading</a></p>
+                </div>
+            </section>
+
+            <!-- FAQ -->
+            <section id="faq" class="faq">
+                <h2>Frequently Asked Questions</h2>
+                
+                <div class="faq-item">
+                    <div class="faq-question">What backs Satoshi tokens?</div>
+                    <div class="faq-answer">
+                        Every tSAT token is backed 1:1 by Threshold Network's tBTC, which itself is backed 1:1 by Bitcoin. The backing is held in an immutable smart contract with verifiable on-chain reserves that anyone can audit in real-time.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">How fast can I redeem tSAT for tBTC?</div>
+                    <div class="faq-answer">
+                        Redemption is instant through the Fixed Ratio Trading protocol. Simply swap your tSAT tokens for tBTC at the guaranteed 1:100,000,000 ratio whenever liquidity is available in the pool.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">Are returns promised?</div>
+                    <div class="faq-answer">
+                        No—tSAT is a fully backed utility token, not a yield product. It maintains a 1:1 peg with Bitcoin satoshis and does not promise any returns beyond Bitcoin's natural price movements.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">There are only 1% of all Bitcoin can become tSAT - what happens after that?</div>
+                    <div class="faq-answer">
+                        The maximum supply is capped at 21 trillion tSAT (equivalent to 210,000 BTC or 1% of Bitcoin's total supply). Once this limit is reached, no new tSAT can be minted. Market forces will balance supply and demand through price discovery.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">How do I verify the reserves?</div>
+                    <div class="faq-answer">
+                        All reserves are verifiable on-chain. You can check the Fixed Ratio Trading pool at any time to see exactly how much tBTC backs the circulating tSAT supply. The smart contract code is open source and auditable by anyone.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">What are the fees?</div>
+                    <div class="faq-answer">
+                        Trading tSAT through the Fixed Ratio Trading protocol currently has 0% pool fees (governance-controlled). You only pay standard Solana network fees for transactions, which are typically fractions of a cent.
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Trade tSAT</h4>
+                    <a href="https://frt15.net/swap.html?pool=AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj">Get Satoshi Tokens</a>
+                    <a href="https://frt15.net">Fixed Ratio Trading</a>
+                    <a href="https://frt15.net/about.html">About FRT Protocol</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Learn More</h4>
+                    <a href="https://github.com/Fixed-Asset-Ratio-Trading">Open Source Code</a>
+                    <a href="https://solscan.io/token/6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU">Token Contract</a>
+                    <a href="https://bitcoin.org">Bitcoin.org</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Community</h4>
+                    <a href="https://x.com/davincij15">Twitter/X</a>
+                    <a href="https://t.me/davincij15public">Telegram</a>
+                    <a href="mailto:support@davincicodes.net">Support</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Token Info</h4>
+                    <p style="color: #cbd5e1; font-size: 0.9rem;">
+                        <strong>Symbol:</strong> tSAT<br>
+                        <strong>Network:</strong> Solana<br>
+                        <strong>Max Supply:</strong> 21T<br>
+                        <strong>Backing:</strong> 1:1 with tBTC
+                    </p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Satoshi Token Project. Managed by Davinci Jeremie (DavinciJ15)</p>
+                <p>tSAT brings Bitcoin's store of value to Solana's speed and efficiency</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Simple FAQ toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const faqQuestions = document.querySelectorAll('.faq-question');
+            
+            faqQuestions.forEach(question => {
+                question.addEventListener('click', function() {
+                    const answer = this.nextElementSibling;
+                    const isOpen = answer.style.display === 'block';
+                    
+                    // Close all other answers
+                    document.querySelectorAll('.faq-answer').forEach(ans => {
+                        ans.style.display = 'none';
+                    });
+                    
+                    // Toggle current answer
+                    answer.style.display = isOpen ? 'none' : 'block';
+                });
+            });
+            
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
