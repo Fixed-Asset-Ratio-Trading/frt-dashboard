@@ -24,6 +24,13 @@
             color: #333;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            color: #e2e8f0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         }
 
         .container {
@@ -44,6 +51,11 @@
             right: 0;
             z-index: 1000;
             transition: all 0.3s ease;
+        }
+
+        body.dark-mode header {
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
         }
 
         nav {
@@ -85,6 +97,99 @@
             color: #f7931a;
         }
 
+        body.dark-mode .nav-links a {
+            color: #cbd5e1;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            margin-left: 20px;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        body.dark-mode .theme-toggle {
+            background: rgba(148, 163, 184, 0.1);
+            border-color: rgba(148, 163, 184, 0.3);
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .theme-toggle:hover {
+            background: rgba(148, 163, 184, 0.2);
+            border-color: rgba(148, 163, 184, 0.5);
+        }
+
+        /* Dark mode styles for all components */
+        body.dark-mode .section h2 { color: #e2e8f0; }
+        body.dark-mode .section h3 { color: #cbd5e1; }
+        body.dark-mode .section p { color: #94a3b8; }
+        
+        body.dark-mode .value-card {
+            background: linear-gradient(135deg, #334155, #475569);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        body.dark-mode .value-card:hover { box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); }
+        body.dark-mode .value-card h4 { color: #e2e8f0; }
+        body.dark-mode .value-card li { color: #cbd5e1; }
+        
+        body.dark-mode .how-it-works { background: linear-gradient(135deg, #0f172a, #1e293b); }
+        body.dark-mode .step { 
+            background: #334155; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            color: #cbd5e1;
+        }
+        body.dark-mode .step h4 { color: #e2e8f0; }
+        
+        body.dark-mode .sats-definition {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        
+        body.dark-mode .proof-reserves {
+            background: #0f172a;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        body.dark-mode .transaction {
+            background: #334155;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        body.dark-mode .transaction h5 { color: #e2e8f0; }
+        
+        body.dark-mode .faq-item {
+            background: #334155;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        body.dark-mode .faq-question {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #e2e8f0;
+        }
+        body.dark-mode .faq-question:hover { background: linear-gradient(135deg, #1e293b, #0f172a); }
+        body.dark-mode .faq-answer { color: #cbd5e1; }
+        
+        body.dark-mode footer {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #e2e8f0;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        body.dark-mode .footer-section a { color: #94a3b8; }
+        body.dark-mode .footer-bottom { 
+            color: #94a3b8;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
         /* Hero Section - Kaspa inspired */
         .hero {
             text-align: center;
@@ -102,6 +207,11 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        body.dark-mode .hero-image {
+            background: rgba(148, 163, 184, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
         }
 
         .hero-image img {
@@ -133,6 +243,10 @@
             margin: 0 auto 50px;
             color: #cbd5e1;
             line-height: 1.8;
+        }
+
+        body.dark-mode .hero-description {
+            color: #94a3b8;
         }
 
         .cta-buttons {
@@ -179,11 +293,27 @@
             transform: translateY(-2px);
         }
 
+        body.dark-mode .btn-secondary {
+            background: rgba(148, 163, 184, 0.1);
+            color: #e2e8f0;
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        body.dark-mode .btn-secondary:hover {
+            background: rgba(148, 163, 184, 0.2);
+            border-color: rgba(148, 163, 184, 0.5);
+        }
+
         /* Content Sections */
         .content {
             background: white;
             margin: 0 -20px;
             padding: 80px 20px;
+            transition: background 0.3s ease;
+        }
+
+        body.dark-mode .content {
+            background: #1e293b;
         }
 
         .section {
@@ -466,6 +596,12 @@
                 display: none;
             }
 
+            .theme-toggle {
+                margin-left: 10px;
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+
             .logo {
                 font-size: 20px;
             }
@@ -507,12 +643,17 @@
                 <img src="images/tSAT_TokenImages/tSatoshi_64x64.png" alt="tSAT Logo">
                 tSAT
             </a>
-            <ul class="nav-links">
-                <li><a href="#how-it-works">How it Works</a></li>
-                <li><a href="#backing">Backing</a></li>
-                <li><a href="#proof-reserves">Proof of Reserves</a></li>
-                <li><a href="#faq">FAQ</a></li>
-            </ul>
+            <div style="display: flex; align-items: center;">
+                <ul class="nav-links">
+                    <li><a href="#how-it-works">How it Works</a></li>
+                    <li><a href="#backing">Backing</a></li>
+                    <li><a href="#proof-reserves">Proof of Reserves</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                </ul>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                </button>
+            </div>
         </nav>
     </header>
 
@@ -526,7 +667,7 @@
             <p class="hero-description">
                 A fully Bitcoin‑backed token designed to make stacking feel intuitive, transparent, and scalable—sat by sat.
                 Mint and redeem 1:1 with BTC, track holdings in sats, and build a stack without the decimals.
-                Satoshi tokens allow people to grow their bitcoin stack while looking at big numbers - you see 100 sats, not 0.00000100, and start your growth journey today.
+                Satoshi tokens allow people to grow their bitcoin stack while looking at big numbers - you see 100 sats, not 1×10⁻⁶ BTC, and start your growth journey today.
             </p>
             <div class="cta-buttons">
                 <a href="https://frt15.net/swap.html?pool=AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" class="btn btn-primary">Get Satoshi</a>
@@ -543,9 +684,9 @@
                 <p>A "sat" (short for satoshi) is the smallest unit of Bitcoin, named after Bitcoin's pseudonymous creator, Satoshi Nakamoto.</p>
                 <div class="highlight">
                     1 Bitcoin = 100,000,000 sats<br>
-                    1 sat = 0.00000001 BTC
+                    1 sat = 1×10⁻⁸ BTC
                 </div>
-                <p>Instead of thinking in tiny decimals like 0.00001 BTC, you can think in whole numbers like 1,000 sats. This makes tracking your Bitcoin growth more intuitive and motivating!</p>
+                <p>Instead of thinking in confusing scientific notation like 1×10⁻⁵ BTC, you can think in whole numbers like 1,000 sats. This makes tracking your Bitcoin growth more intuitive and motivating!</p>
             </section>
 
             <!-- Value Proposition -->
@@ -556,8 +697,8 @@
                         <h4>🔢 Big‑number clarity</h4>
                         <ul>
                             <li>Display balances in sats to make progress obvious and motivating</li>
-                            <li>See 100,000 sats instead of 0.001 BTC</li>
-                            <li>Track growth with whole numbers, not decimals</li>
+                            <li>See 100,000 sats instead of 1×10⁻³ BTC</li>
+                            <li>Track growth with whole numbers, not scientific notation</li>
                             <li>Psychology of abundance drives engagement</li>
                         </ul>
                     </div>
@@ -781,8 +922,36 @@
     </footer>
 
     <script>
-        // Simple FAQ toggle functionality
+        // Theme toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('theme-icon');
+            const isDark = body.classList.contains('dark-mode');
+            
+            if (isDark) {
+                body.classList.remove('dark-mode');
+                themeIcon.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                themeIcon.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme on page load
         document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeIcon.textContent = '☀️';
+            } else {
+                themeIcon.textContent = '🌙';
+            }
+
+            // Simple FAQ toggle functionality
             const faqQuestions = document.querySelectorAll('.faq-question');
             
             faqQuestions.forEach(question => {
