@@ -63,19 +63,23 @@ NC='\033[0m' # No Color
 
 # Configuration
 REMOTE_HOST="dev@vmdevbox1"
-DOMAIN="frtstage.davincij15.com"
+FRT_DOMAIN="frtstage.davincij15.com"
+SAT_DOMAIN="satstage.davincij15.com"
 REMOTE_IP="192.168.2.88"
 REMOTE_BASE_DIR="/home/dev/dashboard"
 REMOTE_HTML_DIR="$REMOTE_BASE_DIR/html"
+REMOTE_FRT_DIR="$REMOTE_HTML_DIR/frt"
+REMOTE_SAT_DIR="$REMOTE_HTML_DIR/sat"
 REMOTE_SSL_DIR="/home/dev/ssl"
 NGINX_SITE_NAME="frt-dashboard"
 CERT_FILE="$PROJECT_ROOT/davincij15_cert.txt"
 
-echo "🚀 Fixed Ratio Trading Dashboard - HTTPS Deployment (Mainnet)"
-echo "============================================================="
+echo "🚀 Fixed Ratio Trading & Satoshi Dashboard - HTTPS Stage Deployment"
+echo "=================================================================="
 echo "📂 Local Project Root: $PROJECT_ROOT"
 echo "🌐 Remote Host: $REMOTE_HOST"
-echo "🔐 Domain: https://$DOMAIN"
+echo "🔐 FRT Domain: https://$FRT_DOMAIN"
+echo "🔐 Satoshi Domain: https://$SAT_DOMAIN"
 echo "📁 Remote Directory: $REMOTE_BASE_DIR"
 echo "🌐 Network: Solana Mainnet Beta"
 echo "📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD"
@@ -177,20 +181,22 @@ setup_nginx() {
     # Stop any existing Python servers on port 9090
     ssh "$REMOTE_HOST" "pkill -f 'python.*http.server.*9090' || true"
     
-    # Create Nginx configuration
-    echo "   Creating Nginx configuration..."
+    # Create Nginx configuration for both domains
+    echo "   Creating Nginx configuration for dual domains..."
     ssh "$REMOTE_HOST" "cat > /tmp/frt-dashboard.conf << 'EOF'
+# HTTP to HTTPS redirects
 server {
     listen 80;
-    server_name $DOMAIN $REMOTE_IP;
+    server_name $FRT_DOMAIN $SAT_DOMAIN $REMOTE_IP;
     
     # Redirect all HTTP traffic to HTTPS
     return 301 https://\$server_name\$request_uri;
 }
 
+# FRT15 Stage Domain - Fixed Ratio Trading
 server {
     listen 443 ssl http2;
-    server_name $DOMAIN $REMOTE_IP;
+    server_name $FRT_DOMAIN;
     
     # SSL Configuration
     ssl_certificate $REMOTE_SSL_DIR/fullchain.pem;
@@ -210,8 +216,8 @@ server {
     add_header X-XSS-Protection \"1; mode=block\" always;
     add_header Referrer-Policy \"strict-origin-when-cross-origin\" always;
     
-    # Document root
-    root $REMOTE_HTML_DIR;
+    # Document root for FRT
+    root $REMOTE_FRT_DIR;
     index index.html;
     
     # PHP handling
@@ -233,21 +239,87 @@ server {
         }
     }
     
-    # API proxy if needed (for future RPC calls)
-    location /api/ {
-        proxy_pass http://127.0.0.1:8899/;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+    # Health check endpoint
+    location /health {
+        access_log off;
+        return 200 \"FRT Stage healthy\\n\";
+        add_header Content-Type text/plain;
+    }
+}
+
+# Satoshi Stage Domain - tSAT Token Website
+server {
+    listen 443 ssl http2;
+    server_name $SAT_DOMAIN;
+    
+    # SSL Configuration
+    ssl_certificate $REMOTE_SSL_DIR/fullchain.pem;
+    ssl_certificate_key $REMOTE_SSL_DIR/private.key;
+    
+    # Modern SSL configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    
+    # Security headers
+    add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\" always;
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-XSS-Protection \"1; mode=block\" always;
+    add_header Referrer-Policy \"strict-origin-when-cross-origin\" always;
+    
+    # Document root for Satoshi
+    root $REMOTE_SAT_DIR;
+    index satoshi15.html;
+    
+    # Serve JSON files normally
+    location ~* \\.json$ {
+        try_files \$uri =404;
+        add_header Content-Type \"application/json\";
+        expires 5m;
+    }
+    
+    # Serve static assets (images, CSS, JS, etc.) normally
+    location ~* \\.(png|jpg|jpeg|gif|ico|svg|css|js|woff|woff2|ttf|eot)$ {
+        try_files \$uri =404;
+        expires 1y;
+        add_header Cache-Control \"public, immutable\";
+    }
+    
+    # Serve PHP files normally
+    location ~ \\.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+    
+    # For all other requests, serve satoshi15.html
+    location / {
+        try_files /satoshi15.html =404;
     }
     
     # Health check endpoint
     location /health {
         access_log off;
-        return 200 \"healthy\\n\";
+        return 200 \"Satoshi Stage healthy\\n\";
         add_header Content-Type text/plain;
     }
+}
+
+# Default server for IP access - redirect to FRT
+server {
+    listen 443 ssl http2 default_server;
+    server_name $REMOTE_IP;
+    
+    # SSL Configuration
+    ssl_certificate $REMOTE_SSL_DIR/fullchain.pem;
+    ssl_certificate_key $REMOTE_SSL_DIR/private.key;
+    
+    # Redirect IP access to FRT domain
+    return 301 https://$FRT_DOMAIN\$request_uri;
 }
 EOF"
     
@@ -276,18 +348,43 @@ check_server_status() {
     if ssh "$REMOTE_HOST" "pgrep nginx >/dev/null 2>&1"; then
         echo -e "${GREEN}✅ Nginx is running${NC}"
         
-        # Test HTTPS connection
-        if curl -k -s --connect-timeout 10 "https://$REMOTE_IP/health" | grep -q "healthy"; then
-            echo -e "${GREEN}✅ HTTPS server is responding${NC}"
-            echo -e "${GREEN}🌐 Dashboard URL: https://$DOMAIN${NC}"
-            echo -e "${GREEN}🔒 SSL Certificate: Valid (expires 03-05-2026)${NC}"
-            echo -e "${GREEN}🌐 Network: Solana Mainnet Beta${NC}"
-            echo -e "${GREEN}📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD${NC}"
-            return 0
+        # Test FRT domain
+        echo "   Testing FRT domain..."
+        if curl -k -s --connect-timeout 10 "https://$FRT_DOMAIN/health" | grep -q "FRT Stage healthy"; then
+            echo -e "${GREEN}✅ FRT Stage server is responding${NC}"
         else
-            echo -e "${YELLOW}⚠️ Nginx is running but HTTPS not responding properly${NC}"
-            return 1
+            echo -e "${YELLOW}⚠️ FRT Stage server not responding properly${NC}"
         fi
+        
+        # Test Satoshi domain
+        echo "   Testing Satoshi domain..."
+        if curl -k -s --connect-timeout 10 "https://$SAT_DOMAIN/health" | grep -q "Satoshi Stage healthy"; then
+            echo -e "${GREEN}✅ Satoshi Stage server is responding${NC}"
+        else
+            echo -e "${YELLOW}⚠️ Satoshi Stage server not responding properly${NC}"
+        fi
+        
+        # Test cron job status
+        echo "   Checking Satoshi price cron job..."
+        if ssh "$REMOTE_HOST" "crontab -l 2>/dev/null | grep -q 'fetch_btc_price.php'"; then
+            echo -e "${GREEN}✅ Price fetching cron job is configured${NC}"
+            
+            # Check if JSON file exists and is recent
+            if ssh "$REMOTE_HOST" "test -f $REMOTE_SAT_DIR/satoshi15.json && test \$(find $REMOTE_SAT_DIR/satoshi15.json -mmin -15 | wc -l) -gt 0"; then
+                echo -e "${GREEN}✅ Price data is recent (updated within 15 minutes)${NC}"
+            else
+                echo -e "${YELLOW}⚠️ Price data may be stale or missing${NC}"
+            fi
+        else
+            echo -e "${YELLOW}⚠️ Price fetching cron job not found${NC}"
+        fi
+        
+        echo -e "${GREEN}🌐 FRT Dashboard: https://$FRT_DOMAIN${NC}"
+        echo -e "${GREEN}🌐 Satoshi Website: https://$SAT_DOMAIN${NC}"
+        echo -e "${GREEN}🔒 SSL Certificate: Valid (expires 03-05-2026)${NC}"
+        echo -e "${GREEN}🌐 Network: Solana Mainnet Beta${NC}"
+        echo -e "${GREEN}📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD${NC}"
+        return 0
     else
         echo -e "${BLUE}ℹ️ Nginx is not running${NC}"
         return 1
@@ -325,16 +422,29 @@ sync_files() {
     echo -e "${YELLOW}📁 Syncing dashboard files to remote server...${NC}"
     
     # Create remote directories
-    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_BASE_DIR $REMOTE_HTML_DIR"
+    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_BASE_DIR $REMOTE_HTML_DIR $REMOTE_FRT_DIR $REMOTE_SAT_DIR"
     
-    # Sync HTML files
-    echo "   Syncing HTML files..."
+    # Sync FRT files
+    echo "   Syncing FRT dashboard files..."
     rsync -avz --delete \
         --exclude='*.log' \
         --exclude='*.tmp' \
         --exclude='.DS_Store' \
         --exclude='config.json' \
-        "$PROJECT_ROOT/html/" "$REMOTE_HOST:$REMOTE_HTML_DIR/"
+        "$PROJECT_ROOT/html/frt/" "$REMOTE_HOST:$REMOTE_FRT_DIR/"
+    
+    # Sync Satoshi files
+    echo "   Syncing Satoshi website files..."
+    rsync -avz --delete \
+        --exclude='*.log' \
+        --exclude='*.tmp' \
+        --exclude='.DS_Store' \
+        "$PROJECT_ROOT/html/sat/" "$REMOTE_HOST:$REMOTE_SAT_DIR/"
+    
+    # Set up PHP cache directories for FRT
+    echo "   Setting up PHP cache directories..."
+    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_FRT_DIR/cache/token-images $REMOTE_FRT_DIR/cache/token-metadata $REMOTE_FRT_DIR/cache/pool_data"
+    ssh "$REMOTE_HOST" "chmod -R 755 $REMOTE_FRT_DIR/cache"
     
     echo -e "${GREEN}✅ Files synced successfully${NC}"
 }
@@ -424,8 +534,8 @@ update_config() {
     ]"
     fi
 
-    # Create config for HTTPS deployment with Chainstack mainnet settings
-    ssh "$REMOTE_HOST" "cat > $REMOTE_HTML_DIR/config.json << 'EOF'
+    # Create config for FRT HTTPS deployment with Chainstack mainnet settings
+    ssh "$REMOTE_HOST" "cat > $REMOTE_FRT_DIR/config.json << 'EOF'
 {
   \"solana\": {
     \"rpcUrl\": \"$RPC_URL\",
@@ -485,6 +595,33 @@ EOF"
     echo "   📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD"
 }
 
+# Function to set up Satoshi price fetching cron job
+setup_satoshi_cron() {
+    echo -e "${YELLOW}⏰ Setting up Satoshi price fetching cron job...${NC}"
+    
+    # Update the PHP script to point to the correct JSON file location
+    ssh "$REMOTE_HOST" "sed -i 's|/var/www/html/sat/satoshi15.json|$REMOTE_SAT_DIR/satoshi15.json|g' $REMOTE_SAT_DIR/php/fetch_btc_price.php"
+    
+    # Check if cron job already exists
+    if ssh "$REMOTE_HOST" "crontab -l 2>/dev/null | grep -q 'fetch_btc_price.php'"; then
+        echo "   Updating existing cron job..."
+        ssh "$REMOTE_HOST" "crontab -l | sed 's|.*fetch_btc_price.php.*|*/10 * * * * /usr/bin/php $REMOTE_SAT_DIR/php/fetch_btc_price.php >> /var/log/btc_price_stage.log 2>\&1|' | crontab -"
+    else
+        echo "   Adding new cron job..."
+        ssh "$REMOTE_HOST" "(crontab -l 2>/dev/null; echo '*/10 * * * * /usr/bin/php $REMOTE_SAT_DIR/php/fetch_btc_price.php >> /var/log/btc_price_stage.log 2>&1') | crontab -"
+    fi
+    
+    # Test the PHP script
+    echo "   Testing price fetching script..."
+    if ssh "$REMOTE_HOST" "php $REMOTE_SAT_DIR/php/fetch_btc_price.php"; then
+        echo -e "${GREEN}✅ Price fetching script working correctly${NC}"
+    else
+        echo -e "${YELLOW}⚠️ Price fetching script test failed, but cron job is set up${NC}"
+    fi
+    
+    echo -e "${GREEN}✅ Satoshi price fetching cron job configured${NC}"
+}
+
 # Execute the requested action
 case $ACTION in
     "setup")
@@ -494,6 +631,7 @@ case $ACTION in
         sync_files
         update_config
         setup_nginx
+        setup_satoshi_cron
         start_nginx
         ;;
     "status")
@@ -510,18 +648,20 @@ case $ACTION in
         echo -e "${BLUE}🔄 Updating and deploying dashboard...${NC}"
         sync_files
         update_config
+        setup_satoshi_cron
         start_nginx
         ;;
 esac
 
 echo ""
 echo "============================================================"
-echo -e "${GREEN}🎉 MAINNET HTTPS DASHBOARD DEPLOYMENT COMPLETE!${NC}"
+echo -e "${GREEN}🎉 STAGE DEPLOYMENT COMPLETE - DUAL PRODUCTS!${NC}"
 echo "============================================================"
-echo -e "${BLUE}📊 Your Fixed Ratio Trading Dashboard is deployed:${NC}"
+echo -e "${BLUE}📊 Your Fixed Ratio Trading & Satoshi websites are deployed:${NC}"
 echo ""
-echo "  🔐 HTTPS URL: https://$DOMAIN"
-echo "  🌐 IP Access: https://$REMOTE_IP"
+echo "  🔐 FRT Dashboard: https://$FRT_DOMAIN"
+echo "  🔐 Satoshi Website: https://$SAT_DOMAIN"
+echo "  🌐 IP Access: https://$REMOTE_IP (redirects to FRT)"
 echo "  🖥️ Remote Host: $REMOTE_HOST"
 echo "  📁 Remote Directory: $REMOTE_BASE_DIR"
 echo "  🔌 Server Port: 443 (HTTPS)"
@@ -545,7 +685,9 @@ echo "  📅 Expires:       03-05-2026"
 echo ""
 echo -e "${GREEN}💡 The dashboard is now live with HTTPS encryption!${NC}"
 echo -e "${YELLOW}📝 Next Steps:${NC}"
-echo "  1. 🌐 Open https://$DOMAIN in your browser"
-echo "  2. 🔄 Run './scripts/deploy_https_dashboard.sh --update' when you make local changes"
-echo "  3. 📊 Monitor with './scripts/deploy_https_dashboard.sh --status'"
+echo "  1. 🌐 Open https://$FRT_DOMAIN for Fixed Ratio Trading"
+echo "  2. 🌐 Open https://$SAT_DOMAIN for Satoshi Token Website"
+echo "  3. 🔄 Run './scripts/deploy_to_stage_dashboard.sh --update' when you make local changes"
+echo "  4. 📊 Monitor with './scripts/deploy_to_stage_dashboard.sh --status'"
+echo "  5. ⏰ Satoshi prices update automatically every 10 minutes"
 echo ""
