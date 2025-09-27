@@ -39,7 +39,7 @@ function updatePriceFile($btcPrice) {
         'timestamp' => time() // Unix timestamp (always UTC)
     ];
     
-    $jsonFile = '/var/www/html/satoshi15.json';
+    $jsonFile = '/var/www/html/sat/satoshi15.json';
     $jsonData = json_encode($priceData, JSON_PRETTY_PRINT);
     
     if (file_put_contents($jsonFile, $jsonData)) {
