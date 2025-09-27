@@ -175,6 +175,92 @@
             color: #10b981 !important;
         }
 
+        /* Price Display */
+        .price-display {
+            margin-top: 40px;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+        }
+
+        body.dark-mode .price-display {
+            background: rgba(148, 163, 184, 0.1);
+            border-color: rgba(148, 163, 184, 0.2);
+        }
+
+        .price-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .price-item:last-of-type {
+            margin-bottom: 20px;
+        }
+
+        .price-label {
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        body.dark-mode .price-label {
+            color: #94a3b8;
+        }
+
+        .price-value {
+            color: #f7931a;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+
+        .price-updated {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        body.dark-mode .price-updated {
+            color: #64748b;
+        }
+
+        .dollar-excitement {
+            margin: 20px 0;
+            padding: 18px;
+            background: linear-gradient(135deg, #f7931a, #ff6b35);
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 6px 20px rgba(247, 147, 26, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .excitement-text {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .excitement-amount {
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
         .nav-links {
             display: flex;
             gap: 30px;
@@ -717,6 +803,34 @@
                 height: 12px;
             }
 
+            .price-display {
+                margin-top: 30px;
+                padding: 20px;
+                max-width: 350px;
+            }
+
+            .price-item {
+                font-size: 1rem;
+                margin-bottom: 12px;
+            }
+
+            .price-updated {
+                font-size: 0.8rem;
+            }
+
+            .dollar-excitement {
+                margin: 15px 0;
+                padding: 15px;
+            }
+
+            .excitement-text {
+                font-size: 1rem;
+            }
+
+            .excitement-amount {
+                font-size: 1.2rem;
+            }
+
             .cta-buttons {
                 flex-direction: column;
                 align-items: center;
@@ -742,11 +856,11 @@
         }
     </style>
 </head>
-<body>
+<body id="top">
     <header>
         <nav class="container">
             <div style="display: flex; align-items: center;">
-                <a href="#" class="logo">
+                <a href="#top" class="logo" onclick="scrollToTop(event)">
                     <img src="images/tSAT_TokenImages/tSatoshi_64x64.png" alt="tSAT Logo">
                     tSAT
                 </a>
@@ -786,6 +900,22 @@
             <div class="cta-buttons">
                 <a href="https://frt15.net/swap.html?pool=AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" class="btn btn-primary">Get Satoshi</a>
                 <a href="#proof-reserves" class="btn btn-secondary">View Proof‑of‑Reserves</a>
+            </div>
+            
+            <!-- Price Display -->
+            <div class="price-display" id="price-display">
+                <div class="price-item">
+                    <span class="price-label">BTC Price:</span>
+                    <span class="price-value" id="btc-price">Loading...</span>
+                </div>
+                <div class="price-item">
+                    <span class="price-label">tSAT Price:</span>
+                    <span class="price-value" id="tsat-price">Loading...</span>
+                </div>
+                <div class="dollar-excitement" id="dollar-excitement">
+                    <span class="excitement-text">$1 USD gets you <span class="excitement-amount" id="tsat-amount">Loading...</span> tSATs!</span>
+                </div>
+                <div class="price-updated" id="price-updated">Last updated: Loading...</div>
             </div>
         </div>
     </section>
@@ -1039,6 +1169,15 @@
         // Contract address (tSAT token)
         const CONTRACT_ADDRESS = 'tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu';
 
+        // Scroll to top functionality
+        function scrollToTop(event) {
+            event.preventDefault();
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
         // Copy contract address functionality
         function copyContractAddress() {
             navigator.clipboard.writeText(CONTRACT_ADDRESS).then(function() {
@@ -1076,6 +1215,116 @@
             }
         }
 
+        // Fetch and display prices
+        function loadPrices() {
+            console.log('Attempting to load prices from satoshi15.json...');
+            
+            // Try multiple possible paths for the JSON file
+            const possiblePaths = ['./satoshi15.json', 'satoshi15.json', '/satoshi15.json'];
+            
+            function tryPath(pathIndex) {
+                if (pathIndex >= possiblePaths.length) {
+                    console.error('All paths failed, using fallback data');
+                    loadFallbackPrices();
+                    return;
+                }
+                
+                const path = possiblePaths[pathIndex];
+                console.log('Trying path:', path);
+                
+                fetch(path)
+                    .then(response => {
+                        console.log('Response status:', response.status, 'for path:', path);
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Successfully loaded price data:', data);
+                        displayPrices(data);
+                    })
+                    .catch(error => {
+                        console.error(`Failed to load from ${path}:`, error);
+                        tryPath(pathIndex + 1);
+                    });
+            }
+            
+            tryPath(0);
+        }
+        
+        // Display prices from data
+        function displayPrices(data) {
+            // Update BTC price
+            const btcPrice = document.getElementById('btc-price');
+            btcPrice.textContent = '$' + Number(data.btc_price_usd).toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            });
+            
+            // Update tSAT price
+            const tsatPrice = document.getElementById('tsat-price');
+            tsatPrice.textContent = '$' + Number(data.tsat_price_usd).toFixed(8);
+            
+            // Calculate and display tSATs for $1
+            const tsatAmount = document.getElementById('tsat-amount');
+            const tsatsFor1Dollar = Math.floor(1 / Number(data.tsat_price_usd));
+            tsatAmount.textContent = tsatsFor1Dollar.toLocaleString('en-US');
+            
+            // Update last updated time
+            const lastUpdated = document.getElementById('price-updated');
+            let updateTime;
+            
+            // Try to parse the UTC timestamp and convert to local time
+            try {
+                if (data.last_updated_utc) {
+                    // Parse ISO 8601 UTC format (2025-09-27T05:20:42Z)
+                    updateTime = new Date(data.last_updated_utc);
+                } else if (data.last_updated) {
+                    // Fallback to old format
+                    updateTime = new Date(data.last_updated + ' UTC');
+                } else if (data.timestamp) {
+                    // Use Unix timestamp as final fallback
+                    updateTime = new Date(data.timestamp * 1000);
+                } else {
+                    throw new Error('No timestamp available');
+                }
+                
+                if (isNaN(updateTime.getTime())) {
+                    throw new Error('Invalid date');
+                }
+                
+                // Display in user's local timezone
+                lastUpdated.textContent = 'Last updated: ' + updateTime.toLocaleString();
+                
+            } catch (error) {
+                console.error('Date parsing error:', error);
+                lastUpdated.textContent = 'Last updated: Unknown';
+            }
+        }
+        
+        // Fallback prices if JSON file can't be loaded
+        function loadFallbackPrices() {
+            console.log('Using fallback price data');
+            const fallbackData = {
+                btc_price_usd: 109684,
+                tsat_price_usd: 0.00109684,
+                last_updated_utc: "2025-09-27T05:20:42Z",
+                timestamp: 1758950442
+            };
+            displayPrices(fallbackData);
+            
+            // Add a note that this is fallback data, but don't override the timestamp
+            setTimeout(() => {
+                const lastUpdated = document.getElementById('price-updated');
+                if (lastUpdated.textContent.includes('Last updated:')) {
+                    lastUpdated.textContent += ' (cached)';
+                } else {
+                    lastUpdated.textContent = 'Using cached prices - live data unavailable';
+                }
+            }, 100);
+        }
+
         // Load saved theme on page load
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('theme');
@@ -1087,6 +1336,12 @@
             } else {
                 themeIcon.textContent = '🌙';
             }
+
+            // Load prices on page load
+            loadPrices();
+            
+            // Refresh prices every 5 minutes (300000 ms)
+            setInterval(loadPrices, 300000);
 
             // Simple FAQ toggle functionality
             const faqQuestions = document.querySelectorAll('.faq-question');
