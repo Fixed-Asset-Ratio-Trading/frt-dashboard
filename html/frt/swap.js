@@ -18,6 +18,11 @@ let tokenPairRatio = null; // 🎯 CENTRALIZED: TokenPairRatio instance for all 
 // Removed: poolStatusCheckInterval - no more periodic monitoring
 // No slippage tolerance needed for fixed ratio trading
 
+// Multi-wallet support variables
+let currentWalletType = null; // 'phantom', 'solflare', 'backpack'
+let availableWallets = [];
+let walletDropdownVisible = false;
+
 /**
  * Initialize the swap page with library loading retry mechanism
  */
@@ -590,11 +595,261 @@ function formatTokenAmount(amount, decimals) {
 }
 
 /**
+ * Detect available wallets in the browser
+ */
+function detectAvailableWallets() {
+    const wallets = [];
+    
+    // Check for Phantom
+    if (window.solana && window.solana.isPhantom) {
+        console.log('🔍 Phantom detected:', {
+            isPhantom: window.solana.isPhantom,
+            publicKey: window.solana.publicKey?.toString() || 'Not connected',
+            isConnected: window.solana.isConnected
+        });
+        wallets.push({
+            type: 'phantom',
+            name: 'Phantom',
+            provider: window.solana,
+            detected: true
+        });
+    }
+    
+    // Check for Solflare
+    if (window.solflare && window.solflare.isSolflare) {
+        console.log('🔍 Solflare detected:', {
+            isSolflare: window.solflare.isSolflare,
+            publicKey: window.solflare.publicKey?.toString() || 'Not connected',
+            isConnected: window.solflare.isConnected
+        });
+        wallets.push({
+            type: 'solflare',
+            name: 'Solflare',
+            provider: window.solflare,
+            detected: true
+        });
+    }
+    
+    // Check for Backpack
+    if (window.backpack) {
+        console.log('🔍 Backpack detected:', {
+            publicKey: window.backpack.publicKey?.toString() || 'Not connected',
+            isConnected: window.backpack.isConnected
+        });
+        wallets.push({
+            type: 'backpack',
+            name: 'Backpack',
+            provider: window.backpack,
+            detected: true
+        });
+    }
+    
+    availableWallets = wallets;
+    updateWalletDropdownStatus();
+    
+    console.log('🔍 Detected wallets:', wallets.map(w => w.name).join(', ') || 'None');
+    return wallets;
+}
+
+/**
+ * Update wallet dropdown status indicators
+ */
+function updateWalletDropdownStatus() {
+    const walletTypes = ['phantom', 'solflare', 'backpack'];
+    
+    walletTypes.forEach(type => {
+        const statusElement = document.getElementById(`${type}-status`);
+        const optionElement = document.getElementById(`${type}-option`);
+        
+        if (statusElement && optionElement) {
+            const wallet = availableWallets.find(w => w.type === type);
+            
+            if (wallet && wallet.detected) {
+                statusElement.textContent = 'Detected';
+                statusElement.className = 'wallet-status detected';
+                optionElement.classList.remove('disabled');
+            } else {
+                statusElement.textContent = 'Not detected';
+                statusElement.className = 'wallet-status not-detected';
+                optionElement.classList.add('disabled');
+            }
+        }
+    });
+}
+
+/**
+ * Handle wallet button click - show dropdown or connect directly
+ */
+function handleWalletButtonClick() {
+    if (isConnected && wallet) {
+        // If connected, disconnect
+        disconnectWallet();
+        return;
+    }
+    
+    // Detect available wallets
+    const wallets = detectAvailableWallets();
+    
+    if (wallets.length === 0) {
+        showStatus('error', 'No supported wallets detected. Please install Phantom, Solflare, or Backpack wallet.');
+        return;
+    }
+    
+    if (wallets.length === 1) {
+        // Auto-connect to the only available wallet
+        connectSpecificWallet(wallets[0].type);
+    } else {
+        // Show dropdown for multiple wallets
+        toggleWalletDropdown();
+    }
+}
+
+/**
+ * Toggle wallet dropdown visibility
+ */
+function toggleWalletDropdown() {
+    const dropdown = document.getElementById('wallet-dropdown');
+    if (!dropdown) return;
+    
+    walletDropdownVisible = !walletDropdownVisible;
+    
+    if (walletDropdownVisible) {
+        dropdown.classList.add('show');
+        // Close dropdown when clicking outside
+        setTimeout(() => {
+            document.addEventListener('click', closeDropdownOnOutsideClick);
+        }, 100);
+    } else {
+        dropdown.classList.remove('show');
+        document.removeEventListener('click', closeDropdownOnOutsideClick);
+    }
+}
+
+/**
+ * Close dropdown when clicking outside
+ */
+function closeDropdownOnOutsideClick(event) {
+    const container = document.querySelector('.wallet-connect-container');
+    if (container && !container.contains(event.target)) {
+        const dropdown = document.getElementById('wallet-dropdown');
+        if (dropdown) {
+            dropdown.classList.remove('show');
+            walletDropdownVisible = false;
+            document.removeEventListener('click', closeDropdownOnOutsideClick);
+        }
+    }
+}
+
+/**
+ * Connect to a specific wallet type
+ */
+async function connectSpecificWallet(walletType) {
+    // Close dropdown
+    const dropdown = document.getElementById('wallet-dropdown');
+    if (dropdown) {
+        dropdown.classList.remove('show');
+        walletDropdownVisible = false;
+        document.removeEventListener('click', closeDropdownOnOutsideClick);
+    }
+    
+    const walletInfo = availableWallets.find(w => w.type === walletType);
+    if (!walletInfo || !walletInfo.detected) {
+        showStatus('error', `${walletType.charAt(0).toUpperCase() + walletType.slice(1)} wallet not detected. Please install it first.`);
+        return;
+    }
+    
+    try {
+        console.log(`🔗 Connecting to ${walletInfo.name} wallet...`);
+        showStatus('info', `Connecting to ${walletInfo.name}...`);
+        
+        currentWalletType = walletType;
+        
+        // Connect based on wallet type
+        switch (walletType) {
+            case 'phantom':
+                // Phantom might need specific connection options
+                try {
+                    await window.solana.connect({ onlyIfTrusted: false });
+                } catch (phantomError) {
+                    // Fallback to basic connect
+                    await window.solana.connect();
+                }
+                wallet = window.solana;
+                break;
+            case 'solflare':
+                await window.solflare.connect();
+                wallet = window.solflare;
+                break;
+            case 'backpack':
+                await window.backpack.connect();
+                wallet = window.backpack;
+                break;
+            default:
+                throw new Error(`Unsupported wallet type: ${walletType}`);
+        }
+        
+        // Some wallets need a moment for publicKey to be available
+        let attempts = 0;
+        while ((!wallet || !wallet.publicKey) && attempts < 10) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        if (!wallet || !wallet.publicKey) {
+            throw new Error(`${walletInfo.name} connection failed - publicKey not available`);
+        }
+        
+        await handleWalletConnected();
+        
+        // Clear wallet detection interval since we're now connected
+        if (window.walletDetectionInterval) {
+            clearInterval(window.walletDetectionInterval);
+            window.walletDetectionInterval = null;
+        }
+        
+        // Save connection state to localStorage
+        localStorage.setItem('wallet_connected', 'true');
+        localStorage.setItem('wallet_type', walletType);
+        
+    } catch (error) {
+        console.error(`❌ Error connecting to ${walletInfo.name}:`, error);
+        
+        // Reset wallet state on error
+        wallet = null;
+        currentWalletType = null;
+        isConnected = false;
+        
+        // Provide more specific error messages
+        let errorMessage = error.message;
+        if (walletType === 'phantom' && error.message.includes('Unexpected error')) {
+            errorMessage = 'Phantom wallet connection failed. Please make sure Phantom is unlocked and try again.';
+        } else if (walletType === 'solflare' && error.message.includes('publicKey not available')) {
+            errorMessage = 'Solflare wallet connection failed. Please unlock your wallet and try again.';
+        }
+        
+        showStatus('error', `Failed to connect to ${walletInfo.name}: ${errorMessage}`);
+    }
+}
+
+/**
  * Show wallet connection UI and update wallet button
  */
 function showWalletConnection() {
+    // Detect available wallets and update dropdown
+    detectAvailableWallets();
+    
     // Update the main wallet connect button
     updateWalletButton();
+    
+    // Set up periodic wallet detection (in case wallets are installed after page load)
+    if (!window.walletDetectionInterval) {
+        window.walletDetectionInterval = setInterval(() => {
+            if (!isConnected) {
+                detectAvailableWallets();
+            }
+        }, 5000); // Check every 5 seconds when not connected
+    }
+    
     console.log('🔄 Wallet connection status updated');
 }
 
@@ -608,7 +863,11 @@ function updateWalletButton() {
     if (walletBtn && walletBtnText) {
         if (isConnected && wallet) {
             walletBtn.className = 'wallet-btn connected';
-            walletBtnText.textContent = `🔓 ${wallet.publicKey.toString().slice(0, 4)}...${wallet.publicKey.toString().slice(-4)}`;
+            const walletName = currentWalletType ? 
+                currentWalletType.charAt(0).toUpperCase() + currentWalletType.slice(1) : 
+                'Wallet';
+            const address = wallet.publicKey.toString();
+            walletBtnText.textContent = `🔓 ${walletName} ${address.slice(0, 4)}...${address.slice(-4)}`;
         } else {
             walletBtn.className = 'wallet-btn disconnected';
             walletBtnText.textContent = '🔗 Connect Wallet';
@@ -623,19 +882,51 @@ async function checkWalletPersistence() {
     try {
         // Check if wallet was previously connected
         const wasConnected = localStorage.getItem('wallet_connected') === 'true';
+        const walletType = localStorage.getItem('wallet_type');
         
-        if (wasConnected && window.backpack) {
-            console.log('🔄 Attempting to restore previous wallet connection...');
+        if (wasConnected && walletType) {
+            console.log(`🔄 Attempting to restore previous ${walletType} wallet connection...`);
             
             try {
-                // Try to connect to Backpack (this will work if user previously authorized)
-                await window.backpack.connect();
-                console.log('✅ Wallet connection restored successfully');
-                await handleWalletConnected();
+                let walletProvider = null;
+                
+                // Get the appropriate wallet provider
+                switch (walletType) {
+                    case 'phantom':
+                        if (window.solana && window.solana.isPhantom) {
+                            walletProvider = window.solana;
+                        }
+                        break;
+                    case 'solflare':
+                        if (window.solflare && window.solflare.isSolflare) {
+                            walletProvider = window.solflare;
+                        }
+                        break;
+                    case 'backpack':
+                        if (window.backpack) {
+                            walletProvider = window.backpack;
+                        }
+                        break;
+                }
+                
+                if (walletProvider) {
+                    // Try to connect (this will work if user previously authorized)
+                    await walletProvider.connect();
+                    wallet = walletProvider;
+                    currentWalletType = walletType;
+                    console.log(`✅ ${walletType} wallet connection restored successfully`);
+                    await handleWalletConnected();
+                } else {
+                    console.log(`⚠️ ${walletType} wallet not available, clearing persistence`);
+                    localStorage.removeItem('wallet_connected');
+                    localStorage.removeItem('wallet_type');
+                    updateWalletButton();
+                }
             } catch (connectError) {
                 // Connection failed - user likely disconnected or rejected
-                console.log('⚠️ Could not restore wallet connection:', connectError.message);
+                console.log(`⚠️ Could not restore ${walletType} wallet connection:`, connectError.message);
                 localStorage.removeItem('wallet_connected');
+                localStorage.removeItem('wallet_type');
                 
                 // Update UI to show disconnected state
                 updateWalletButton();
@@ -647,63 +938,67 @@ async function checkWalletPersistence() {
         console.warn('⚠️ Error checking wallet persistence:', error);
         // Clear state if there's an error
         localStorage.removeItem('wallet_connected');
+        localStorage.removeItem('wallet_type');
         updateWalletButton();
     }
 }
 
-/**
- * Toggle wallet connection (connect if disconnected, disconnect if connected)
- */
-async function toggleWalletConnection() {
-    if (isConnected && wallet) {
-        await disconnectWallet();
-    } else {
-        await connectWallet();
-    }
-}
-
-/**
- * Connect wallet
- */
-async function connectWallet() {
-    try {
-        console.log('🔗 Connecting to Backpack wallet...');
-        showStatus('info', 'Connecting to wallet...');
-        
-        await window.backpack.connect();
-        await handleWalletConnected();
-        
-        // Save connection state to localStorage
-        localStorage.setItem('wallet_connected', 'true');
-        
-    } catch (error) {
-        console.error('❌ Error connecting wallet:', error);
-        showStatus('error', 'Failed to connect wallet: ' + error.message);
-    }
-}
 
 /**
  * Disconnect wallet
  */
 async function disconnectWallet() {
     try {
-        console.log('🔗 Disconnecting wallet...');
+        console.log(`🔗 Disconnecting ${currentWalletType || 'wallet'}...`);
         showStatus('info', 'Disconnecting wallet...');
         
-        if (window.backpack && window.backpack.disconnect) {
-            await window.backpack.disconnect();
+        // Disconnect based on current wallet type
+        if (currentWalletType && wallet) {
+            try {
+                switch (currentWalletType) {
+                    case 'phantom':
+                        if (wallet.disconnect) {
+                            await wallet.disconnect();
+                        }
+                        break;
+                    case 'solflare':
+                        if (wallet.disconnect) {
+                            await wallet.disconnect();
+                        }
+                        break;
+                    case 'backpack':
+                        if (wallet.disconnect) {
+                            await wallet.disconnect();
+                        }
+                        break;
+                }
+            } catch (disconnectError) {
+                console.warn('⚠️ Wallet disconnect method failed:', disconnectError.message);
+                // Continue with cleanup even if disconnect fails
+            }
         }
         
         // Reset wallet state
         wallet = null;
         isConnected = false;
         userTokens = [];
+        currentWalletType = null;
         
         // Clear connection state from localStorage
         localStorage.removeItem('wallet_connected');
+        localStorage.removeItem('wallet_type');
         
         // Update wallet button to show disconnected state
         updateWalletButton();
+        
+        // Restart wallet detection interval
+        if (!window.walletDetectionInterval) {
+            window.walletDetectionInterval = setInterval(() => {
+                if (!isConnected) {
+                    detectAvailableWallets();
+                }
+            }, 5000);
+        }
         
         // Reset swap interface to show connect button
         const swapBtn = document.getElementById('swap-btn');
@@ -791,10 +1086,14 @@ async function initializeSolanaConnection() {
  */
 async function handleWalletConnected() {
     try {
-        wallet = window.backpack;
+        // wallet should already be set by connectSpecificWallet function
+        if (!wallet || !wallet.publicKey) {
+            throw new Error('Wallet or publicKey is not available');
+        }
+        
         isConnected = true;
         
-        console.log('✅ Wallet connected:', wallet.publicKey.toString());
+        console.log(`✅ ${currentWalletType || 'Wallet'} connected:`, wallet.publicKey.toString());
         
         // Initialize Solana connection for wallet operations
         await initializeSolanaConnection();
@@ -830,7 +1129,10 @@ async function handleWalletConnected() {
         // Update wallet button to show connected state
         updateWalletButton();
         
-        showStatus('success', `Wallet connected: ${wallet.publicKey.toString().slice(0, 8)}...`);
+        const walletName = currentWalletType ? 
+            currentWalletType.charAt(0).toUpperCase() + currentWalletType.slice(1) : 
+            'Wallet';
+        showStatus('success', `${walletName} connected: ${wallet.publicKey.toString().slice(0, 8)}...`);
         
     } catch (error) {
         console.error('❌ Error handling wallet connection:', error);
@@ -1328,7 +1630,7 @@ function initializeSwapInterfaceWithoutWallet() {
     // Add click handler to connect wallet when button is clicked
     swapBtn.onclick = () => {
         if (!isConnected) {
-            connectWallet();
+            handleWalletButtonClick();
         } else {
             executeSwap();
         }
@@ -1646,7 +1948,7 @@ function calculateSwapOutputEnhanced() {
     if (!isConnected) {
         swapBtn.disabled = false;
         swapBtn.textContent = '🔗 Connect Wallet to Swap';
-        swapBtn.onclick = () => connectWallet();
+        swapBtn.onclick = () => handleWalletButtonClick();
     } else if (hasDustIssue) {
         swapBtn.disabled = true;
         swapBtn.textContent = '⚠️ Amount Creates Dust (Not Allowed)';
@@ -2436,7 +2738,7 @@ function calculateSwapInputFromOutput() {
     if (!isConnected) {
         swapBtn.disabled = false;
         swapBtn.textContent = '🔗 Connect Wallet to Swap';
-        swapBtn.onclick = () => connectWallet();
+        swapBtn.onclick = () => handleWalletButtonClick();
     } else if (hasDustIssue) {
         swapBtn.disabled = true;
         swapBtn.textContent = '⚠️ Amount Creates Dust (Not Allowed)';
@@ -2638,7 +2940,8 @@ window.selectToToken = selectToToken;
 window.setMaxAmount = setMaxAmount;
 // Slippage functions removed
 window.togglePoolStateDetails = togglePoolStateDetails;
-window.connectWallet = connectWallet;
+window.handleWalletButtonClick = handleWalletButtonClick;
+window.connectSpecificWallet = connectSpecificWallet;
 window.refreshPoolStatus = refreshPoolStatus;
 
 /**

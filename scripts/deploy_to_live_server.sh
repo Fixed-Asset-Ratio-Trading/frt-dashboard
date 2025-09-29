@@ -63,16 +63,20 @@ NC='\033[0m' # No Color
 
 # Configuration
 REMOTE_HOST="root@frt15.net"
-DOMAIN="frt15.net"
+FRT_DOMAIN="frt15.net"
+SAT_DOMAIN="satoshi15.com"
 REMOTE_BASE_DIR="/var/www"
 REMOTE_HTML_DIR="$REMOTE_BASE_DIR/html"
+REMOTE_FRT_DIR="$REMOTE_HTML_DIR/frt"
+REMOTE_SAT_DIR="$REMOTE_HTML_DIR/sat"
 NGINX_SITE_NAME="default"
 
-echo "🚀 Fixed Ratio Trading Dashboard - Live Server Deployment (Mainnet)"
+echo "🚀 Fixed Ratio Trading & Satoshi Dashboard - Live Server Deployment"
 echo "=================================================================="
 echo "📂 Local Project Root: $PROJECT_ROOT"
 echo "🌐 Remote Host: $REMOTE_HOST"
-echo "🔐 Domain: https://$DOMAIN"
+echo "🔐 FRT Domain: https://$FRT_DOMAIN"
+echo "🔐 Satoshi Domain: https://$SAT_DOMAIN"
 echo "📁 Remote Directory: $REMOTE_BASE_DIR"
 echo "🌐 Network: Solana Mainnet Beta"
 echo "📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD"
@@ -107,37 +111,61 @@ echo -e "${GREEN}✅ SSH connection successful${NC}"
 setup_php_cache() {
     echo -e "${YELLOW}📁 Setting up PHP cache directories...${NC}"
     
-    # Create all required cache directories
-    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_HTML_DIR/cache/token-images"
-    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_HTML_DIR/cache/token-metadata"
-    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_HTML_DIR/cache/pool_data"
+    # Create all required cache directories for FRT
+    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_FRT_DIR/cache/token-images"
+    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_FRT_DIR/cache/token-metadata"
+    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_FRT_DIR/cache/pool_data"
     
-    # Set proper ownership and permissions
-    ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_HTML_DIR/cache"
-    ssh "$REMOTE_HOST" "chmod -R 755 $REMOTE_HTML_DIR/cache"
+    # Set proper ownership and permissions for FRT cache
+    ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_FRT_DIR/cache"
+    ssh "$REMOTE_HOST" "chmod -R 755 $REMOTE_FRT_DIR/cache"
     
-    # Ensure PHP can write to cache directories
-    ssh "$REMOTE_HOST" "chmod -R 775 $REMOTE_HTML_DIR/cache/token-images"
-    ssh "$REMOTE_HOST" "chmod -R 775 $REMOTE_HTML_DIR/cache/token-metadata"
-    ssh "$REMOTE_HOST" "chmod -R 775 $REMOTE_HTML_DIR/cache/pool_data"
+    # Ensure PHP can write to FRT cache directories
+    ssh "$REMOTE_HOST" "chmod -R 775 $REMOTE_FRT_DIR/cache/token-images"
+    ssh "$REMOTE_HOST" "chmod -R 775 $REMOTE_FRT_DIR/cache/token-metadata"
+    ssh "$REMOTE_HOST" "chmod -R 775 $REMOTE_FRT_DIR/cache/pool_data"
     
     echo -e "${GREEN}✅ PHP cache directories configured${NC}"
+}
+
+# Function to set up Satoshi price fetching cron job
+setup_satoshi_cron() {
+    echo -e "${YELLOW}⏰ Setting up Satoshi price fetching cron job...${NC}"
+    
+    # Check if cron job already exists
+    if ssh "$REMOTE_HOST" "crontab -l 2>/dev/null | grep -q 'fetch_btc_price.php'"; then
+        echo "   Updating existing cron job..."
+        ssh "$REMOTE_HOST" "crontab -l | sed 's|.*fetch_btc_price.php.*|*/10 * * * * /usr/bin/php $REMOTE_SAT_DIR/php/fetch_btc_price.php >> /var/log/btc_price.log 2>\&1|' | crontab -"
+    else
+        echo "   Adding new cron job..."
+        ssh "$REMOTE_HOST" "(crontab -l 2>/dev/null; echo '*/10 * * * * /usr/bin/php $REMOTE_SAT_DIR/php/fetch_btc_price.php >> /var/log/btc_price.log 2>&1') | crontab -"
+    fi
+    
+    # Test the PHP script
+    echo "   Testing price fetching script..."
+    if ssh "$REMOTE_HOST" "php $REMOTE_SAT_DIR/php/fetch_btc_price.php"; then
+        echo -e "${GREEN}✅ Price fetching script working correctly${NC}"
+    else
+        echo -e "${YELLOW}⚠️ Price fetching script test failed, but cron job is set up${NC}"
+    fi
+    
+    echo -e "${GREEN}✅ Satoshi price fetching cron job configured${NC}"
 }
 
 # Function to sync cache metadata overrides
 sync_cache_metadata() {
     echo -e "${YELLOW}📁 Syncing cache metadata overrides...${NC}"
     
-    # Check if token-metadata cache directory exists locally
-    if [ -d "$PROJECT_ROOT/html/cache/token-metadata" ]; then
+    # Check if FRT token-metadata cache directory exists locally
+    if [ -d "$PROJECT_ROOT/html/frt/cache/token-metadata" ]; then
         echo "   Syncing token metadata overrides..."
         rsync -avz \
-            "$PROJECT_ROOT/html/cache/token-metadata/" \
-            "$REMOTE_HOST:$REMOTE_HTML_DIR/cache/token-metadata/"
+            "$PROJECT_ROOT/html/frt/cache/token-metadata/" \
+            "$REMOTE_HOST:$REMOTE_FRT_DIR/cache/token-metadata/"
         
         # Set proper permissions for metadata files
-        ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_HTML_DIR/cache/token-metadata"
-        ssh "$REMOTE_HOST" "chmod -R 644 $REMOTE_HTML_DIR/cache/token-metadata/*"
+        ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_FRT_DIR/cache/token-metadata"
+        ssh "$REMOTE_HOST" "chmod -R 644 $REMOTE_FRT_DIR/cache/token-metadata/*"
         
         echo -e "${GREEN}✅ Token metadata overrides synced${NC}"
     else
@@ -145,15 +173,15 @@ sync_cache_metadata() {
     fi
     
     # Check if token-image-overrides.txt exists and sync it
-    if [ -f "$PROJECT_ROOT/html/token-image-overrides.txt" ]; then
+    if [ -f "$PROJECT_ROOT/html/frt/token-image-overrides.txt" ]; then
         echo "   Syncing token image overrides file..."
         rsync -avz \
-            "$PROJECT_ROOT/html/token-image-overrides.txt" \
-            "$REMOTE_HOST:$REMOTE_HTML_DIR/"
+            "$PROJECT_ROOT/html/frt/token-image-overrides.txt" \
+            "$REMOTE_HOST:$REMOTE_FRT_DIR/"
         
         # Set proper permissions
-        ssh "$REMOTE_HOST" "chown www-data:www-data $REMOTE_HTML_DIR/token-image-overrides.txt"
-        ssh "$REMOTE_HOST" "chmod 644 $REMOTE_HTML_DIR/token-image-overrides.txt"
+        ssh "$REMOTE_HOST" "chown www-data:www-data $REMOTE_FRT_DIR/token-image-overrides.txt"
+        ssh "$REMOTE_HOST" "chmod 644 $REMOTE_FRT_DIR/token-image-overrides.txt"
         
         echo -e "${GREEN}✅ Token image overrides file synced${NC}"
     else
@@ -176,26 +204,28 @@ check_server_status() {
             echo -e "${RED}❌ PHP-FPM is not running${NC}"
         fi
         
-        # Test HTTPS connection
-        if curl -k -s --connect-timeout 10 "https://$DOMAIN/" | grep -q "Welcome\|Dashboard\|Fixed Ratio"; then
-            echo -e "${GREEN}✅ HTTPS server is responding${NC}"
-            echo -e "${GREEN}🌐 Dashboard URL: https://$DOMAIN${NC}"
-            echo -e "${GREEN}🔒 SSL Certificate: Let's Encrypt (auto-renewed)${NC}"
-            echo -e "${GREEN}🌐 Network: Solana Mainnet Beta${NC}"
-            echo -e "${GREEN}📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD${NC}"
-            
-            # Test token-image.php
-            if curl -k -s --connect-timeout 10 "https://$DOMAIN/token-image.php?mint=So11111111111111111111111111111111111111112" | file - | grep -q "image"; then
-                echo -e "${GREEN}✅ Token image service is working${NC}"
-            else
-                echo -e "${YELLOW}⚠️ Token image service may not be working properly${NC}"
-            fi
-            
-            return 0
+        # Test HTTPS connections for both domains
+        echo "   Testing FRT domain..."
+        if curl -k -s --connect-timeout 10 "https://$FRT_DOMAIN/" | grep -q "Welcome\|Dashboard\|Fixed Ratio"; then
+            echo -e "${GREEN}✅ FRT HTTPS server is responding${NC}"
         else
-            echo -e "${YELLOW}⚠️ Nginx is running but HTTPS not responding properly${NC}"
-            return 1
+            echo -e "${YELLOW}⚠️ FRT HTTPS server not responding properly${NC}"
         fi
+        
+        echo "   Testing Satoshi domain..."
+        if curl -k -s --connect-timeout 10 "https://$SAT_DOMAIN/" | grep -q "Satoshi\|Measure in sats"; then
+            echo -e "${GREEN}✅ Satoshi HTTPS server is responding${NC}"
+        else
+            echo -e "${YELLOW}⚠️ Satoshi HTTPS server not responding properly${NC}"
+        fi
+        
+        echo -e "${GREEN}🌐 FRT Dashboard: https://$FRT_DOMAIN${NC}"
+        echo -e "${GREEN}🌐 Satoshi Website: https://$SAT_DOMAIN${NC}"
+        echo -e "${GREEN}🔒 SSL Certificate: Let's Encrypt (auto-renewed)${NC}"
+        echo -e "${GREEN}🌐 Network: Solana Mainnet Beta${NC}"
+        echo -e "${GREEN}📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD${NC}"
+        
+        return 0
     else
         echo -e "${RED}❌ Nginx is not running${NC}"
         return 1
@@ -229,8 +259,8 @@ stop_services() {
 sync_files() {
     echo -e "${YELLOW}📁 Syncing dashboard files to remote server...${NC}"
     
-    # Sync HTML files
-    echo "   Syncing HTML files..."
+    # Sync FRT files
+    echo "   Syncing FRT dashboard files..."
     rsync -avz --delete \
         --exclude='*.log' \
         --exclude='*.tmp' \
@@ -238,15 +268,27 @@ sync_files() {
         --exclude='cache/token-images/' \
         --exclude='cache/pool_data/' \
         --exclude='config.json' \
-        "$PROJECT_ROOT/html/" "$REMOTE_HOST:$REMOTE_HTML_DIR/"
+        "$PROJECT_ROOT/html/frt/" "$REMOTE_HOST:$REMOTE_FRT_DIR/"
     
-    # Set proper permissions
-    ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_HTML_DIR"
-    ssh "$REMOTE_HOST" "find $REMOTE_HTML_DIR -type d -exec chmod 755 {} \;"
-    ssh "$REMOTE_HOST" "find $REMOTE_HTML_DIR -type f -exec chmod 644 {} \;"
+    # Sync Satoshi files
+    echo "   Syncing Satoshi website files..."
+    rsync -avz --delete \
+        --exclude='*.log' \
+        --exclude='*.tmp' \
+        --exclude='.DS_Store' \
+        "$PROJECT_ROOT/html/sat/" "$REMOTE_HOST:$REMOTE_SAT_DIR/"
     
-    # Make PHP files executable
-    ssh "$REMOTE_HOST" "chmod 755 $REMOTE_HTML_DIR/*.php"
+    # Set proper permissions for FRT
+    ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_FRT_DIR"
+    ssh "$REMOTE_HOST" "find $REMOTE_FRT_DIR -type d -exec chmod 755 {} \;"
+    ssh "$REMOTE_HOST" "find $REMOTE_FRT_DIR -type f -exec chmod 644 {} \;"
+    ssh "$REMOTE_HOST" "find $REMOTE_FRT_DIR -name '*.php' -exec chmod 755 {} \;"
+    
+    # Set proper permissions for Satoshi
+    ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_SAT_DIR"
+    ssh "$REMOTE_HOST" "find $REMOTE_SAT_DIR -type d -exec chmod 755 {} \;"
+    ssh "$REMOTE_HOST" "find $REMOTE_SAT_DIR -type f -exec chmod 644 {} \;"
+    ssh "$REMOTE_HOST" "find $REMOTE_SAT_DIR -name '*.php' -exec chmod 755 {} \;"
     
     echo -e "${GREEN}✅ Files synced successfully${NC}"
 }
@@ -365,7 +407,7 @@ test_php_services() {
     
     # Test token-image.php with SOL token (well-known token)
     echo "   Testing token-image.php with SOL token..."
-    if curl -k -s --connect-timeout 10 "https://$DOMAIN/token-image.php?mint=So11111111111111111111111111111111111111112" | file - | grep -q "image"; then
+    if curl -k -s --connect-timeout 10 "https://$FRT_DOMAIN/token-image.php?mint=So11111111111111111111111111111111111111112" | file - | grep -q "image"; then
         echo -e "${GREEN}✅ Token image service is working${NC}"
     else
         echo -e "${YELLOW}⚠️ Token image service test inconclusive${NC}"
@@ -373,30 +415,30 @@ test_php_services() {
     
     # Test pool-data.php with a known pool address (if available)
     echo "   Testing pool-data.php..."
-    POOL_TEST_RESPONSE=$(curl -k -s --connect-timeout 10 "https://$DOMAIN/pool-data.php?poolAddress=test" 2>/dev/null)
+    POOL_TEST_RESPONSE=$(curl -k -s --connect-timeout 10 "https://$FRT_DOMAIN/pool-data.php?poolAddress=test" 2>/dev/null)
     if echo "$POOL_TEST_RESPONSE" | grep -q "error.*Invalid pool address format"; then
         echo -e "${GREEN}✅ Pool data service is responding correctly${NC}"
     else
         echo -e "${YELLOW}⚠️ Pool data service test inconclusive${NC}"
     fi
     
-    # Check all cache directories
+    # Check all FRT cache directories
     echo "   Checking cache directories..."
-    if ssh "$REMOTE_HOST" "test -d $REMOTE_HTML_DIR/cache/token-images && test -w $REMOTE_HTML_DIR/cache/token-images"; then
+    if ssh "$REMOTE_HOST" "test -d $REMOTE_FRT_DIR/cache/token-images && test -w $REMOTE_FRT_DIR/cache/token-images"; then
         echo -e "${GREEN}✅ Token images cache directory is writable${NC}"
     else
         echo -e "${RED}❌ Token images cache directory issues detected${NC}"
         setup_php_cache
     fi
     
-    if ssh "$REMOTE_HOST" "test -d $REMOTE_HTML_DIR/cache/token-metadata && test -w $REMOTE_HTML_DIR/cache/token-metadata"; then
+    if ssh "$REMOTE_HOST" "test -d $REMOTE_FRT_DIR/cache/token-metadata && test -w $REMOTE_FRT_DIR/cache/token-metadata"; then
         echo -e "${GREEN}✅ Token metadata cache directory is writable${NC}"
     else
         echo -e "${RED}❌ Token metadata cache directory issues detected${NC}"
         setup_php_cache
     fi
     
-    if ssh "$REMOTE_HOST" "test -d $REMOTE_HTML_DIR/cache/pool_data && test -w $REMOTE_HTML_DIR/cache/pool_data"; then
+    if ssh "$REMOTE_HOST" "test -d $REMOTE_FRT_DIR/cache/pool_data && test -w $REMOTE_FRT_DIR/cache/pool_data"; then
         echo -e "${GREEN}✅ Pool data cache directory is writable${NC}"
     else
         echo -e "${RED}❌ Pool data cache directory issues detected${NC}"
@@ -412,6 +454,7 @@ case $ACTION in
         setup_php_cache
         sync_cache_metadata
         update_config
+        setup_satoshi_cron
         restart_services
         test_php_services
         ;;
@@ -431,6 +474,7 @@ case $ACTION in
         setup_php_cache
         sync_cache_metadata
         update_config
+        setup_satoshi_cron
         restart_services
         test_php_services
         ;;
@@ -440,14 +484,15 @@ echo ""
 echo "=================================================================="
 echo -e "${GREEN}🎉 LIVE SERVER DEPLOYMENT COMPLETE!${NC}"
 echo "=================================================================="
-echo -e "${BLUE}📊 Your Fixed Ratio Trading Dashboard is live:${NC}"
+echo -e "${BLUE}📊 Your Fixed Ratio Trading & Satoshi websites are live:${NC}"
 echo ""
-echo "  🔐 HTTPS URL: https://$DOMAIN"
+echo "  🔐 FRT Dashboard: https://$FRT_DOMAIN"
+echo "  🔐 Satoshi Website: https://$SAT_DOMAIN"
 echo "  🖥️ Remote Host: $REMOTE_HOST"
 echo "  📁 Remote Directory: $REMOTE_BASE_DIR"
 echo "  🔌 Server Port: 443 (HTTPS)"
-echo "  🖼️ Token Images: https://$DOMAIN/token-image.php"
-echo "  📊 Pool Data: https://$DOMAIN/pool-data.php"
+echo "  🖼️ Token Images: https://$FRT_DOMAIN/token-image.php"
+echo "  📊 Pool Data: https://$FRT_DOMAIN/pool-data.php"
 echo ""
 echo -e "${BLUE}🌐 Solana Network Configuration:${NC}"
 echo "  🔗 Network: Mainnet Beta"
@@ -467,11 +512,13 @@ echo "  📅 Auto-Renewal: Every 90 days"
 echo ""
 echo -e "${GREEN}💡 The dashboard is now live with HTTPS encryption!${NC}"
 echo -e "${YELLOW}📝 Next Steps:${NC}"
-echo "  1. 🌐 Open https://$DOMAIN in your browser"
-echo "  2. 🔄 Run './scripts/deploy_to_live_server.sh --update' when you make local changes"
-echo "  3. 📊 Monitor with './scripts/deploy_to_live_server.sh --status'"
-echo "  4. 🖼️ Test token images at https://$DOMAIN/token-image.php?mint=So11111111111111111111111111111111111111112"
-echo "  5. 📊 Test pool data at https://$DOMAIN/pool-data.php?poolAddress=<pool_address>"
+echo "  1. 🌐 Open https://$FRT_DOMAIN for Fixed Ratio Trading"
+echo "  2. 🌐 Open https://$SAT_DOMAIN for Satoshi Token Website"  
+echo "  3. 🔄 Run './scripts/deploy_to_live_server.sh --update' when you make local changes"
+echo "  4. 📊 Monitor with './scripts/deploy_to_live_server.sh --status'"
+echo "  5. 🖼️ Test token images at https://$FRT_DOMAIN/token-image.php?mint=So11111111111111111111111111111111111111112"
+echo "  6. 📊 Test pool data at https://$FRT_DOMAIN/pool-data.php?poolAddress=<pool_address>"
+echo "  7. ⏰ Satoshi prices update automatically every 10 minutes"
 echo ""
 echo -e "${YELLOW}🔐 Chainstack Credentials:${NC}"
 echo "  Credentials are automatically preserved from existing config.json during deployment."

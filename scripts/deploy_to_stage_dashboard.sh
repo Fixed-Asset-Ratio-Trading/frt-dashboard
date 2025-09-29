@@ -444,6 +444,7 @@ sync_files() {
     # Set up PHP cache directories for FRT
     echo "   Setting up PHP cache directories..."
     ssh "$REMOTE_HOST" "mkdir -p $REMOTE_FRT_DIR/cache/token-images $REMOTE_FRT_DIR/cache/token-metadata $REMOTE_FRT_DIR/cache/pool_data"
+    ssh "$REMOTE_HOST" "sudo chown -R www-data:www-data $REMOTE_FRT_DIR/cache"
     ssh "$REMOTE_HOST" "chmod -R 755 $REMOTE_FRT_DIR/cache"
     
     echo -e "${GREEN}✅ Files synced successfully${NC}"
