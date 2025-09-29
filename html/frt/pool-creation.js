@@ -586,7 +586,18 @@ function updateTokensDisplay() {
     const tokensGrid = document.createElement('div');
     tokensGrid.className = 'tokens-grid';
     
+    // ============================================================================
+    // TOKEN CARDS CREATION SECTION
+    // ============================================================================
+    // This section creates the visual token cards displayed in the tokens grid
+    // Each card shows: Symbol, Balance, Name, Mint Address, and Debug Button
+    // Layout: SYMBOL                                            BALANCE
+    //         Token Name
+    //         mint...address                           [🔍 Debug Token]
+    // ============================================================================
+    
     tokensToShow.forEach((token, index) => {
+        // ========== TOKEN CARD CONTAINER ==========
         const tokenCard = document.createElement('div');
         tokenCard.className = 'token-card';
         tokenCard.onclick = () => selectToken(token);
@@ -602,19 +613,23 @@ function updateTokensDisplay() {
         // 🛡️ SECURITY FIX: Use safe DOM manipulation for token cards
         tokenCard.innerHTML = ''; // Clear existing content
         
+        // ========== TOKEN IMAGE ==========
         const imageDiv = document.createElement('div');
         imageDiv.className = 'token-image';
         imageDiv.innerHTML = createTokenImageHTML(token.mint, token.symbol); // Safe - controlled content
         tokenCard.appendChild(imageDiv);
         
+        // ========== TOKEN HEADER (Symbol + Balance) ==========
         const headerDiv = document.createElement('div');
         headerDiv.className = 'token-header';
         
+        // Token Symbol (left side)
         const symbolDiv = document.createElement('div');
         symbolDiv.className = 'token-symbol';
         symbolDiv.textContent = token.symbol;
         headerDiv.appendChild(symbolDiv);
         
+        // Token Balance (right side)
         const balanceDiv = document.createElement('div');
         balanceDiv.className = 'token-balance';
         balanceDiv.textContent = formatHumanNumber(token.balance);
@@ -622,17 +637,71 @@ function updateTokensDisplay() {
         
         tokenCard.appendChild(headerDiv);
         
+        // ========== TOKEN NAME ==========
         const nameDiv = document.createElement('div');
         nameDiv.className = 'token-name';
         nameDiv.textContent = token.name;
         tokenCard.appendChild(nameDiv);
         
+        // ========== TOKEN MINT ADDRESS ==========
         const mintDiv = document.createElement('div');
         mintDiv.className = 'token-mint';
         mintDiv.title = token.mint;
         mintDiv.textContent = `${token.mint.slice(0, 8)}...${token.mint.slice(-8)}`;
         tokenCard.appendChild(mintDiv);
         
+        // ========== DEBUG BUTTON ROW ==========
+        // Creates a row with spacer on left and debug button on right
+        // This aligns the debug button to the right, opposite the mint address
+        const debugDiv = document.createElement('div');
+        debugDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-top: 8px;';
+        
+        const spacer = document.createElement('div'); // Empty spacer for left alignment
+        debugDiv.appendChild(spacer);
+        
+        // Debug Token Button (opens token listing debugger in new tab)
+        const debugBtn = document.createElement('button');
+        debugBtn.className = 'debug-btn';
+        debugBtn.innerHTML = '<div style="line-height: 1.2;">🔍<br>Debug<br>Token</div>';
+        debugBtn.title = 'Debug why this token might not be listing on exchanges';
+        debugBtn.style.cssText = `
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: none;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            height: 45px;
+            width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        `;
+        // Button hover effects
+        debugBtn.onmouseover = () => {
+            debugBtn.style.transform = 'translateY(-1px)';
+            debugBtn.style.boxShadow = '0 4px 8px rgba(245, 158, 11, 0.3)';
+        };
+        debugBtn.onmouseout = () => {
+            debugBtn.style.transform = 'translateY(0)';
+            debugBtn.style.boxShadow = 'none';
+        };
+        // Button click handler - opens debugger with this token's mint
+        debugBtn.onclick = (e) => {
+            e.stopPropagation(); // Prevent token selection when clicking debug button
+            window.open(`token-listing-debugger.html?mint=${token.mint}`, '_blank');
+        };
+        debugDiv.appendChild(debugBtn);
+        
+        tokenCard.appendChild(debugDiv);
+        // ========== END DEBUG BUTTON ROW ==========
+        
+        // ========== SELECTION BADGE ==========
+        // Shows 'A' or 'B' badge if token is selected for pool creation
         if (isSelectedA || isSelectedB) {
             const badgeDiv = document.createElement('div');
             badgeDiv.className = 'selected-badge';
@@ -640,8 +709,13 @@ function updateTokensDisplay() {
             tokenCard.appendChild(badgeDiv);
         }
         
+        // Add completed token card to the grid
         tokensGrid.appendChild(tokenCard);
     });
+    
+    // ============================================================================
+    // END TOKEN CARDS CREATION SECTION
+    // ============================================================================
     
     tokensContainer.appendChild(tokensGrid);
 }

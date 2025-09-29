@@ -198,8 +198,8 @@
         
         .tokens-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
             margin-top: 20px;
         }
         
@@ -412,11 +412,12 @@
         .token-card {
             background: #f8f9fa;
             border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 15px;
+            border-radius: 12px;
+            padding: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
+            min-height: 160px;
         }
         
         .token-card:hover {
