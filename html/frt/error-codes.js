@@ -140,6 +140,12 @@ const ERROR_CODES = {
         category: "Calculation",
         severity: "error"
     },
+    1035: {
+        name: "PoolLiquidityPaused",
+        message: "⏸️ Pool liquidity operations are paused. Deposits and withdrawals are currently disabled for this pool. Please try again later or contact the pool administrator.",
+        category: "Pool State",
+        severity: "warning"
+    },
 
     // === SWAP OPERATION ERRORS (1020-1029) ===
     1020: {
@@ -739,7 +745,7 @@ function getErrorEmoji(severity) {
  * @returns {boolean} True if error indicates pause state
  */
 function isPauseError(errorCode) {
-    const pauseErrors = [1007, 1013, 1023, 1024, 1027, 1064, 1076];
+    const pauseErrors = [1007, 1013, 1023, 1024, 1027, 1035, 1064, 1076];
     return pauseErrors.includes(errorCode);
 }
 
@@ -763,6 +769,7 @@ function getErrorSuggestions(errorCode) {
         1003: ["Check your wallet balance", "Add more tokens to your wallet", "Try a smaller amount"],
         1007: ["Wait for pool to be unpaused", "Contact pool administrator", "Try a different pool"],
         1023: ["Wait for system maintenance to complete", "Check system status", "Try again later"],
+        1035: ["Wait for pool liquidity operations to be resumed", "Contact the pool administrator", "Try a different pool", "Check pool status for updates"],
         1047: ["Verify expected output amount", "Check for precision differences", "Try adjusting input amount"],
         1060: ["Add more SOL to your wallet for fees", "Check fee requirements", "Ensure sufficient balance for gas"]
     };
