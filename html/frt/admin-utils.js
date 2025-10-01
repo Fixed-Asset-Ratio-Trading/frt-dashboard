@@ -177,12 +177,12 @@ async function createAndSendTransaction(instructions, signers = []) {
     }
     
     try {
-        // Get recent blockhash
-        const { blockhash } = await adminConnection.getLatestBlockhash();
+        // Get recent blockhash + lastValidBlockHeight
+        const latest = await adminConnection.getLatestBlockhash();
         
         // Create transaction
         const transaction = new solanaWeb3.Transaction();
-        transaction.recentBlockhash = blockhash;
+        transaction.recentBlockhash = latest.blockhash;
         transaction.feePayer = adminWallet;
         
         // Add instructions
@@ -241,14 +241,45 @@ async function createAndSendTransaction(instructions, signers = []) {
             throw new Error(`Transaction signing failed: ${signError.message}`);
         }
         
-        // Send transaction
-        const signature = await adminConnection.sendRawTransaction(signedTransaction.serialize());
+        // Helper to confirm with the same blockhash/height used when signing
+        async function confirmWith(latestCtx, sig) {
+            return adminConnection.confirmTransaction({
+                signature: sig,
+                blockhash: latestCtx.blockhash,
+                lastValidBlockHeight: latestCtx.lastValidBlockHeight
+            }, 'confirmed');
+        }
+
+        // Send transaction (with retry on Blockhash not found)
+        let signature;
+        try {
+            signature = await adminConnection.sendRawTransaction(signedTransaction.serialize());
+        } catch (sendErr) {
+            const msg = (sendErr?.message || String(sendErr)).toLowerCase();
+            if (msg.includes('blockhash not found') || msg.includes('blockhash not found')) {
+                console.warn('⚠️ Blockhash not found at send. Refreshing blockhash and retrying...');
+                // Rebuild + re-sign with a fresh blockhash
+                const refreshed = await adminConnection.getLatestBlockhash();
+                const retryTx = new solanaWeb3.Transaction();
+                retryTx.recentBlockhash = refreshed.blockhash;
+                retryTx.feePayer = adminWallet;
+                instructions.forEach(ix => retryTx.add(ix));
+                // Re-sign via wallet provider
+                const walletProviderRetry = getWalletProvider();
+                const signedRetry = await walletProviderRetry.signTransaction(retryTx);
+                signature = await adminConnection.sendRawTransaction(signedRetry.serialize());
+                // Swap confirmation context to refreshed
+                const confirmation = await confirmWith(refreshed, signature);
+                if (confirmation.value.err) {
+                    throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+                }
+                return signature;
+            }
+            throw sendErr;
+        }
         
-        // Confirm transaction
-        const confirmation = await adminConnection.confirmTransaction({
-            signature,
-            ...(await adminConnection.getLatestBlockhash())
-        }, 'confirmed');
+        // Confirm transaction using the original latest context
+        const confirmation = await confirmWith(latest, signature);
         
         if (confirmation.value.err) {
             throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
