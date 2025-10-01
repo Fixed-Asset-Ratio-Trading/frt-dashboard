@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Buy tSAT - Step by Step Guide</title>
+    <link rel="icon" href="images/tSatoshi64x64and16x16.ico" type="image/x-icon">
+    
+    <!-- Bitcoin.org inspired fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+            padding: 20px;
+        }
+
+        body.dark-mode {
+            color: #e2e8f0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .logo-section img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        body.dark-mode h1 {
+            color: #e2e8f0;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #cbd5e1;
+        }
+
+        body.dark-mode .subtitle {
+            color: #94a3b8;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        body.dark-mode .theme-toggle {
+            background: rgba(148, 163, 184, 0.1);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        /* Back Button */
+        .back-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            font-weight: 600;
+            z-index: 1000;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        body.dark-mode .back-link {
+            background: rgba(148, 163, 184, 0.1);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        /* Wizard Container */
+        .wizard-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode .wizard-container {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        /* Question Section */
+        .question-section {
+            margin-bottom: 30px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideIn 0.5s ease forwards;
+        }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .question-section.hidden {
+            display: none;
+        }
+
+        .question-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        body.dark-mode .question-title {
+            color: #e2e8f0;
+        }
+
+        .step-number {
+            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .choice-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 15px 25px;
+            border: 2px solid #cbd5e1;
+            background: white;
+            color: #1e3c72;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .choice-btn:hover {
+            border-color: #f7931a;
+            background: rgba(247, 147, 26, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .choice-btn.selected {
+            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            color: white;
+            border-color: #f7931a;
+            box-shadow: 0 4px 15px rgba(247, 147, 26, 0.4);
+        }
+
+        body.dark-mode .choice-btn {
+            background: #334155;
+            color: #e2e8f0;
+            border-color: #475569;
+        }
+
+        body.dark-mode .choice-btn:hover {
+            background: #475569;
+        }
+
+        body.dark-mode .choice-btn.selected {
+            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            color: white;
+        }
+
+        /* Wallet Options */
+        .wallet-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .wallet-btn {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #cbd5e1;
+            background: white;
+            color: #1e3c72;
+            border-radius: 12px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .wallet-logo {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+        }
+
+        .wallet-btn:hover {
+            border-color: #f7931a;
+            background: rgba(247, 147, 26, 0.1);
+        }
+
+        .wallet-btn.selected {
+            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            color: white;
+            border-color: #f7931a;
+        }
+
+        body.dark-mode .wallet-btn {
+            background: #334155;
+            color: #e2e8f0;
+            border-color: #475569;
+        }
+
+        body.dark-mode .wallet-btn:hover {
+            background: #475569;
+        }
+
+        body.dark-mode .wallet-btn.selected {
+            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            color: white;
+        }
+
+        /* Instructions */
+        .instructions {
+            background: rgba(247, 147, 26, 0.1);
+            border-left: 4px solid #f7931a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        body.dark-mode .instructions {
+            background: rgba(247, 147, 26, 0.15);
+        }
+
+        .instructions h3 {
+            color: #f7931a;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .instructions p {
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        body.dark-mode .instructions p {
+            color: #cbd5e1;
+        }
+
+        .instructions ol, .instructions ul {
+            margin-left: 20px;
+            color: #4a5568;
+        }
+
+        body.dark-mode .instructions ol,
+        body.dark-mode .instructions ul {
+            color: #cbd5e1;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+        }
+
+        .instructions a {
+            color: #f7931a;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .instructions a:hover {
+            text-decoration: underline;
+        }
+
+        .instructions strong {
+            color: #1e3c72;
+        }
+
+        body.dark-mode .instructions strong {
+            color: #e2e8f0;
+        }
+
+        /* Message Box */
+        .message-box {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        body.dark-mode .message-box {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            border: 2px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .message-box h3 {
+            color: #f7931a;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .message-box p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .message-box a {
+            color: #f7931a;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .message-box a:hover {
+            text-decoration: underline;
+        }
+
+        /* Action Button */
+        .action-btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(247, 147, 26, 0.6);
+        }
+
+        /* Browser Detection */
+        .browser-info {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        body.dark-mode .browser-info {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .browser-info p {
+            color: #059669;
+            font-weight: 600;
+        }
+
+        body.dark-mode .browser-info p {
+            color: #10b981;
+        }
+
+        /* Device Type Badge */
+        .device-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            background: #f7931a;
+            color: white;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .wizard-container {
+                padding: 25px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .choice-btn {
+                min-width: 100%;
+            }
+
+            .back-link, .theme-toggle {
+                padding: 6px 10px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="satoshi15.html" class="back-link">← Back</a>
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon">🌙</span>
+    </button>
+
+    <div class="container">
+        <header>
+            <div class="logo-section">
+                <img src="images/tSatoshi_512x512.png" alt="tSAT Logo">
+            </div>
+            <h1>How to Buy tSAT</h1>
+            <p class="subtitle">Let's find the best way for you to get started</p>
+        </header>
+
+        <div class="wizard-container">
+            <!-- Question 1: Do you own any crypto? -->
+            <div id="q1" class="question-section">
+                <h2 class="question-title">
+                    <span class="step-number">1</span>
+                    Do you own any cryptocurrency?
+                </h2>
+                <div class="button-group">
+                    <button class="choice-btn" onclick="answerQ1('yes')">Yes</button>
+                    <button class="choice-btn" onclick="answerQ1('no')">No</button>
+                </div>
+            </div>
+
+            <!-- No Crypto Message -->
+            <div id="no-crypto-message" class="question-section hidden">
+                <div class="message-box">
+                    <h3>🎓 Let's Start Your Crypto Journey!</h3>
+                    <p>Before buying tSAT, you'll need to learn the basics of cryptocurrency.</p>
+                    <p style="margin-top: 20px;">
+                        <strong>Join my free school to get started:</strong>
+                    </p>
+                    <a href="https://b4b.davincij15.com" target="_blank" class="action-btn">
+                        Join Free Crypto School
+                    </a>
+                    <p style="margin-top: 20px; font-size: 0.95rem; opacity: 0.9;">
+                        You'll learn everything you need to know about buying, storing, and using cryptocurrency safely!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Question 2: Do you own Solana? -->
+            <div id="q2" class="question-section hidden">
+                <h2 class="question-title">
+                    <span class="step-number">2</span>
+                    Do you own Solana (SOL)?
+                </h2>
+                <div class="button-group">
+                    <button class="choice-btn" onclick="answerQ2('yes')">Yes</button>
+                    <button class="choice-btn" onclick="answerQ2('no')">No</button>
+                </div>
+            </div>
+
+            <!-- No Solana - Setup Wallet Instructions -->
+            <div id="no-solana-instructions" class="question-section hidden">
+                <div class="instructions">
+                    <h3>📱 First, Let's Set Up Your Solana Wallet</h3>
+                    <p><strong>Step 1: Check Your Device & Browser</strong></p>
+                    <div id="device-info" class="browser-info">
+                        <p>🔍 Detecting your device...</p>
+                    </div>
+
+                    <div id="phantom-download-instructions">
+                        <!-- Instructions will be inserted here by JavaScript -->
+                    </div>
+
+                    <p style="margin-top: 20px;"><strong>Step 2: After Setup</strong></p>
+                    <p>Once you have your wallet installed and you've purchased SOL, come back and we'll show you how to buy tSAT!</p>
+                    
+                    <a href="https://phantom.com/download" target="_blank" class="action-btn">
+                        Download Phantom Wallet
+                    </a>
+                </div>
+            </div>
+
+            <!-- Question 3: Which wallet? -->
+            <div id="q3" class="question-section hidden">
+                <h2 class="question-title">
+                    <span class="step-number">3</span>
+                    Which wallet are you using?
+                </h2>
+                <div class="wallet-options">
+                    <button class="wallet-btn" onclick="selectWallet('phantom')">
+                        <img src="images/phantom-logo.png" alt="Phantom" class="wallet-logo">
+                        Phantom
+                    </button>
+                    <button class="wallet-btn" onclick="selectWallet('solflare')">
+                        <img src="images/solflare-logo.png" alt="SolFlare" class="wallet-logo">
+                        SolFlare
+                    </button>
+                    <button class="wallet-btn" onclick="selectWallet('backpack')">
+                        <img src="images/backpack-logo.png" alt="Backpack" class="wallet-logo">
+                        Backpack
+                    </button>
+                    <button class="wallet-btn" onclick="selectWallet('trust')">
+                        <img src="images/trustwallet-logo.png" alt="Trust Wallet" class="wallet-logo">
+                        Trust Wallet
+                    </button>
+                    <button class="wallet-btn" onclick="selectWallet('none')">❓ I don't have any of these</button>
+                </div>
+            </div>
+
+            <!-- Wallet Instructions Container -->
+            <div id="wallet-instructions" class="question-section hidden">
+                <!-- Instructions will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State management
+        let currentState = {
+            q1: null,
+            q2: null,
+            wallet: null,
+            device: null,
+            browser: null
+        };
+
+        // Detect device and browser
+        function detectDevice() {
+            const ua = navigator.userAgent;
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+            const isIOS = /iPhone|iPad|iPod/i.test(ua);
+            const isAndroid = /Android/i.test(ua);
+            
+            let browser = 'unknown';
+            if (ua.indexOf('Firefox') > -1) browser = 'Firefox';
+            else if (ua.indexOf('Edg') > -1) browser = 'Edge';
+            else if (ua.indexOf('Chrome') > -1) browser = 'Chrome';
+            else if (ua.indexOf('Safari') > -1) browser = 'Safari';
+            else if (ua.indexOf('Brave') > -1) browser = 'Brave';
+
+            currentState.device = isMobile ? (isIOS ? 'iOS' : 'Android') : 'Desktop';
+            currentState.browser = browser;
+
+            return { isMobile, isIOS, isAndroid, browser };
+        }
+
+        // Theme toggle
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('theme-icon');
+            const isDark = body.classList.contains('dark-mode');
+            
+            if (isDark) {
+                body.classList.remove('dark-mode');
+                themeIcon.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                themeIcon.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeIcon.textContent = '☀️';
+            } else {
+                themeIcon.textContent = '🌙';
+            }
+
+            detectDevice();
+        });
+
+        // Question 1: Own crypto?
+        function answerQ1(answer) {
+            currentState.q1 = answer;
+            
+            // Update button states
+            document.querySelectorAll('#q1 .choice-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+
+            // Hide all subsequent sections
+            hideAllAfter('q1');
+
+            setTimeout(() => {
+                if (answer === 'no') {
+                    document.getElementById('no-crypto-message').classList.remove('hidden');
+                } else {
+                    document.getElementById('q2').classList.remove('hidden');
+                }
+            }, 300);
+        }
+
+        // Question 2: Own Solana?
+        function answerQ2(answer) {
+            currentState.q2 = answer;
+            
+            // Update button states
+            document.querySelectorAll('#q2 .choice-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+
+            // Hide all subsequent sections
+            hideAllAfter('q2');
+
+            setTimeout(() => {
+                if (answer === 'no') {
+                    showPhantomInstructions();
+                    document.getElementById('no-solana-instructions').classList.remove('hidden');
+                } else {
+                    document.getElementById('q3').classList.remove('hidden');
+                }
+            }, 300);
+        }
+
+        // Show Phantom wallet download instructions
+        function showPhantomInstructions() {
+            const deviceInfo = detectDevice();
+            const deviceInfoDiv = document.getElementById('device-info');
+            const instructionsDiv = document.getElementById('phantom-download-instructions');
+
+            let deviceText = '';
+            let instructions = '';
+
+            if (deviceInfo.isMobile) {
+                if (deviceInfo.isIOS) {
+                    deviceText = '<p>📱 You\'re on an iPhone/iPad</p>';
+                    instructions = `
+                        <p><strong>For iPhone/iPad:</strong></p>
+                        <ol>
+                            <li>Go to the App Store</li>
+                            <li>Search for "Phantom Wallet"</li>
+                            <li>Download and install the app</li>
+                            <li>Open Phantom and create a new wallet (save your recovery phrase!)</li>
+                            <li>Buy SOL directly in the app using Apple Pay or card</li>
+                        </ol>
+                    `;
+                } else {
+                    deviceText = '<p>📱 You\'re on an Android device</p>';
+                    instructions = `
+                        <p><strong>For Android:</strong></p>
+                        <ol>
+                            <li>Go to the Google Play Store</li>
+                            <li>Search for "Phantom Wallet"</li>
+                            <li>Download and install the app</li>
+                            <li>Open Phantom and create a new wallet (save your recovery phrase!)</li>
+                            <li>Buy SOL directly in the app using your card</li>
+                        </ol>
+                    `;
+                }
+            } else {
+                deviceText = `<p>💻 You're on a Desktop using ${deviceInfo.browser}</p>`;
+                
+                const compatibleBrowsers = ['Chrome', 'Firefox', 'Edge', 'Brave'];
+                if (compatibleBrowsers.includes(deviceInfo.browser)) {
+                    instructions = `
+                        <p><strong>For Desktop Browser (${deviceInfo.browser}):</strong></p>
+                        <ol>
+                            <li>Visit <a href="https://phantom.com/download" target="_blank">phantom.com/download</a></li>
+                            <li>Click "Download for ${deviceInfo.browser}"</li>
+                            <li>Install the browser extension</li>
+                            <li>Click the Phantom icon in your browser to set up</li>
+                            <li>Create a new wallet (save your recovery phrase safely!)</li>
+                            <li>Buy SOL using the built-in purchase option</li>
+                        </ol>
+                    `;
+                } else {
+                    instructions = `
+                        <p style="color: #f7931a;"><strong>⚠️ Your current browser (${deviceInfo.browser}) may not be compatible.</strong></p>
+                        <p>Please download one of these browsers first:</p>
+                        <ul>
+                            <li><a href="https://www.google.com/chrome/" target="_blank">Chrome</a></li>
+                            <li><a href="https://www.mozilla.org/firefox/" target="_blank">Firefox</a></li>
+                            <li><a href="https://www.microsoft.com/edge" target="_blank">Edge</a></li>
+                            <li><a href="https://brave.com/" target="_blank">Brave</a></li>
+                        </ul>
+                        <p>Then visit <a href="https://phantom.com/download" target="_blank">phantom.com/download</a></p>
+                    `;
+                }
+            }
+
+            deviceInfoDiv.innerHTML = deviceText;
+            instructionsDiv.innerHTML = instructions;
+        }
+
+        // Select wallet
+        function selectWallet(wallet) {
+            currentState.wallet = wallet;
+            
+            // Update button states
+            document.querySelectorAll('.wallet-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+
+            // Hide previous instructions
+            document.getElementById('wallet-instructions').classList.add('hidden');
+
+            setTimeout(() => {
+                showWalletInstructions(wallet);
+            }, 300);
+        }
+
+        // Show wallet-specific instructions
+        function showWalletInstructions(wallet) {
+            const instructionsDiv = document.getElementById('wallet-instructions');
+            const deviceInfo = detectDevice();
+            let html = '';
+
+            if (wallet === 'none') {
+                html = `
+                    <div class="instructions">
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/phantom-logo.png" alt="Phantom" style="width: 28px; height: 28px; object-fit: contain;">
+                            Let's Install Phantom Wallet
+                        </h3>
+                        <p>Phantom is the most popular Solana wallet and perfect for beginners!</p>
+                        
+                        <div id="phantom-setup-info" class="browser-info">
+                            <p>Detecting your device...</p>
+                        </div>
+                        
+                        <div id="phantom-setup-instructions"></div>
+                        
+                        <p style="margin-top: 20px;"><strong>After installing:</strong></p>
+                        <ol>
+                            <li>Make sure you have some SOL in your wallet</li>
+                            <li>Come back here and select "Phantom" from the wallet list above</li>
+                        </ol>
+                        
+                        <a href="https://phantom.com/download" target="_blank" class="action-btn">
+                            Download Phantom Wallet
+                        </a>
+                    </div>
+                `;
+                instructionsDiv.innerHTML = html;
+                instructionsDiv.classList.remove('hidden');
+                
+                // Show setup instructions
+                setTimeout(() => {
+                    showPhantomSetupInstructions();
+                }, 100);
+                return;
+            }
+
+            // Instructions for each wallet
+            const walletInstructions = {
+                phantom: {
+                    name: 'Phantom',
+                    icon: '🟣',
+                    desktop: `
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/phantom-logo.png" alt="Phantom" style="width: 28px; height: 28px; object-fit: contain;">
+                            Using Phantom on Desktop
+                        </h3>
+                        <p style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <strong>ℹ️ Note:</strong> tsat.dj15.com redirects to Raydium DEX, a trusted decentralized exchange on Solana.
+                        </p>
+                        <p><strong>Step-by-Step Guide:</strong></p>
+                        <ol>
+                            <li>Open <a href="https://tsat.dj15.com" target="_blank">tsat.dj15.com</a> in your browser (redirects to Raydium)</li>
+                            <li>Click "<strong>Connect Wallet</strong>" in the top right corner</li>
+                            <li>Select "<strong>Phantom</strong>" from the wallet options</li>
+                            <li>Approve the connection in the Phantom popup</li>
+                            <li>Enter the amount of SOL you want to swap (minimum 0.1 SOL recommended)</li>
+                            <li>Click "<strong>Swap</strong>" button</li>
+                            <li>Confirm the transaction in Phantom</li>
+                            <li>Wait a few seconds - your tSAT will appear in your wallet!</li>
+                        </ol>
+                        <a href="https://tsat.dj15.com" target="_blank" class="action-btn">
+                            Go to tsat.dj15.com (Raydium)
+                        </a>
+                    `,
+                    mobile: `
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/phantom-logo.png" alt="Phantom" style="width: 28px; height: 28px; object-fit: contain;">
+                            Using Phantom on Mobile
+                        </h3>
+                        <p style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <strong>ℹ️ Note:</strong> tsat.dj15.com redirects to Raydium DEX, a trusted decentralized exchange on Solana.
+                        </p>
+                        <p><strong>Step-by-Step Guide:</strong></p>
+                        <ol>
+                            <li>Open the <strong>Phantom app</strong> on your phone</li>
+                            <li>Tap the <strong>browser icon</strong> (usually at the bottom of the app)</li>
+                            <li>In the browser, go to: <strong>tsat.dj15.com</strong> (redirects to Raydium)</li>
+                            <li>Tap "<strong>Connect Wallet</strong>" in the top right</li>
+                            <li>Select "<strong>Phantom</strong>" - it will auto-connect</li>
+                            <li>Enter the amount of SOL you want to swap (0.1 SOL or more)</li>
+                            <li>Tap "<strong>Swap</strong>"</li>
+                            <li>Approve the transaction</li>
+                            <li>Done! Your tSAT tokens will appear in your wallet</li>
+                        </ol>
+                        <p style="margin-top: 15px;"><em>💡 Tip: Make sure you have enough SOL for transaction fees (keep extra 0.01 SOL)</em></p>
+                    `
+                },
+                solflare: {
+                    name: 'SolFlare',
+                    icon: '🟠',
+                    desktop: `
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/solflare-logo.png" alt="SolFlare" style="width: 28px; height: 28px; object-fit: contain;">
+                            Using SolFlare on Desktop
+                        </h3>
+                        <p style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <strong>ℹ️ Note:</strong> tsat.dj15.com redirects to Raydium DEX, a trusted decentralized exchange on Solana.
+                        </p>
+                        <p><strong>Step-by-Step Guide:</strong></p>
+                        <ol>
+                            <li>Open <a href="https://tsat.dj15.com" target="_blank">tsat.dj15.com</a> in your browser (redirects to Raydium)</li>
+                            <li>Click "<strong>Connect Wallet</strong>" in the top right corner</li>
+                            <li>Select "<strong>SolFlare</strong>" from the wallet options</li>
+                            <li>Approve the connection in the SolFlare popup</li>
+                            <li>Enter the amount of SOL you want to swap (minimum 0.1 SOL)</li>
+                            <li>Click "<strong>Swap</strong>" button</li>
+                            <li>Confirm the transaction in SolFlare</li>
+                            <li>Your tSAT tokens will appear in your wallet!</li>
+                        </ol>
+                        <a href="https://tsat.dj15.com" target="_blank" class="action-btn">
+                            Go to tsat.dj15.com (Raydium)
+                        </a>
+                    `,
+                    mobile: `
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/solflare-logo.png" alt="SolFlare" style="width: 28px; height: 28px; object-fit: contain;">
+                            Using SolFlare on Mobile
+                        </h3>
+                        <p style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <strong>ℹ️ Note:</strong> tsat.dj15.com redirects to Raydium DEX, a trusted decentralized exchange on Solana.
+                        </p>
+                        <p><strong>First, install SolFlare if you haven't:</strong></p>
+                        <p style="margin: 10px 0;">
+                            <a href="https://apps.apple.com/app/solflare/id1580902717" target="_blank" class="action-btn" style="margin: 5px; display: inline-block;">
+                                📱 Download for iPhone/iPad
+                            </a>
+                            <a href="https://play.google.com/store/apps/details?id=com.solflare.mobile" target="_blank" class="action-btn" style="margin: 5px; display: inline-block;">
+                                🤖 Download for Android
+                            </a>
+                        </p>
+                        <p><strong>Step-by-Step Guide:</strong></p>
+                        <ol>
+                            <li>Open the <strong>SolFlare app</strong></li>
+                            <li>Tap the <strong>Browser</strong> or <strong>DApps</strong> tab</li>
+                            <li>Navigate to: <strong>tsat.dj15.com</strong> (redirects to Raydium)</li>
+                            <li>Tap "<strong>Connect Wallet</strong>"</li>
+                            <li>Select "<strong>SolFlare</strong>"</li>
+                            <li>Enter amount of SOL to swap (0.1 SOL minimum)</li>
+                            <li>Tap "<strong>Swap</strong>" and approve</li>
+                            <li>Done! Your tSAT will appear shortly</li>
+                        </ol>
+                    `
+                },
+                backpack: {
+                    name: 'Backpack',
+                    icon: '⚫',
+                    desktop: `
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/backpack-logo.png" alt="Backpack" style="width: 28px; height: 28px; object-fit: contain;">
+                            Using Backpack on Desktop
+                        </h3>
+                        <p style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <strong>ℹ️ Note:</strong> tsat.dj15.com redirects to Raydium DEX, a trusted decentralized exchange on Solana.
+                        </p>
+                        <p><strong>Step-by-Step Guide:</strong></p>
+                        <ol>
+                            <li>Open <a href="https://tsat.dj15.com" target="_blank">tsat.dj15.com</a> (redirects to Raydium)</li>
+                            <li>Click "<strong>Connect Wallet</strong>" in the top right</li>
+                            <li>Select "<strong>Backpack</strong>"</li>
+                            <li>Approve the connection in Backpack</li>
+                            <li>Enter the amount of SOL (minimum 0.1 SOL)</li>
+                            <li>Click "<strong>Swap</strong>"</li>
+                            <li>Confirm in Backpack wallet</li>
+                            <li>Your tSAT tokens will arrive in seconds!</li>
+                        </ol>
+                        <a href="https://tsat.dj15.com" target="_blank" class="action-btn">
+                            Go to tsat.dj15.com (Raydium)
+                        </a>
+                    `,
+                    mobile: `
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/backpack-logo.png" alt="Backpack" style="width: 28px; height: 28px; object-fit: contain;">
+                            Using Backpack on Mobile
+                        </h3>
+                        <p style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <strong>ℹ️ Note:</strong> tsat.dj15.com redirects to Raydium DEX, a trusted decentralized exchange on Solana.
+                        </p>
+                        <p><strong>First, install Backpack if you haven't:</strong></p>
+                        <p style="margin: 10px 0;">
+                            <a href="https://apps.apple.com/app/backpack-buy-sol-btc-crypto/id6445964121" target="_blank" class="action-btn" style="margin: 5px; display: inline-block;">
+                                📱 Download for iPhone/iPad
+                            </a>
+                            <a href="https://play.google.com/store/apps/details?id=app.backpack.mobile" target="_blank" class="action-btn" style="margin: 5px; display: inline-block;">
+                                🤖 Download for Android
+                            </a>
+                        </p>
+                        <p><strong>Step-by-Step Guide:</strong></p>
+                        <ol>
+                            <li>Open the <strong>Backpack app</strong></li>
+                            <li>Find the <strong>built-in browser</strong></li>
+                            <li>Go to: <strong>tsat.dj15.com</strong> (redirects to Raydium)</li>
+                            <li>Tap "<strong>Connect Wallet</strong>"</li>
+                            <li>Select "<strong>Backpack</strong>"</li>
+                            <li>Enter SOL amount (0.1 or more)</li>
+                            <li>Tap "<strong>Swap</strong>" and confirm</li>
+                            <li>You'll receive your tSAT tokens!</li>
+                        </ol>
+                    `
+                },
+                trust: {
+                    name: 'Trust Wallet',
+                    icon: '🔵',
+                    desktop: `
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/trustwallet-logo.png" alt="Trust Wallet" style="width: 28px; height: 28px; object-fit: contain;">
+                            Using Trust Wallet on Desktop
+                        </h3>
+                        <p style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <strong>ℹ️ Note:</strong> tsat.dj15.com redirects to Raydium DEX, a trusted decentralized exchange on Solana.
+                        </p>
+                        <p><strong>Note:</strong> Trust Wallet is primarily a mobile wallet. For desktop use, we recommend using WalletConnect:</p>
+                        <ol>
+                            <li>Open <a href="https://tsat.dj15.com" target="_blank">tsat.dj15.com</a> (redirects to Raydium)</li>
+                            <li>Click "<strong>Connect Wallet</strong>"</li>
+                            <li>Select "<strong>WalletConnect</strong>"</li>
+                            <li>Scan the QR code with Trust Wallet mobile app</li>
+                            <li>Enter SOL amount to swap (minimum 0.1)</li>
+                            <li>Click "<strong>Swap</strong>"</li>
+                            <li>Approve on your mobile Trust Wallet</li>
+                        </ol>
+                        <a href="https://tsat.dj15.com" target="_blank" class="action-btn">
+                            Go to tsat.dj15.com (Raydium)
+                        </a>
+                    `,
+                    mobile: `
+                        <h3 style="display: flex; align-items: center; gap: 10px;">
+                            <img src="images/trustwallet-logo.png" alt="Trust Wallet" style="width: 28px; height: 28px; object-fit: contain;">
+                            Using Trust Wallet on Mobile
+                        </h3>
+                        <p style="background: rgba(59, 130, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <strong>ℹ️ Note:</strong> tsat.dj15.com redirects to Raydium DEX, a trusted decentralized exchange on Solana.
+                        </p>
+                        <p><strong>First, install Trust Wallet if you haven't:</strong></p>
+                        <p style="margin: 10px 0;">
+                            <a href="https://apps.apple.com/app/trust-crypto-bitcoin-wallet/id1288339409" target="_blank" class="action-btn" style="margin: 5px; display: inline-block;">
+                                📱 Download for iPhone/iPad
+                            </a>
+                            <a href="https://play.google.com/store/apps/details?id=com.wallet.crypto.trustapp" target="_blank" class="action-btn" style="margin: 5px; display: inline-block;">
+                                🤖 Download for Android
+                            </a>
+                        </p>
+                        <p><strong>Step-by-Step Guide:</strong></p>
+                        <ol>
+                            <li>Open <strong>Trust Wallet</strong> app</li>
+                            <li>Tap the <strong>DApp Browser</strong> icon (bottom of screen)</li>
+                            <li>Enter: <strong>tsat.dj15.com</strong> (redirects to Raydium)</li>
+                            <li>Tap "<strong>Connect Wallet</strong>"</li>
+                            <li>Select your wallet to connect</li>
+                            <li>Enter amount of SOL (0.1 SOL minimum)</li>
+                            <li>Tap "<strong>Swap</strong>"</li>
+                            <li>Confirm the transaction</li>
+                            <li>Your tSAT will appear in your wallet!</li>
+                        </ol>
+                    `
+                }
+            };
+
+            const walletInfo = walletInstructions[wallet];
+            const isMobile = deviceInfo.isMobile;
+
+            html = `
+                <div class="instructions">
+                    ${isMobile ? walletInfo.mobile : walletInfo.desktop}
+                    
+                    <div style="margin-top: 25px; padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; border-left: 4px solid #10b981;">
+                        <p style="color: #059669; font-weight: 600; margin-bottom: 10px;">✅ Important Tips:</p>
+                        <ul style="color: #4a5568;">
+                            <li>Start with a small amount (0.1 SOL) for your first transaction</li>
+                            <li>Keep some SOL for transaction fees (usually less than $0.01)</li>
+                            <li>Double-check you're on <strong>raydium.io/swap/</strong> before connecting</li>
+                            <li>Never share your recovery phrase with anyone!</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            instructionsDiv.innerHTML = html;
+            instructionsDiv.classList.remove('hidden');
+        }
+
+        // Show Phantom setup instructions for "None" option
+        function showPhantomSetupInstructions() {
+            const deviceInfo = detectDevice();
+            const deviceInfoDiv = document.getElementById('phantom-setup-info');
+            const instructionsDiv = document.getElementById('phantom-setup-instructions');
+
+            let deviceText = '';
+            let instructions = '';
+
+            if (deviceInfo.isMobile) {
+                if (deviceInfo.isIOS) {
+                    deviceText = '<p>📱 iPhone/iPad detected</p>';
+                    instructions = `
+                        <p><strong>Installation Steps:</strong></p>
+                        <ol>
+                            <li>Visit the App Store</li>
+                            <li>Search "Phantom Wallet"</li>
+                            <li>Install the app</li>
+                            <li>Open and create a new wallet</li>
+                            <li><strong>IMPORTANT:</strong> Write down your recovery phrase and store it safely!</li>
+                            <li>Buy SOL using the in-app purchase feature</li>
+                        </ol>
+                    `;
+                } else {
+                    deviceText = '<p>📱 Android device detected</p>';
+                    instructions = `
+                        <p><strong>Installation Steps:</strong></p>
+                        <ol>
+                            <li>Visit Google Play Store</li>
+                            <li>Search "Phantom Wallet"</li>
+                            <li>Install the app</li>
+                            <li>Open and create a new wallet</li>
+                            <li><strong>IMPORTANT:</strong> Write down your recovery phrase and store it safely!</li>
+                            <li>Buy SOL using the in-app purchase feature</li>
+                        </ol>
+                    `;
+                }
+            } else {
+                deviceText = `<p>💻 Desktop - ${deviceInfo.browser} browser</p>`;
+                instructions = `
+                    <p><strong>Installation Steps:</strong></p>
+                    <ol>
+                        <li>Visit <a href="https://phantom.com/download" target="_blank">phantom.com/download</a></li>
+                        <li>Download the browser extension for ${deviceInfo.browser}</li>
+                        <li>Install and pin the extension to your browser</li>
+                        <li>Click the Phantom icon and create a new wallet</li>
+                        <li><strong>IMPORTANT:</strong> Write down your recovery phrase and store it safely!</li>
+                        <li>Use the "Buy" feature in Phantom to purchase SOL</li>
+                    </ol>
+                `;
+            }
+
+            deviceInfoDiv.innerHTML = deviceText;
+            instructionsDiv.innerHTML = instructions;
+        }
+
+        // Hide all sections after a certain point
+        function hideAllAfter(sectionId) {
+            const sections = ['q2', 'q3', 'no-crypto-message', 'no-solana-instructions', 'wallet-instructions'];
+            const startHiding = sectionId === 'q1';
+            
+            sections.forEach(id => {
+                if (startHiding || id !== 'q2') {
+                    document.getElementById(id).classList.add('hidden');
+                }
+            });
+
+            // Clear selections
+            if (sectionId === 'q1') {
+                currentState.q2 = null;
+                currentState.wallet = null;
+                document.querySelectorAll('#q2 .choice-btn').forEach(btn => btn.classList.remove('selected'));
+                document.querySelectorAll('.wallet-btn').forEach(btn => btn.classList.remove('selected'));
+            } else if (sectionId === 'q2') {
+                currentState.wallet = null;
+                document.querySelectorAll('.wallet-btn').forEach(btn => btn.classList.remove('selected'));
+            }
+        }
+    </script>
+</body>
+</html>
+
