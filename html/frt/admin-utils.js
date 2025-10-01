@@ -1111,9 +1111,11 @@ async function validatePoolStateAccount(poolId) {
 }
 
 /**
- * Execute pool pause
+ * Execute pool pause with custom flags
+ * @param {string} poolId - Pool state PDA address
+ * @param {number} pauseFlags - Pause flags: 1=liquidity, 2=swaps, 3=both
  */
-async function executePoolPause(poolId) {
+async function executePoolPauseWithFlags(poolId, pauseFlags = 3) {
     try {
         if (!adminWallet) {
             throw new Error('Wallet not connected');
@@ -1123,7 +1125,11 @@ async function executePoolPause(poolId) {
             throw new Error('Invalid pool ID format');
         }
         
-        console.log('⏸️ Executing pool pause for:', poolId);
+        if (typeof pauseFlags !== 'number' || pauseFlags < 1 || pauseFlags > 3) {
+            throw new Error('Invalid pause flags. Use 1 (liquidity), 2 (swaps), or 3 (both)');
+        }
+        
+        console.log('⏸️ Executing pool pause for:', poolId, 'with flags:', pauseFlags);
         console.log('🔍 DEBUG: Starting pool pause with validation...');
         
         const systemStatePDA = getSystemStatePDA();
@@ -1144,10 +1150,9 @@ async function executePoolPause(poolId) {
         
         // Create instruction data: discriminator (1 byte) + pause_flags (1 byte) + pool_id (32 bytes)
         // According to API: PausePool { pause_flags: u8, pool_id: Pubkey }
-        const pauseFlags = 3; // PAUSE_FLAG_ALL - pause all operations
         const instructionData = new Uint8Array(1 + 1 + 32); // 34 bytes total
         instructionData[0] = 19; // PausePool discriminator
-        instructionData[1] = pauseFlags; // pause_flags
+        instructionData[1] = pauseFlags; // pause_flags: 1=liquidity, 2=swaps, 3=both
         
         // Copy pool_id bytes (32 bytes)
         poolStatePDA.toBytes().forEach((byte, index) => {
@@ -1198,9 +1203,18 @@ async function executePoolPause(poolId) {
 }
 
 /**
- * Execute pool unpause
+ * Execute pool pause (legacy wrapper - pauses all operations)
  */
-async function executePoolUnpause(poolId) {
+async function executePoolPause(poolId) {
+    return executePoolPauseWithFlags(poolId, 3); // PAUSE_FLAG_ALL
+}
+
+/**
+ * Execute pool unpause with custom flags
+ * @param {string} poolId - Pool state PDA address
+ * @param {number} unpauseFlags - Unpause flags: 1=liquidity, 2=swaps, 3=both
+ */
+async function executePoolUnpauseWithFlags(poolId, unpauseFlags = 3) {
     try {
         if (!adminWallet) {
             throw new Error('Wallet not connected');
@@ -1210,7 +1224,11 @@ async function executePoolUnpause(poolId) {
             throw new Error('Invalid pool ID format');
         }
         
-        console.log('▶️ Executing pool unpause for:', poolId);
+        if (typeof unpauseFlags !== 'number' || unpauseFlags < 1 || unpauseFlags > 3) {
+            throw new Error('Invalid unpause flags. Use 1 (liquidity), 2 (swaps), or 3 (both)');
+        }
+        
+        console.log('▶️ Executing pool unpause for:', poolId, 'with flags:', unpauseFlags);
         
         const systemStatePDA = getSystemStatePDA();
         
@@ -1219,10 +1237,9 @@ async function executePoolUnpause(poolId) {
         
         // Create instruction data: discriminator (1 byte) + unpause_flags (1 byte) + pool_id (32 bytes)
         // According to API: UnpausePool { unpause_flags: u8, pool_id: Pubkey }
-        const unpauseFlags = 3; // PAUSE_FLAG_ALL - unpause all operations
         const instructionData = new Uint8Array(1 + 1 + 32); // 34 bytes total
         instructionData[0] = 20; // UnpausePool discriminator
-        instructionData[1] = unpauseFlags; // unpause_flags
+        instructionData[1] = unpauseFlags; // unpause_flags: 1=liquidity, 2=swaps, 3=both
         
         // Copy pool_id bytes (32 bytes)
         poolStatePDA.toBytes().forEach((byte, index) => {
@@ -1270,6 +1287,13 @@ async function executePoolUnpause(poolId) {
         
         throw error;
     }
+}
+
+/**
+ * Execute pool unpause (legacy wrapper - unpauses all operations)
+ */
+async function executePoolUnpause(poolId) {
+    return executePoolUnpauseWithFlags(poolId, 3); // PAUSE_FLAG_ALL
 }
 
 /**
@@ -1771,6 +1795,8 @@ if (typeof window !== 'undefined') {
         validatePoolStateAccount,
         executePoolPause,
         executePoolUnpause,
+        executePoolPauseWithFlags,
+        executePoolUnpauseWithFlags,
         executePoolUpdateFees,
         executeSwapSetOwnerOnly,
         // Treasury functions
