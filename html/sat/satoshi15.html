@@ -231,6 +231,16 @@
             color: #64748b;
         }
 
+        /* FRT Deviation link hover effect */
+        a:has(.price-item):hover .price-item {
+            background: rgba(16, 185, 129, 0.1) !important;
+            transform: scale(1.02);
+        }
+
+        body.dark-mode a:has(.price-item):hover .price-item {
+            background: rgba(16, 185, 129, 0.15) !important;
+        }
+
         .dollar-excitement {
             margin: 20px 0;
             padding: 18px;
@@ -908,6 +918,9 @@
             
             <!-- Price Display -->
             <div class="price-display" id="price-display">
+                <div class="dollar-excitement" id="dollar-excitement">
+                    <span class="excitement-text">$1 USD gets you <span class="excitement-amount" id="tsat-amount">Loading...</span> tSATs!</span>
+                </div>
                 <div class="price-item">
                     <span class="price-label">BTC Price:</span>
                     <span class="price-value" id="btc-price">Loading...</span>
@@ -916,9 +929,20 @@
                     <span class="price-label">tSAT Price:</span>
                     <span class="price-value" id="tsat-price">Loading...</span>
                 </div>
-                <div class="dollar-excitement" id="dollar-excitement">
-                    <span class="excitement-text">$1 USD gets you <span class="excitement-amount" id="tsat-amount">Loading...</span> tSATs!</span>
+                <div class="price-item">
+                    <span class="price-label">Raydium tSAT/BTC:</span>
+                    <span class="price-value" id="tsat-market-btc">Loading...</span>
                 </div>
+                <div class="price-item">
+                    <span class="price-label">Peg Deviation:</span>
+                    <span class="price-value" id="peg-deviation">Loading...</span>
+                </div>
+                <a href="https://frt15.net/swap.html?pool=AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" target="_blank" style="text-decoration: none; display: block;">
+                    <div class="price-item" style="cursor: pointer; transition: all 0.3s ease; padding: 8px; margin: -8px -8px 7px -8px; border-radius: 8px;">
+                        <span class="price-label" style="color: #cbd5e1;">FRT Deviation:</span>
+                        <span class="price-value" style="color: #10b981; text-decoration: underline;">Always 0% →</span>
+                    </div>
+                </a>
                 <div class="price-updated" id="price-updated">Last updated: Loading...</div>
             </div>
         </div>
@@ -1270,6 +1294,34 @@
             const tsatPrice = document.getElementById('tsat-price');
             tsatPrice.textContent = '$' + Number(data.tsat_price_usd).toFixed(8);
             
+            // Update Raydium tSAT/BTC market price
+            const tsatMarketBtc = document.getElementById('tsat-market-btc');
+            if (data.tsat_market_price_btc) {
+                tsatMarketBtc.textContent = Number(data.tsat_market_price_btc).toFixed(12) + ' BTC';
+            } else {
+                tsatMarketBtc.textContent = 'N/A';
+            }
+            
+            // Update peg deviation percentage
+            const pegDeviation = document.getElementById('peg-deviation');
+            if (data.tsat_peg_deviation_percent !== undefined) {
+                const deviation = Number(data.tsat_peg_deviation_percent);
+                const sign = deviation >= 0 ? '+' : '';
+                pegDeviation.textContent = sign + deviation.toFixed(2) + '%';
+                
+                // Color code the deviation: green if close to 0, red if far
+                if (Math.abs(deviation) < 0.5) {
+                    pegDeviation.style.color = '#10b981'; // Green
+                } else if (Math.abs(deviation) < 2) {
+                    pegDeviation.style.color = '#f59e0b'; // Amber
+                } else {
+                    pegDeviation.style.color = '#ef4444'; // Red
+                }
+            } else {
+                pegDeviation.textContent = 'N/A';
+                pegDeviation.style.color = '#f7931a'; // Default orange
+            }
+            
             // Calculate and display tSATs for $1
             const tsatAmount = document.getElementById('tsat-amount');
             const tsatsFor1Dollar = Math.floor(1 / Number(data.tsat_price_usd));
@@ -1311,10 +1363,13 @@
         function loadFallbackPrices() {
             console.log('Using fallback price data');
             const fallbackData = {
-                btc_price_usd: 109684,
-                tsat_price_usd: 0.00109684,
-                last_updated_utc: "2025-09-27T05:20:42Z",
-                timestamp: 1758950442
+                btc_price_usd: 117200,
+                tsat_price_usd: 0.001172,
+                tsat_market_price_btc: 0.000000009998,
+                tsat_market_price_usd: 0.001172,
+                tsat_peg_deviation_percent: -0.02,
+                last_updated_utc: "2025-10-01T12:30:00Z",
+                timestamp: 1727786400
             };
             displayPrices(fallbackData);
             
