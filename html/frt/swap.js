@@ -1424,16 +1424,16 @@ function updatePoolDisplay() {
     
 
     
-    // Add pause warning banner if pool is paused
+    // Add pause warning banner only when swaps are paused (not for liquidity-only pause)
     let pauseWarningHtml = '';
-    if (flags.swapsPaused || flags.liquidityPaused) {
-        const pauseType = flags.swapsPaused ? 'Swaps' : 'Liquidity Operations';
-        const pauseIcon = flags.swapsPaused ? '🚫' : '⏸️';
+    if (flags.swapsPaused) {
+        const pauseType = 'Swaps';
+        const pauseIcon = '🚫';
         pauseWarningHtml = `
             <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 2px solid #fca5a5;">
                 <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">${pauseIcon} Pool ${pauseType} Paused</div>
                 <div style="font-size: 14px; opacity: 0.9;">
-                    ${flags.swapsPaused ? 'Token swaps are currently disabled by the pool owner.' : 'Pool liquidity operations are paused, which may affect trading.'}
+                    Token swaps are currently disabled by the pool owner.
                     <br>Please contact the pool owner or try again later.
                 </div>
             </div>
@@ -1461,7 +1461,7 @@ function updatePoolDisplay() {
     statusLabel.textContent = 'Pool Status';
     const statusValue = document.createElement('div');
     statusValue.className = 'metric-value';
-    statusValue.style.color = flags.liquidityPaused || flags.swapsPaused ? '#dc2626' : '#10b981';
+    statusValue.style.color = flags.swapsPaused ? '#dc2626' : (flags.liquidityPaused ? '#f59e0b' : '#10b981');
     if (flags.liquidityPaused || flags.swapsPaused) {
         statusValue.style.fontWeight = 'bold';
     }
