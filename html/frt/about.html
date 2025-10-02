@@ -185,24 +185,40 @@
         }
         
         .contact-info {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            color: #333;
             padding: 25px;
             border-radius: 12px;
             margin: 30px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         
         .contact-info h3 {
-            color: white;
+            color: #333;
             margin-top: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .contact-info p {
+            color: #555;
+        }
+        
+        .contact-info strong {
+            color: #333;
         }
         
         .contact-info a {
-            color: #bfdbfe;
+            color: #667eea;
+            font-weight: 500;
         }
         
         .contact-info a:hover {
-            color: white;
+            color: #764ba2;
+            text-decoration: underline;
         }
         
         @media (max-width: 768px) {
@@ -459,6 +475,90 @@ Pool C: 10 SOL = 1000 USDC
                 <li><strong>PDA Validation:</strong> Complete program-derived address verification</li>
                 <li><strong>Input Sanitization:</strong> Comprehensive parameter validation</li>
             </ul>
+            
+            <h2>🔍 Open Source & Transparency</h2>
+            
+            <h3>📖 Fully Open Source Protocol</h3>
+            <p>Fixed Ratio Trading is committed to transparency and community trust. Our entire smart contract codebase is <strong>open source</strong> and available for public review, audit, and contribution.</p>
+            
+            <ul>
+                <li>🔗 <strong>GitHub Repository:</strong> <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank">https://github.com/Fixed-Asset-Ratio-Trading</a></li>
+                <li>✅ <strong>100% Transparent:</strong> Every line of code is publicly viewable</li>
+                <li>🔍 <strong>Community Auditable:</strong> Anyone can verify our claims and security measures</li>
+                <li>🤝 <strong>Open Contributions:</strong> Community improvements and bug reports welcome</li>
+            </ul>
+            
+            <h3>🤖 AI-Powered Verification</h3>
+            <p>Take advantage of modern AI tools to independently verify our smart contract's safety, functionality, and claims. You can audit our code using any AI system - here are some recommended approaches:</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>🎯 Using Claude AI for Auditing</h4>
+                    <p><strong>Example verification workflow:</strong></p>
+                    <ol>
+                        <li>Visit <a href="https://claude.ai" target="_blank">Claude.ai</a> by Anthropic</li>
+                        <li>Copy our smart contract code from GitHub</li>
+                        <li>Ask Claude: "Analyze this Solana smart contract for security vulnerabilities and verify it implements fixed-ratio trading correctly"</li>
+                        <li>Request specific checks: "Verify there's no hidden fees, backdoors, or rug-pull mechanisms"</li>
+                        <li>Validate our claims: "Confirm this implements zero-slippage trading at fixed ratios"</li>
+                    </ol>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🛠️ Other AI Audit Tools</h4>
+                    <p><strong>Alternative AI systems for verification:</strong></p>
+                    <ul>
+                        <li><strong>ChatGPT-4:</strong> Upload contract files for comprehensive security analysis</li>
+                        <li><strong>GitHub Copilot:</strong> Review code patterns and potential vulnerabilities</li>
+                        <li><strong>Gemini Advanced:</strong> Cross-reference with best practices and known exploits</li>
+                        <li><strong>Cursor AI:</strong> Deep code analysis with Solana-specific knowledge</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <h3>🛡️ What to Verify</h3>
+            <p>When auditing our smart contract with AI or manually, focus on these critical aspects:</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Verification Area</th>
+                        <th>What to Check</th>
+                        <th>Expected Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Fixed Ratios</strong></td>
+                        <td>Math calculations maintain exact ratios</td>
+                        <td class="positive">✅ No slippage, precise calculations</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fee Structure</strong></td>
+                        <td>All fees are transparent and as documented</td>
+                        <td class="positive">✅ Fees match documentation exactly</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Admin Powers</strong></td>
+                        <td>No hidden admin functions or rug-pull mechanisms</td>
+                        <td class="positive">✅ Limited, transparent admin controls</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fund Security</strong></td>
+                        <td>User funds are secure and withdrawable</td>
+                        <td class="positive">✅ Users maintain full control</td>
+                    </tr>
+                    <tr>
+                        <td><strong>PDA Validation</strong></td>
+                        <td>Proper Program Derived Address usage</td>
+                        <td class="positive">✅ Secure PDA implementation</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <blockquote>
+                <p><strong>💡 Pro Tip:</strong> When using AI for auditing, be specific in your questions. Ask about edge cases, potential attack vectors, and mathematical precision. The more detailed your queries, the more thorough the audit.</p>
+            </blockquote>
             
             <h2>📊 Benefits & Competitive Advantages</h2>
             
