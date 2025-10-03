@@ -931,6 +931,39 @@ function swap_tsat_to_tbtc(tsat_amount) {
                     </tbody>
                 </table>
 
+                <h3>Circulating Supply API</h3>
+                <p>Real-time circulating supply data is available through public API endpoints:</p>
+                
+                <div class="info-box">
+                    <h4>API Endpoints</h4>
+                    <ul>
+                        <li><strong>Plain Number Format:</strong> <a href="https://satoshi15.com/api/circulating-supply.php" target="_blank">https://satoshi15.com/api/circulating-supply.php</a></li>
+                        <li><strong>JSON Format:</strong> <a href="https://satoshi15.com/api/circulating-supply.php?format=json" target="_blank">https://satoshi15.com/api/circulating-supply.php?format=json</a></li>
+                    </ul>
+                </div>
+
+                <h4>API Response Format</h4>
+                <p>The JSON endpoint provides comprehensive supply data:</p>
+                <pre><code>{
+  "circulating_supply": 80195953,
+  "total_supply": 21000000000000,
+  "locked_in_pool": 20999919804047,
+  "timestamp": 1759477338,
+  "last_updated": "2025-10-03T07:42:18+00:00",
+  "pool_address": "AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj",
+  "tsat_token": "tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu",
+  "rpc_provider": "chainstack"
+}</code></pre>
+
+                <h4>Integration Examples</h4>
+                <p>Perfect for CoinGecko, CoinMarketCap, and other data aggregators:</p>
+                <ul>
+                    <li><strong>CoinGecko format:</strong> Returns plain number for easy integration</li>
+                    <li><strong>Real-time data:</strong> Updates every 5 minutes with live Solana RPC calls</li>
+                    <li><strong>Transparent calculation:</strong> Total Supply - tSAT locked in pool = Circulating Supply</li>
+                    <li><strong>Fallback protection:</strong> Multiple RPC endpoints ensure reliability</li>
+                </ul>
+
                 <h3>Value Proposition</h3>
 
                 <h4>For Bitcoin Holders</h4>
