@@ -938,6 +938,14 @@
                     <span class="price-label">Peg Deviation:</span>
                     <span class="price-value" id="peg-deviation">Loading...</span>
                 </div>
+                <div class="price-item">
+                    <span class="price-label">Market Cap:</span>
+                    <span class="price-value" id="market-cap">Loading...</span>
+                </div>
+                <div class="price-item">
+                    <span class="price-label">Circulating Supply:</span>
+                    <span class="price-value" id="circulating-supply">Loading...</span>
+                </div>
                 <a href="https://frt15.net/swap.html?pool=AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" target="_blank" style="text-decoration: none; display: block;">
                     <div class="price-item" style="cursor: pointer; transition: all 0.3s ease; padding: 8px; margin: -8px -8px 7px -8px; border-radius: 8px;">
                         <span class="price-label" style="color: #cbd5e1;">FRT Deviation:</span>
@@ -1112,6 +1120,25 @@
                 <h2>Frequently Asked Questions</h2>
                 
                 <div class="faq-item">
+                    <div class="faq-question">Why does tSAT show a high Fully Diluted Valuation (FDV)?</div>
+                    <div class="faq-answer">
+                        <p><strong>The full story:</strong> tSAT was created with a maximum supply of 21 trillion tokens (equivalent to 210,000 BTC or 1% of Bitcoin's total supply). All 21T tokens were minted at genesis and locked in the Fixed Ratio Trading smart contract.</p>
+                        
+                        <p style="margin-top: 12px;"><strong>FDV vs Market Cap:</strong></p>
+                        <ul style="margin: 10px 0 10px 20px;">
+                            <li><strong>Fully Diluted Valuation (FDV):</strong> <span id="fdv-display">21 trillion tokens × current price = $24.6 billion</span></li>
+                            <li><strong>Actual Market Cap:</strong> <span id="market-cap-display" style="color: #10b981;">~80 million tokens × current price = ~$96,000</span></li>
+                        </ul>
+                        
+                        <p style="margin-top: 12px;"><strong>Why the difference?</strong> Only <span id="circulating-percent-display">0.0004%</span> of the total supply is currently in circulation! The vast majority (over 99.99%) remains locked in the FRT smart contract as backing reserves. tSAT only enters circulation when users deposit tBTC to mint it.</p>
+                        
+                        <p style="margin-top: 12px;"><strong>Real Market Value:</strong> The actual market cap reflects only the circulating supply that's actively being traded. As adoption grows and more users mint tSAT, the circulating supply (and real market cap) will increase organically based on demand.</p>
+                        
+                        <p style="margin-top: 12px;"><em>Check the live data above to see current circulating supply and real market cap.</em></p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
                     <div class="faq-question">What backs Satoshi tokens?</div>
                     <div class="faq-answer">
                         Every tSAT token is backed 1:1 by Threshold Network's tBTC, which itself is backed 1:1 by Bitcoin. The backing is held in an immutable smart contract with verifiable on-chain reserves that anyone can audit in real-time.
@@ -1272,6 +1299,8 @@
                     .then(data => {
                         console.log('Successfully loaded price data:', data);
                         displayPrices(data);
+                        // Load circulating supply after price data
+                        loadCirculatingSupply(data);
                     })
                     .catch(error => {
                         console.error(`Failed to load from ${path}:`, error);
@@ -1280,6 +1309,107 @@
             }
             
             tryPath(0);
+        }
+        
+        // Load circulating supply data
+        function loadCirculatingSupply(priceData) {
+            const apiPaths = [
+                'https://satoshi15.com/api/circulating-supply.php?format=json',
+                './api/circulating-supply.php?format=json',
+                '/api/circulating-supply.php?format=json'
+            ];
+            
+            function trySupplyPath(pathIndex) {
+                if (pathIndex >= apiPaths.length) {
+                    console.error('Failed to load circulating supply, using fallback');
+                    displayCirculatingSupply({
+                        circulating_supply: 80195953,
+                        total_supply: 21000000000000
+                    }, priceData);
+                    return;
+                }
+                
+                const path = apiPaths[pathIndex];
+                console.log('Trying circulating supply path:', path);
+                
+                fetch(path)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Successfully loaded circulating supply:', data);
+                        displayCirculatingSupply(data, priceData);
+                    })
+                    .catch(error => {
+                        console.error(`Failed to load from ${path}:`, error);
+                        trySupplyPath(pathIndex + 1);
+                    });
+            }
+            
+            trySupplyPath(0);
+        }
+        
+        // Display circulating supply and market cap
+        function displayCirculatingSupply(supplyData, priceData) {
+            const circulatingSupply = supplyData.circulating_supply || 0;
+            const totalSupply = supplyData.total_supply || 21000000000000;
+            const tsatPrice = Number(priceData.tsat_price_usd) || 0.001172;
+            
+            // Calculate market cap
+            const marketCap = circulatingSupply * tsatPrice;
+            
+            // Calculate FDV
+            const fdv = totalSupply * tsatPrice;
+            
+            // Calculate circulating percentage
+            const circulatingPercent = (circulatingSupply / totalSupply) * 100;
+            
+            // Display circulating supply
+            const circulatingElement = document.getElementById('circulating-supply');
+            if (circulatingElement) {
+                circulatingElement.textContent = circulatingSupply.toLocaleString('en-US') + ' tSAT';
+            }
+            
+            // Display market cap
+            const marketCapElement = document.getElementById('market-cap');
+            if (marketCapElement) {
+                if (marketCap >= 1000000) {
+                    marketCapElement.textContent = '$' + (marketCap / 1000000).toFixed(2) + 'M';
+                } else if (marketCap >= 1000) {
+                    marketCapElement.textContent = '$' + (marketCap / 1000).toFixed(2) + 'K';
+                } else {
+                    marketCapElement.textContent = '$' + marketCap.toFixed(2);
+                }
+            }
+            
+            // Update FAQ with live data
+            const fdvDisplay = document.getElementById('fdv-display');
+            if (fdvDisplay) {
+                if (fdv >= 1000000000) {
+                    fdvDisplay.textContent = '21 trillion tokens × $' + tsatPrice.toFixed(8) + ' = $' + (fdv / 1000000000).toFixed(2) + ' billion';
+                } else if (fdv >= 1000000) {
+                    fdvDisplay.textContent = '21 trillion tokens × $' + tsatPrice.toFixed(8) + ' = $' + (fdv / 1000000).toFixed(2) + ' million';
+                }
+            }
+            
+            const marketCapDisplay = document.getElementById('market-cap-display');
+            if (marketCapDisplay) {
+                if (marketCap >= 1000000) {
+                    marketCapDisplay.textContent = circulatingSupply.toLocaleString('en-US') + ' tokens × $' + tsatPrice.toFixed(8) + ' = $' + (marketCap / 1000000).toFixed(2) + ' million';
+                } else if (marketCap >= 1000) {
+                    marketCapDisplay.textContent = circulatingSupply.toLocaleString('en-US') + ' tokens × $' + tsatPrice.toFixed(8) + ' = $' + (marketCap / 1000).toFixed(2) + 'K';
+                } else {
+                    marketCapDisplay.textContent = circulatingSupply.toLocaleString('en-US') + ' tokens × $' + tsatPrice.toFixed(8) + ' = $' + marketCap.toFixed(2);
+                }
+            }
+            
+            const circulatingPercentDisplay = document.getElementById('circulating-percent-display');
+            if (circulatingPercentDisplay) {
+                circulatingPercentDisplay.textContent = circulatingPercent.toFixed(4) + '%';
+            }
         }
         
         // Display prices from data
