@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tSAT Whitepaper - Satoshi Token Technical Documentation</title>
+    <link rel="icon" href="images/tSatoshi64x64and16x16.ico" type="image/x-icon">
+    
+    <!-- Bitcoin.org inspired fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.7;
+            color: #333;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            color: #e2e8f0;
+            background: #0f172a;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body.dark-mode header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .logo-section img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #f7931a, #ffb347);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: #cbd5e1;
+            margin-bottom: 20px;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: rgba(247, 147, 26, 0.2);
+            border: 2px solid #f7931a;
+            color: #f7931a;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* Navigation */
+        .nav-menu {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            margin-bottom: 40px;
+        }
+
+        body.dark-mode .nav-menu {
+            background: #1e293b;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-menu ul {
+            display: flex;
+            justify-content: center;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-wrap: wrap;
+        }
+
+        .nav-menu li {
+            margin: 0 5px;
+        }
+
+        .nav-menu a {
+            display: block;
+            padding: 15px 20px;
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        body.dark-mode .nav-menu a {
+            color: #e2e8f0;
+        }
+
+        .nav-menu a:hover {
+            color: #f7931a;
+            border-bottom-color: #f7931a;
+            background: rgba(247, 147, 26, 0.05);
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            z-index: 1001;
+        }
+
+        body.dark-mode .theme-toggle {
+            background: rgba(30, 41, 59, 0.9);
+            border-color: rgba(148, 163, 184, 0.3);
+            color: #e2e8f0;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.05);
+        }
+
+        /* Main Content */
+        .content {
+            background: white;
+            margin-bottom: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        body.dark-mode .content {
+            background: #1e293b;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .section {
+            padding: 40px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        body.dark-mode .section {
+            border-bottom-color: #374151;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section h2 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #1e3c72;
+            border-bottom: 3px solid #f7931a;
+            padding-bottom: 10px;
+            display: inline-block;
+        }
+
+        body.dark-mode .section h2 {
+            color: #e2e8f0;
+        }
+
+        .section h3 {
+            font-size: 1.6rem;
+            font-weight: 600;
+            margin: 30px 0 15px 0;
+            color: #2a5298;
+        }
+
+        body.dark-mode .section h3 {
+            color: #cbd5e1;
+        }
+
+        .section h4 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 25px 0 12px 0;
+            color: #374151;
+        }
+
+        body.dark-mode .section h4 {
+            color: #94a3b8;
+        }
+
+        .section p {
+            margin-bottom: 18px;
+            color: #555;
+            font-size: 1.05rem;
+        }
+
+        body.dark-mode .section p {
+            color: #cbd5e1;
+        }
+
+        .section ul, .section ol {
+            margin: 20px 0;
+            padding-left: 30px;
+        }
+
+        .section li {
+            margin-bottom: 12px;
+            color: #555;
+            font-size: 1.05rem;
+        }
+
+        body.dark-mode .section li {
+            color: #cbd5e1;
+        }
+
+        /* Highlight boxes */
+        .highlight-box {
+            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin: 30px 0;
+            box-shadow: 0 6px 20px rgba(247, 147, 26, 0.3);
+        }
+
+        .highlight-box h3 {
+            color: white;
+            margin-top: 0;
+        }
+
+        .info-box {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        body.dark-mode .info-box {
+            background: rgba(59, 130, 246, 0.15);
+            border-left-color: #60a5fa;
+        }
+
+        .warning-box {
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        body.dark-mode .warning-box {
+            background: rgba(245, 158, 11, 0.15);
+            border-left-color: #fbbf24;
+        }
+
+        .success-box {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        body.dark-mode .success-box {
+            background: rgba(16, 185, 129, 0.15);
+            border-left-color: #34d399;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: #f8f9fa;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode table {
+            background: #374151;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        body.dark-mode th, body.dark-mode td {
+            border-bottom-color: #4b5563;
+        }
+
+        th {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        body.dark-mode th {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+        }
+
+        tr:hover {
+            background: rgba(247, 147, 26, 0.05);
+        }
+
+        /* Code blocks */
+        code {
+            background: #f3f4f6;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #1f2937;
+        }
+
+        body.dark-mode code {
+            background: #374151;
+            color: #e5e7eb;
+        }
+
+        pre {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 25px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 25px 0;
+            border: 1px solid #374151;
+        }
+
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        /* Links */
+        a {
+            color: #f7931a;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a:hover {
+            color: #ff8c00;
+            text-decoration: underline;
+        }
+
+        /* Transaction boxes */
+        .transaction-box {
+            background: #f0f9ff;
+            border: 2px solid #0ea5e9;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode .transaction-box {
+            background: rgba(14, 165, 233, 0.1);
+            border-color: #0ea5e9;
+        }
+
+        .transaction-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.2);
+        }
+
+        .transaction-box h5 {
+            color: #0ea5e9;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .transaction-box a {
+            font-family: monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+            display: block;
+            margin-top: 10px;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 15px;
+            }
+
+            header h1 {
+                font-size: 2.5rem;
+            }
+
+            .subtitle {
+                font-size: 1.1rem;
+            }
+
+            .section {
+                padding: 25px;
+            }
+
+            .section h2 {
+                font-size: 1.8rem;
+            }
+
+            .nav-menu ul {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .nav-menu li {
+                margin: 0;
+            }
+
+            .nav-menu a {
+                padding: 12px 20px;
+                border-bottom: none;
+                border-right: 3px solid transparent;
+            }
+
+            .nav-menu a:hover {
+                border-right-color: #f7931a;
+                border-bottom: none;
+            }
+
+            .logo-section {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .theme-toggle {
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+
+            table {
+                font-size: 14px;
+            }
+
+            th, td {
+                padding: 10px 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            .section h2 {
+                font-size: 1.5rem;
+            }
+
+            .section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon">🌙</span>
+    </button>
+
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="images/tSatoshi_512x512.png" alt="tSAT Token">
+                    <div>
+                        <h1>tSAT Whitepaper</h1>
+                        <p class="subtitle">Technical Documentation & Protocol Overview</p>
+                    </div>
+                </div>
+                <div class="version-badge">Version 1.0 - October 2024</div>
+            </div>
+        </div>
+    </header>
+
+    <nav class="nav-menu">
+        <div class="container">
+            <ul>
+                <li><a href="#abstract">Abstract</a></li>
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#protocol">Protocol Design</a></li>
+                <li><a href="#smart-contracts">Smart Contracts</a></li>
+                <li><a href="#security">Security Model</a></li>
+                <li><a href="#tokenomics">Tokenomics</a></li>
+                <li><a href="#proof-reserves">Proof of Reserves</a></li>
+                <li><a href="#redemption">How to Redeem</a></li>
+                <li><a href="#risks">Risks & Disclaimers</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Abstract -->
+        <div class="content">
+            <section id="abstract" class="section">
+                <h2>Abstract</h2>
+                <div class="highlight-box">
+                    <h3>tSAT: Bitcoin Satoshi Representation on Solana</h3>
+                    <p><strong>tSAT (Satoshi Token)</strong> is a fully-backed, redeemable token on Solana that represents Bitcoin satoshis with 1:1 parity to tBTC. Each tSAT token represents exactly one satoshi of Bitcoin, making Bitcoin ownership more psychologically accessible through whole number representation instead of decimal fractions.</p>
+                </div>
+                
+                <p>This whitepaper details the technical implementation of tSAT using the <strong>Fixed Ratio Trading (FRT) protocol</strong> on Solana, which ensures zero-slippage, predictable exchanges between tBTC and tSAT at a fixed ratio of <strong>1 tBTC = 100,000,000 tSAT</strong>.</p>
+
+                <div class="info-box">
+                    <p><strong>Key Innovation:</strong> tSAT transforms the psychological experience of Bitcoin ownership by displaying balances in whole satoshi units (e.g., "100,000 sats") instead of decimal Bitcoin amounts (e.g., "0.001 BTC"), while maintaining full backing and redeemability through immutable smart contracts.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Introduction -->
+        <div class="content">
+            <section id="introduction" class="section">
+                <h2>Introduction</h2>
+                
+                <h3>The Problem: Bitcoin's Decimal Complexity</h3>
+                <p>Bitcoin's current representation creates psychological barriers to adoption and engagement:</p>
+                <ul>
+                    <li><strong>Scientific notation confusion:</strong> Users see amounts like 1×10⁻⁵ BTC instead of intuitive whole numbers</li>
+                    <li><strong>Decimal intimidation:</strong> Small decimal amounts (0.00001 BTC) feel insignificant despite real value</li>
+                    <li><strong>Progress invisibility:</strong> Growth in tiny decimals is hard to perceive and celebrate</li>
+                    <li><strong>Mental math complexity:</strong> Calculating with 8 decimal places is error-prone</li>
+                </ul>
+
+                <h3>The Solution: Satoshi-Native Representation</h3>
+                <p>tSAT addresses these issues by:</p>
+                <ul>
+                    <li><strong>Whole number psychology:</strong> 1,000 tSAT feels more substantial than 0.00001 BTC</li>
+                    <li><strong>Clear progress tracking:</strong> Users can easily see their satoshi stack growing</li>
+                    <li><strong>Simplified mental math:</strong> Working with whole numbers reduces errors</li>
+                    <li><strong>Maintained Bitcoin exposure:</strong> Full 1:1 backing ensures no dilution of Bitcoin value</li>
+                </ul>
+
+                <h3>Why Solana?</h3>
+                <p>Solana provides the ideal infrastructure for tSAT:</p>
+                <ul>
+                    <li><strong>Low transaction costs:</strong> Enables micro-transactions in satoshi amounts</li>
+                    <li><strong>High throughput:</strong> Supports high-frequency satoshi transfers</li>
+                    <li><strong>Mature DeFi ecosystem:</strong> Rich tooling for smart contract development</li>
+                    <li><strong>Threshold Network integration:</strong> Native tBTC support for Bitcoin backing</li>
+                </ul>
+            </section>
+        </div>
+
+        <!-- Protocol Design -->
+        <div class="content">
+            <section id="protocol" class="section">
+                <h2>Protocol Design</h2>
+
+                <h3>Fixed Ratio Trading (FRT) Architecture</h3>
+                <p>tSAT is built on the <a href="https://frt15.net/about.html" target="_blank">Fixed Ratio Trading protocol</a>, which provides:</p>
+
+                <div class="info-box">
+                    <h4>Core FRT Features:</h4>
+                    <ul>
+                        <li><strong>Zero slippage trading:</strong> Exact ratios regardless of trade size</li>
+                        <li><strong>Predictable pricing:</strong> No complex AMM curves or price discovery</li>
+                        <li><strong>Liquidity concentration:</strong> Single canonical pool per token pair</li>
+                        <li><strong>Governance-ready architecture:</strong> Built for decentralized control</li>
+                    </ul>
+                </div>
+
+                <h3>Token Ratio Specification</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Conversion</th>
+                            <th>Ratio</th>
+                            <th>Example</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>tBTC → tSAT</td>
+                            <td>1 : 100,000,000</td>
+                            <td>1 tBTC = 100,000,000 tSAT</td>
+                        </tr>
+                        <tr>
+                            <td>tSAT → tBTC</td>
+                            <td>100,000,000 : 1</td>
+                            <td>100,000,000 tSAT = 1 tBTC</td>
+                        </tr>
+                        <tr>
+                            <td>Minimum unit</td>
+                            <td>1 tSAT</td>
+                            <td>1 tSAT = 1 Bitcoin satoshi</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Smart Contract Components</h3>
+
+                <h4>1. Fixed Ratio Trading Pool</h4>
+                <p>The core smart contract that:</p>
+                <ul>
+                    <li>Maintains the 1:100,000,000 tBTC:tSAT ratio</li>
+                    <li>Processes swaps with zero slippage</li>
+                    <li>Locks tBTC reserves as backing for tSAT</li>
+                    <li>Enables instant bidirectional conversion</li>
+                </ul>
+
+                <h4>2. Liquidity Provider (LP) Token System</h4>
+                <p>Dual LP token architecture:</p>
+                <ul>
+                    <li><strong>LP-tBTC tokens:</strong> Claims on tBTC side of the pool</li>
+                    <li><strong>LP-tSAT tokens:</strong> Claims on tSAT side of the pool</li>
+                    <li><strong>Burned LP tokens:</strong> All LP tokens permanently destroyed to lock reserves</li>
+                </ul>
+
+                <div class="warning-box">
+                    <p><strong>Critical Security Feature:</strong> All LP tokens have been permanently burned, meaning the tSAT reserves are permanently locked in the smart contract and can only be accessed through the fixed-ratio trading mechanism.</p>
+                </div>
+
+                <h4>3. Governance Controls</h4>
+                <p>Multi-signature governance system:</p>
+                <ul>
+                    <li><strong>Upgrade authority:</strong> Transferred to multi-sig address</li>
+                    <li><strong>Emergency controls:</strong> Protocol pause capabilities</li>
+                    <li><strong>Fee management:</strong> Currently 0%, governance-controlled</li>
+                    <li><strong>Treasury management:</strong> All fees flow to governance PDAs</li>
+                </ul>
+            </section>
+        </div>
+
+        <!-- Smart Contracts -->
+        <div class="content">
+            <section id="smart-contracts" class="section">
+                <h2>Smart Contract Implementation</h2>
+
+                <h3>Contract Addresses</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Address</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>tSAT Token</strong></td>
+                            <td><code>tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu</code></td>
+                            <td>Main token contract</td>
+                        </tr>
+                        <tr>
+                            <td><strong>FRT Pool</strong></td>
+                            <td><code>AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj</code></td>
+                            <td>Fixed ratio trading pool</td>
+                        </tr>
+                        <tr>
+                            <td><strong>tBTC Token</strong></td>
+                            <td><code>6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU</code></td>
+                            <td>Threshold Network tBTC</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Key Smart Contract Features</h3>
+
+                <h4>Immutable Core Logic</h4>
+                <p>The FRT smart contract implements immutable core functions:</p>
+                <pre><code>// Pseudo-code representation
+function swap_tbtc_to_tsat(tbtc_amount) {
+    tsat_amount = tbtc_amount * 100_000_000;
+    require(pool_has_tsat_liquidity(tsat_amount));
+    transfer_tbtc_from_user(tbtc_amount);
+    transfer_tsat_to_user(tsat_amount);
+    emit SwapEvent(tbtc_amount, tsat_amount);
+}
+
+function swap_tsat_to_tbtc(tsat_amount) {
+    require(tsat_amount % 100_000_000 == 0); // Ensure whole tBTC
+    tbtc_amount = tsat_amount / 100_000_000;
+    require(pool_has_tbtc_liquidity(tbtc_amount));
+    transfer_tsat_from_user(tsat_amount);
+    transfer_tbtc_to_user(tbtc_amount);
+    emit SwapEvent(tsat_amount, tbtc_amount);
+}</code></pre>
+
+                <h4>Security Validations</h4>
+                <ul>
+                    <li><strong>Ratio enforcement:</strong> Mathematical precision ensures exact 1:100,000,000 ratio</li>
+                    <li><strong>Overflow protection:</strong> SafeMath operations prevent arithmetic errors</li>
+                    <li><strong>PDA validation:</strong> All Program Derived Addresses properly verified</li>
+                    <li><strong>Access control:</strong> Proper permission checks on all functions</li>
+                </ul>
+
+                <h4>Liquidity Management</h4>
+                <p>The smart contract manages liquidity through:</p>
+                <ul>
+                    <li><strong>Asymmetric deposits:</strong> Users can deposit only tBTC or only tSAT</li>
+                    <li><strong>Balanced withdrawals:</strong> LP token holders can withdraw proportional shares</li>
+                    <li><strong>Reserve tracking:</strong> Real-time monitoring of backing ratios</li>
+                    <li><strong>Emergency pause:</strong> Circuit breakers for critical situations</li>
+                </ul>
+
+                <div class="success-box">
+                    <p><strong>Open Source Verification:</strong> All smart contract code is available at <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank">https://github.com/Fixed-Asset-Ratio-Trading</a> for independent audit and verification.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Security Model -->
+        <div class="content">
+            <section id="security" class="section">
+                <h2>Security Model</h2>
+
+                <h3>Multi-Layer Security Architecture</h3>
+
+                <h4>1. Smart Contract Security</h4>
+                <div class="info-box">
+                    <h5>Immutable Core Functions</h5>
+                    <p>Critical trading functions cannot be modified post-deployment, ensuring permanent adherence to the 1:100,000,000 ratio.</p>
+                </div>
+
+                <ul>
+                    <li><strong>Formal verification:</strong> Mathematical proofs of ratio correctness</li>
+                    <li><strong>Overflow protection:</strong> SafeMath prevents arithmetic vulnerabilities</li>
+                    <li><strong>Reentrancy guards:</strong> Protection against recursive call attacks</li>
+                    <li><strong>Input validation:</strong> Comprehensive parameter sanitization</li>
+                </ul>
+
+                <h4>2. Economic Security</h4>
+                <ul>
+                    <li><strong>Full collateralization:</strong> Every tSAT backed by tBTC in smart contract</li>
+                    <li><strong>Burned LP tokens:</strong> Reserves permanently locked, no admin access</li>
+                    <li><strong>Transparent reserves:</strong> Real-time on-chain verification</li>
+                    <li><strong>No fractional reserves:</strong> 1:1 backing ratio maintained at all times</li>
+                </ul>
+
+                <h4>3. Governance Security</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Control</th>
+                            <th>Current State</th>
+                            <th>Security Measure</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Upgrade Authority</td>
+                            <td>Multi-sig controlled</td>
+                            <td>Transparent upgrade process</td>
+                        </tr>
+                        <tr>
+                            <td>Emergency Pause</td>
+                            <td>Governance only</td>
+                            <td>Critical issue protection</td>
+                        </tr>
+                        <tr>
+                            <td>Fee Settings</td>
+                            <td>Currently 0%</td>
+                            <td>Community governance required</td>
+                        </tr>
+                        <tr>
+                            <td>Reserve Access</td>
+                            <td>Smart contract only</td>
+                            <td>No human intervention possible</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Risk Mitigation Strategies</h3>
+
+                <h4>Smart Contract Risks</h4>
+                <div class="warning-box">
+                    <p><strong>Mitigation:</strong> Open source code enables community auditing, formal verification of core logic, and extensive testing on devnet/testnet before mainnet deployment.</p>
+                </div>
+
+                <h4>tBTC Backing Risks</h4>
+                <div class="info-box">
+                    <p><strong>Mitigation:</strong> tSAT inherits the security model of Threshold Network's tBTC, which is backed 1:1 by Bitcoin held in a decentralized network of signers.</p>
+                </div>
+
+                <h4>Liquidity Risks</h4>
+                <div class="success-box">
+                    <p><strong>Mitigation:</strong> Fixed ratio trading eliminates slippage concerns, and burned LP tokens ensure permanent liquidity backing.</p>
+                </div>
+
+                <h3>Audit & Verification</h3>
+                <p>Security verification through multiple channels:</p>
+                <ul>
+                    <li><strong>Community auditing:</strong> Open source code review</li>
+                    <li><strong>AI-powered analysis:</strong> Automated vulnerability scanning</li>
+                    <li><strong>Formal verification:</strong> Mathematical proof of correctness</li>
+                    <li><strong>Real-time monitoring:</strong> On-chain reserve tracking</li>
+                </ul>
+            </section>
+        </div>
+
+        <!-- Tokenomics -->
+        <div class="content">
+            <section id="tokenomics" class="section">
+                <h2>Tokenomics</h2>
+
+                <h3>Supply Mechanics</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Value</th>
+                            <th>Explanation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Maximum Supply</strong></td>
+                            <td>21,000,000,000,000 tSAT</td>
+                            <td>Equivalent to 210,000 BTC (1% of Bitcoin's total supply)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Initial Supply</strong></td>
+                            <td>21T tSAT (minted)</td>
+                            <td>All tokens minted and locked in FRT contract</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Circulating Supply</strong></td>
+                            <td>Dynamic</td>
+                            <td>Based on tBTC deposited into the pool</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Backing Ratio</strong></td>
+                            <td>1:1 with tBTC</td>
+                            <td>Every circulating tSAT backed by tBTC</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Economic Model</h3>
+
+                <h4>Supply Constraint Economics</h4>
+                <div class="highlight-box">
+                    <h5>1% Bitcoin Supply Cap</h5>
+                    <p>tSAT is intentionally limited to represent only 1% of Bitcoin's total supply (210,000 BTC equivalent). This creates natural scarcity and ensures tSAT remains a specialized tool rather than a complete Bitcoin replacement.</p>
+                </div>
+
+                <h4>Circulation Dynamics</h4>
+                <p>tSAT circulation is determined by market demand:</p>
+                <ul>
+                    <li><strong>Minting:</strong> Users deposit tBTC → receive tSAT at 1:100M ratio</li>
+                    <li><strong>Burning:</strong> Users return tSAT → receive tBTC at 100M:1 ratio</li>
+                    <li><strong>Net circulation:</strong> Difference between minted and burned tokens</li>
+                    <li><strong>Market forces:</strong> Supply/demand balance determines actual circulation</li>
+                </ul>
+
+                <h4>Fee Structure</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fee Type</th>
+                            <th>Current Rate</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Pool Trading Fee</td>
+                            <td>0%</td>
+                            <td>Bootstrap liquidity (governance controlled)</td>
+                        </tr>
+                        <tr>
+                            <td>Solana Network Fee</td>
+                            <td>~0.0002715 SOL</td>
+                            <td>Transaction processing costs</td>
+                        </tr>
+                        <tr>
+                            <td>Maximum Pool Fee</td>
+                            <td>0.5%</td>
+                            <td>Hard-coded protocol limit</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Value Proposition</h3>
+
+                <h4>For Bitcoin Holders</h4>
+                <ul>
+                    <li><strong>Psychological benefits:</strong> Whole number satoshi representation</li>
+                    <li><strong>Maintained exposure:</strong> Full Bitcoin price correlation</li>
+                    <li><strong>DeFi utility:</strong> Use Bitcoin in Solana ecosystem</li>
+                    <li><strong>Instant liquidity:</strong> Convert back to tBTC anytime</li>
+                </ul>
+
+                <h4>For DeFi Users</h4>
+                <ul>
+                    <li><strong>Bitcoin integration:</strong> Native Bitcoin exposure in Solana DeFi</li>
+                    <li><strong>Micro-transactions:</strong> Trade small Bitcoin amounts efficiently</li>
+                    <li><strong>Composability:</strong> Building block for other protocols</li>
+                    <li><strong>Predictable pricing:</strong> No slippage on conversions</li>
+                </ul>
+            </section>
+        </div>
+
+        <!-- Proof of Reserves -->
+        <div class="content">
+            <section id="proof-reserves" class="section">
+                <h2>Proof of Reserves</h2>
+
+                <p>All tSAT tokens are verifiably backed by tBTC reserves locked in the Fixed Ratio Trading smart contract. The complete transaction history demonstrates the security and transparency of the system:</p>
+
+                <div class="transaction-box">
+                    <h5>1. Token Mint Creation (21T tSAT Maximum Supply)</h5>
+                    <p>Initial minting of all tSAT tokens with maximum supply cap of 21 trillion tokens.</p>
+                    <a href="https://solscan.io/tx/2JUaZMSi1XgXbzPsP7ud4rcV3d2621nmWL5ay3Nuex2LjdhDE7V4G9DjcxVSHjGpmm61dAx5GtcVd62JY1B8LTrR" target="_blank">
+                        View Transaction: 2JUaZMSi1XgXbzPsP7ud4rcV3d2621nmWL5ay3Nuex2LjdhDE7V4G9DjcxVSHjGpmm61dAx5GtcVd62JY1B8LTrR
+                    </a>
+                </div>
+
+                <div class="transaction-box">
+                    <h5>2. Tokens Locked in Fixed Ratio Trading Contract</h5>
+                    <p>All 21 trillion tSAT tokens transferred to the Fixed Ratio Trading smart contract, receiving LP tokens in return to establish the trading pool.</p>
+                    <a href="https://solscan.io/tx/2iW5itDKKr3B9NU2WjqBtMMhG6EWLqFwnFTDhCzWsPfzmS85zSKhWBX4DxyXzksR8G31LEfZkcSAGr9YJDJCwc9K" target="_blank">
+                        View Transaction: 2iW5itDKKr3B9NU2WjqBtMMhG6EWLqFwnFTDhCzWsPfzmS85zSKhWBX4DxyXzksR8G31LEfZkcSAGr9YJDJCwc9K
+                    </a>
+                </div>
+
+                <div class="transaction-box">
+                    <h5>3. LP Tokens Permanently Burned</h5>
+                    <p><strong>Critical Security Step:</strong> All liquidity provider tokens permanently burned, ensuring tSAT tokens remain locked in the contract unless someone trades tBTC for them.</p>
+                    <a href="https://solscan.io/tx/PtHnPnFotbY1EJbQdY3gGcgmqJaXj6ewXPhZkTmMAvyxiq95BgBeVv6vk9ma4b6bFPszMGUUNjKhSF27WCNrU1k" target="_blank">
+                        View Transaction: PtHnPnFotbY1EJbQdY3gGcgmqJaXj6ewXPhZkTmMAvyxiq95BgBeVv6vk9ma4b6bFPszMGUUNjKhSF27WCNrU1k
+                    </a>
+                </div>
+
+                <div class="transaction-box">
+                    <h5>4. Upgrade Authority Transferred to Multi-Sig</h5>
+                    <p>Token upgrade authority transferred to multi-signature address ensuring transparent governance and preventing unilateral changes to the protocol.</p>
+                    <a href="https://solscan.io/tx/45yr7uxLWLk2CjpiUNpkJgZnHUN9hXVMveu3HHwzxyWiR47tfZotbLynuWpzTVzVFK37JWkRGQSVArmE5m6WGZB2" target="_blank">
+                        View Transaction: 45yr7uxLWLk2CjpiUNpkJgZnHUN9hXVMveu3HHwzxyWiR47tfZotbLynuWpzTVzVFK37JWkRGQSVArmE5m6WGZB2
+                    </a>
+                </div>
+
+                <h3>Real-Time Verification</h3>
+                <p>Anyone can verify the backing at any time:</p>
+                <ul>
+                    <li><strong>Pool reserves:</strong> Check FRT pool balance on <a href="https://solscan.io/token/AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" target="_blank">Solscan</a></li>
+                    <li><strong>Token supply:</strong> Monitor circulating vs total supply</li>
+                    <li><strong>Backing ratio:</strong> Verify 1:1 tBTC backing for all circulating tSAT</li>
+                    <li><strong>LP token status:</strong> Confirm all LP tokens remain burned</li>
+                </ul>
+
+                <div class="success-box">
+                    <p><strong>Open Source Verification:</strong> The complete Fixed Ratio Trading protocol is open source and available at <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank">https://github.com/Fixed-Asset-Ratio-Trading</a> for independent verification.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- How to Redeem -->
+        <div class="content">
+            <section id="redemption" class="section">
+                <h2>How to Redeem tSAT for tBTC</h2>
+
+                <div class="highlight-box">
+                    <h3>Instant Redemption Process</h3>
+                    <p>tSAT holders can redeem their tokens for tBTC instantly through the Fixed Ratio Trading protocol at <a href="https://frt15.net" target="_blank" style="color: white; text-decoration: underline;">frt15.net</a> with guaranteed 1:100,000,000 conversion ratio.</p>
+                </div>
+
+                <h3>Step-by-Step Redemption Guide</h3>
+
+                <h4>Method 1: Using FRT15.net Interface</h4>
+                <ol>
+                    <li><strong>Connect Wallet:</strong> Visit <a href="https://frt15.net" target="_blank">frt15.net</a> and connect your Solana wallet</li>
+                    <li><strong>Select Pool:</strong> Navigate to the tSAT/tBTC trading pool</li>
+                    <li><strong>Choose Swap Direction:</strong> Select tSAT → tBTC conversion</li>
+                    <li><strong>Enter Amount:</strong> Input the amount of tSAT you want to redeem</li>
+                    <li><strong>Verify Rate:</strong> Confirm the 100,000,000:1 conversion ratio</li>
+                    <li><strong>Execute Swap:</strong> Submit the transaction and confirm in your wallet</li>
+                    <li><strong>Receive tBTC:</strong> tBTC will be deposited to your wallet instantly</li>
+                </ol>
+
+                <h4>Method 2: Direct Smart Contract Interaction</h4>
+                <p>Advanced users can interact directly with the smart contract:</p>
+                <pre><code>// Contract Address: AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj
+// Function: swap_tsat_to_tbtc
+// Parameters: tsat_amount (must be multiple of 100,000,000)
+
+Example:
+- Input: 500,000,000 tSAT
+- Output: 5 tBTC
+- Fee: ~0.0002715 SOL (network fee only)</code></pre>
+
+                <h3>Redemption Requirements</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Requirement</th>
+                            <th>Details</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Minimum Amount</td>
+                            <td>100,000,000 tSAT</td>
+                            <td>Equals 1 tBTC (atomic unit)</td>
+                        </tr>
+                        <tr>
+                            <td>Multiple Requirement</td>
+                            <td>Must be multiple of 100M</td>
+                            <td>Ensures whole tBTC output</td>
+                        </tr>
+                        <tr>
+                            <td>Wallet Balance</td>
+                            <td>Sufficient tSAT + SOL for fees</td>
+                            <td>Transaction processing</td>
+                        </tr>
+                        <tr>
+                            <td>Pool Liquidity</td>
+                            <td>Adequate tBTC in pool</td>
+                            <td>Successful swap execution</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Redemption Guarantees</h3>
+                <div class="info-box">
+                    <h4>Mathematical Certainty</h4>
+                    <ul>
+                        <li><strong>Fixed ratio:</strong> Always exactly 100,000,000 tSAT = 1 tBTC</li>
+                        <li><strong>Zero slippage:</strong> No price impact regardless of redemption size</li>
+                        <li><strong>Instant execution:</strong> No waiting periods or delays</li>
+                        <li><strong>No redemption fees:</strong> Only standard Solana network fees apply</li>
+                    </ul>
+                </div>
+
+                <h3>Liquidity Considerations</h3>
+                <p>Redemption depends on available tBTC liquidity in the pool:</p>
+                <ul>
+                    <li><strong>Current liquidity:</strong> Check pool reserves before large redemptions</li>
+                    <li><strong>Market dynamics:</strong> Liquidity varies based on user deposits/withdrawals</li>
+                    <li><strong>Arbitrage opportunities:</strong> Price deviations may attract liquidity providers</li>
+                    <li><strong>Alternative markets:</strong> tSAT may trade on other DEXs if pool liquidity is low</li>
+                </ul>
+
+                <div class="warning-box">
+                    <p><strong>Important Note:</strong> While redemption is guaranteed at the fixed ratio, it's subject to available tBTC liquidity in the pool. During periods of high redemption demand, users may need to wait for additional tBTC deposits or trade on secondary markets.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Risks & Disclaimers -->
+        <div class="content">
+            <section id="risks" class="section">
+                <h2>Risks & Disclaimers</h2>
+
+                <div class="warning-box">
+                    <h3>⚠️ Important Risk Disclosures</h3>
+                    <p>All users must understand and accept the following risks before interacting with tSAT tokens.</p>
+                </div>
+
+                <h3>Smart Contract Risks</h3>
+                <h4>Code Vulnerabilities</h4>
+                <ul>
+                    <li><strong>Bug risk:</strong> Smart contracts may contain undiscovered vulnerabilities</li>
+                    <li><strong>Upgrade risk:</strong> Protocol upgrades could introduce new issues</li>
+                    <li><strong>Interaction risk:</strong> Complex interactions with other protocols may cause failures</li>
+                    <li><strong>Network risk:</strong> Solana network issues could affect functionality</li>
+                </ul>
+
+                <h4>Mitigation Measures</h4>
+                <ul>
+                    <li>✅ Open source code for community auditing</li>
+                    <li>✅ Formal verification of core mathematical functions</li>
+                    <li>✅ Multi-signature governance for upgrades</li>
+                    <li>✅ Extensive testing on devnet/testnet</li>
+                </ul>
+
+                <h3>Economic Risks</h3>
+                <h4>Liquidity Risks</h4>
+                <div class="info-box">
+                    <p><strong>Pool Imbalance:</strong> High redemption demand may temporarily deplete tBTC liquidity, requiring users to wait for new deposits or seek alternative markets.</p>
+                </div>
+
+                <h4>tBTC Backing Risks</h4>
+                <ul>
+                    <li><strong>Threshold Network dependency:</strong> tSAT inherits all risks of the underlying tBTC system</li>
+                    <li><strong>Bitcoin bridge risks:</strong> tBTC's Bitcoin backing mechanism could face technical issues</li>
+                    <li><strong>Signer set risks:</strong> Threshold Network's decentralized signers could face coordination issues</li>
+                </ul>
+
+                <h3>Regulatory Risks</h3>
+                <h4>Compliance Considerations</h4>
+                <ul>
+                    <li><strong>Jurisdictional variations:</strong> Cryptocurrency regulations vary by location</li>
+                    <li><strong>Classification uncertainty:</strong> Token classification may change over time</li>
+                    <li><strong>User responsibility:</strong> Users must ensure compliance with local laws</li>
+                    <li><strong>Platform restrictions:</strong> Some platforms may restrict tSAT trading</li>
+                </ul>
+
+                <h3>Technical Risks</h3>
+                <h4>Infrastructure Dependencies</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Dependency</th>
+                            <th>Risk</th>
+                            <th>Impact</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Solana Network</td>
+                            <td>Network outages, congestion</td>
+                            <td>Temporary inability to trade</td>
+                        </tr>
+                        <tr>
+                            <td>Threshold Network</td>
+                            <td>tBTC system issues</td>
+                            <td>Backing asset complications</td>
+                        </tr>
+                        <tr>
+                            <td>FRT Protocol</td>
+                            <td>Smart contract bugs</td>
+                            <td>Trading disruption or loss</td>
+                        </tr>
+                        <tr>
+                            <td>Wallet Software</td>
+                            <td>User interface issues</td>
+                            <td>Access difficulties</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Market Risks</h3>
+                <h4>Price Correlation</h4>
+                <div class="warning-box">
+                    <p><strong>Bitcoin Price Exposure:</strong> tSAT maintains 1:1 correlation with Bitcoin price movements. Users bear full Bitcoin price volatility risk.</p>
+                </div>
+
+                <h4>Liquidity Market Risks</h4>
+                <ul>
+                    <li><strong>Secondary market deviation:</strong> tSAT may trade at premium/discount on other DEXs</li>
+                    <li><strong>Arbitrage delays:</strong> Price corrections may take time during high volatility</li>
+                    <li><strong>Market fragmentation:</strong> Liquidity may be split across multiple venues</li>
+                </ul>
+
+                <h3>Legal Disclaimers</h3>
+
+                <div class="warning-box">
+                    <h4>🚨 CRITICAL DISCLAIMERS</h4>
+                    <ul>
+                        <li><strong>ALPHA SOFTWARE:</strong> This protocol is under active development and may contain bugs</li>
+                        <li><strong>NOT FINANCIAL ADVICE:</strong> This documentation is educational only</li>
+                        <li><strong>NO GUARANTEES:</strong> No returns, performance, or functionality are guaranteed</li>
+                        <li><strong>USE AT YOUR OWN RISK:</strong> Users accept all risks of loss</li>
+                        <li><strong>REGULATORY COMPLIANCE:</strong> Users responsible for legal compliance</li>
+                    </ul>
+                </div>
+
+                <h4>Limitation of Liability</h4>
+                <p>The tSAT protocol developers, contributors, and associated parties:</p>
+                <ul>
+                    <li>Make no warranties about the software or its functionality</li>
+                    <li>Accept no liability for any losses or damages</li>
+                    <li>Provide the protocol "as is" without support guarantees</li>
+                    <li>May discontinue development or support at any time</li>
+                </ul>
+
+                <h4>User Responsibilities</h4>
+                <p>By using tSAT, users acknowledge they:</p>
+                <ul>
+                    <li>Have read and understood all risks and disclaimers</li>
+                    <li>Are legally permitted to use cryptocurrency in their jurisdiction</li>
+                    <li>Will not hold developers liable for any losses</li>
+                    <li>Accept full responsibility for their trading decisions</li>
+                    <li>Will conduct their own due diligence and risk assessment</li>
+                </ul>
+
+                <div class="info-box">
+                    <p><strong>Recommendation:</strong> Only invest amounts you can afford to lose completely. Cryptocurrency investments carry high risk and are not suitable for all investors.</p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <footer style="background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; padding: 40px 0; margin-top: 60px; text-align: center;">
+        <div class="container">
+            <h3 style="color: #f7931a; margin-bottom: 20px;">tSAT - Satoshi Token Protocol</h3>
+            <p style="margin-bottom: 15px;">Built on Fixed Ratio Trading • Backed by tBTC • Secured by Smart Contracts</p>
+            <p style="margin-bottom: 20px;">
+                <a href="https://frt15.net" target="_blank" style="color: #cbd5e1; margin: 0 15px;">Trade tSAT</a> |
+                <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank" style="color: #cbd5e1; margin: 0 15px;">Open Source</a> |
+                <a href="mailto:support@davincicodes.net" style="color: #cbd5e1; margin: 0 15px;">Support</a>
+            </p>
+            <p style="font-size: 0.9rem; color: #94a3b8;">© 2024 tSAT Protocol • Educational Documentation Only • Not Financial Advice</p>
+        </div>
+    </footer>
+
+    <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('theme-icon');
+            const isDark = body.classList.contains('dark-mode');
+            
+            if (isDark) {
+                body.classList.remove('dark-mode');
+                themeIcon.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                themeIcon.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeIcon.textContent = '☀️';
+            } else {
+                themeIcon.textContent = '🌙';
+            }
+
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
