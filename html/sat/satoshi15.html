@@ -281,15 +281,28 @@
             color: white;
             text-decoration: none;
             font-weight: 400;
-            transition: color 0.3s ease;
+            transition: all 0.3s ease;
+            padding-bottom: 2px;
+            border-bottom: 2px solid transparent;
         }
 
         .nav-links a:hover {
             color: #f7931a;
         }
 
+        .nav-links a.active {
+            color: #f7931a;
+            border-bottom-color: #f7931a;
+            font-weight: 600;
+        }
+
         body.dark-mode .nav-links a {
             color: #cbd5e1;
+        }
+
+        body.dark-mode .nav-links a.active {
+            color: #f7931a;
+            border-bottom-color: #f7931a;
         }
 
         /* Theme Toggle Button */
@@ -1682,6 +1695,37 @@
                     }
                 });
             });
+
+            // Scroll spy - highlight active section in navigation
+            function updateActiveNavLink() {
+                const sections = document.querySelectorAll('#how-it-works, #backing, #proof-reserves, #security-transparency, #faq');
+                const navLinks = document.querySelectorAll('.nav-links a[href^="#"]');
+                
+                let currentSection = '';
+                
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop - 100; // Account for header
+                    const sectionBottom = sectionTop + section.offsetHeight;
+                    const scrollPosition = window.scrollY;
+                    
+                    if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
+                        currentSection = section.getAttribute('id');
+                    }
+                });
+                
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    const href = link.getAttribute('href');
+                    if (href === '#' + currentSection) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+            
+            // Update on scroll
+            window.addEventListener('scroll', updateActiveNavLink);
+            // Update on load
+            updateActiveNavLink();
         });
     </script>
 </body>
