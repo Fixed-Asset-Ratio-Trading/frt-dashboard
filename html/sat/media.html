@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Guidelines - Satoshi Token (tSAT)</title>
+    <link rel="icon" href="images/tSatoshi64x64and16x16.ico" type="image/x-icon">
+    
+    <!-- Bitcoin.org inspired fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 0;
+            transition: all 0.3s ease;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            color: #e2e8f0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        body.dark-mode .container {
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+
+        body.dark-mode h1,
+        body.dark-mode h2,
+        body.dark-mode h3 {
+            color: #e2e8f0;
+        }
+
+        body.dark-mode p,
+        body.dark-mode ul li,
+        body.dark-mode .code-example,
+        body.dark-mode .image-item .label {
+            color: #cbd5e1;
+        }
+
+        body.dark-mode .usage-table th {
+            background: #0f172a;
+        }
+
+        body.dark-mode .usage-table tr:nth-child(even) {
+            background: #334155;
+        }
+
+        body.dark-mode .usage-table td {
+            border-color: #475569;
+            color: #cbd5e1;
+        }
+
+        body.dark-mode .highlight-box {
+            background: #334155;
+            border-left-color: #f7931a;
+        }
+
+        body.dark-mode .image-gallery {
+            background: #334155;
+            border-color: #475569;
+        }
+
+        body.dark-mode .intro {
+            background: linear-gradient(135deg, #334155, #475569);
+            color: #e2e8f0;
+        }
+
+        /* Header Styles */
+        header {
+            padding: 20px 0;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode header {
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .logo {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .logo:hover {
+            opacity: 0.9;
+        }
+
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 400;
+            transition: all 0.3s ease;
+            padding-bottom: 2px;
+            border-bottom: 2px solid transparent;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: #f7931a;
+            border-bottom-color: #f7931a;
+        }
+
+        body.dark-mode .nav-links a {
+            color: #cbd5e1;
+        }
+
+        body.dark-mode .nav-links a.active {
+            color: #f7931a;
+            border-bottom-color: #f7931a;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            margin-left: 20px;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        body.dark-mode .theme-toggle {
+            background: rgba(148, 163, 184, 0.1);
+            border-color: rgba(148, 163, 184, 0.3);
+            color: #e2e8f0;
+        }
+
+        body.dark-mode .theme-toggle:hover {
+            background: rgba(148, 163, 184, 0.2);
+            border-color: rgba(148, 163, 184, 0.5);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto 40px;
+            background: white;
+            padding: 60px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .page-container {
+            padding: 100px 20px 40px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #1e3c72;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 40px 0 20px;
+            color: #2a5298;
+            border-bottom: 3px solid #f7931a;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 30px 0 15px;
+            color: #1e3c72;
+        }
+
+        p {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            color: #4a5568;
+            line-height: 1.8;
+        }
+
+        .intro {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #2a5298;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #e9ecef, #dee2e6);
+            border-radius: 12px;
+            border-left: 4px solid #f7931a;
+        }
+
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 4px solid #f7931a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .highlight-box strong {
+            color: #1e3c72;
+        }
+
+        .code-example {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            color: #f7931a;
+            margin: 15px 0;
+            border: 2px solid #dee2e6;
+        }
+
+        .image-gallery {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 30px 0;
+            border: 2px solid #dee2e6;
+        }
+
+        .image-gallery h3 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #1e3c72;
+        }
+
+        .image-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .image-item {
+            text-align: center;
+        }
+
+        .image-item img {
+            display: block;
+            margin: 0 auto 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            background: white;
+            padding: 10px;
+        }
+
+        .image-item .label {
+            font-size: 0.9rem;
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        .links-box {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .links-box p {
+            color: white !important;
+        }
+
+        .links-box strong {
+            color: white !important;
+        }
+
+        .links-box a {
+            color: #fbbf24;
+            text-decoration: none;
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .links-box a:hover {
+            text-decoration: underline;
+            color: #fcd34d;
+        }
+
+        ul {
+            margin: 20px 0 20px 40px;
+            color: #4a5568;
+        }
+
+        ul li {
+            margin-bottom: 10px;
+            line-height: 1.8;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 30px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(247, 147, 26, 0.4);
+        }
+
+        .usage-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .usage-table th,
+        .usage-table td {
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            text-align: left;
+        }
+
+        .usage-table th {
+            background: #1e3c72;
+            color: white;
+            font-weight: 600;
+        }
+
+        .usage-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .correct {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .incorrect {
+            color: #ef4444;
+            font-weight: 600;
+            text-decoration: line-through;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 0 15px;
+            }
+
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            .image-row {
+                gap: 15px;
+            }
+
+            .image-item img {
+                max-width: 100px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .logo {
+                font-size: 20px;
+            }
+
+            .logo img {
+                width: 32px;
+                height: 32px;
+            }
+
+            .theme-toggle {
+                margin-left: 10px;
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+
+            .page-container {
+                padding: 100px 15px 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <div style="display: flex; align-items: center;">
+                <a href="satoshi15.html" class="logo" title="Back to Satoshi Token main page">
+                    <img src="images/tSatoshi_64x64.png" alt="tSAT Logo">
+                    tSAT - Media
+                </a>
+            </div>
+            <div style="display: flex; align-items: center;">
+                <ul class="nav-links">
+                    <li><a href="#ticker-usage">Ticker Usage</a></li>
+                    <li><a href="#satoshi-images">Satoshi Images</a></li>
+                    <li><a href="#tsatoshi-images">tSatoshi Images</a></li>
+                    <li><a href="#future-plans">Future Plans</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <div class="page-container">
+        <div class="container">
+
+        <h1>📰 Media Guidelines for Satoshi Token</h1>
+        
+        <div class="intro">
+            <p><strong>For Media, Publications, and Content Creators</strong></p>
+            <p>This guide explains how to properly refer to and represent the Satoshi Token (tSAT) in your articles, publications, and social media content.</p>
+        </div>
+
+        <h2 id="ticker-usage">✍️ Proper Ticker Symbol Usage</h2>
+        
+        <div class="highlight-box">
+            <p><strong>Official Ticker Symbol:</strong> tSAT</p>
+            <ul>
+                <li><strong>t</strong> = lowercase</li>
+                <li><strong>SAT</strong> = all uppercase</li>
+            </ul>
+        </div>
+
+        <h3>Recommended Usage in Different Contexts:</h3>
+        
+        <table class="usage-table">
+            <thead>
+                <tr>
+                    <th>Context</th>
+                    <th>Correct Format</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Twitter / Social Media</td>
+                    <td class="correct">$tSAT</td>
+                    <td>"Just bought 1M $tSAT tokens!"</td>
+                </tr>
+                <tr>
+                    <td>Publications / Articles</td>
+                    <td class="correct">$tSAT or tSAT</td>
+                    <td>"The tSAT token represents satoshis on Solana"</td>
+                </tr>
+                <tr>
+                    <td>Technical Documentation</td>
+                    <td class="correct">tSAT</td>
+                    <td>"Each tSAT equals 1 satoshi"</td>
+                </tr>
+                <tr>
+                    <td>Full Name</td>
+                    <td class="correct">Satoshi Token (tSAT)</td>
+                    <td>"Satoshi Token (tSAT) launched today"</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>❌ Common Mistakes to Avoid:</h3>
+        <div class="code-example">
+            <span class="incorrect">TSAT</span> ← Wrong (all uppercase)<br>
+            <span class="incorrect">tsat</span> ← Wrong (all lowercase)<br>
+            <span class="incorrect">Tsat</span> ← Wrong (capital T)<br>
+            <span class="incorrect">TSat</span> ← Wrong (capital T and S)<br>
+            <span class="correct">tSAT</span> ← Correct! ✓
+        </div>
+
+        <h2>🖼️ Image Assets & Branding</h2>
+
+        <p>There are <strong>two distinct image sets</strong> for different use cases. Understanding when to use each is important for accurate representation.</p>
+
+        <h3 id="satoshi-images">1. Satoshi Images (Orange "S" Logo)</h3>
+        
+        <p><strong>Usage:</strong> Use these images when referring to "satoshis" in general — the smallest unit of Bitcoin (1/100,000,000 of a bitcoin).</p>
+        
+        <div class="highlight-box">
+            <p><strong>Visual Identity:</strong></p>
+            <ul>
+                <li>Orange "S" angled at <strong>13.88 degrees</strong></li>
+                <li>One dot above and one dot below the "S"</li>
+                <li>No plus sign or additional symbols</li>
+                <li>Represents the universal concept of satoshis</li>
+            </ul>
+        </div>
+
+        <div class="links-box">
+            <p><strong>📁 Download Satoshi Images:</strong></p>
+            <a href="https://drive.google.com/drive/folders/1nq2FEWxOSGyRSU2GZz1RcdFwMareCDa3?usp=sharing" target="_blank" rel="noopener noreferrer">
+                https://drive.google.com/drive/folders/1nq2FEWxOSGyRSU2GZz1RcdFwMareCDa3
+            </a>
+        </div>
+
+        <div class="image-gallery">
+            <h3>Satoshi Image Sizes Available</h3>
+            <p style="text-align: center; color: #4a5568; margin-bottom: 20px;">Use these for general satoshi references</p>
+            <div class="image-row">
+                <div class="image-item">
+                    <img src="images/Satoshi_1024x1024.png" alt="Satoshi 1024x1024" width="150">
+                    <div class="label">1024×1024</div>
+                </div>
+                <div class="image-item">
+                    <img src="images/Satoshi_512x512.png" alt="Satoshi 512x512" width="120">
+                    <div class="label">512×512</div>
+                </div>
+                <div class="image-item">
+                    <img src="images/Satoshi_256x256.png" alt="Satoshi 256x256" width="90">
+                    <div class="label">256×256</div>
+                </div>
+                <div class="image-item">
+                    <img src="images/Satoshi_64x64.png" alt="Satoshi 64x64" width="64">
+                    <div class="label">64×64</div>
+                </div>
+            </div>
+        </div>
+
+        <h3 id="tsatoshi-images">2. tSatoshi Images (With Plus Sign)</h3>
+        
+        <p><strong>Usage:</strong> Use these images when specifically referring to the <strong>tSAT token</strong> on Solana (or any tokenized representation).</p>
+        
+        <div class="highlight-box">
+            <p><strong>Visual Identity:</strong></p>
+            <ul>
+                <li>Orange "S" angled at 13.88 degrees (same as above)</li>
+                <li>Black squares arranged in a <strong>plus sign (+)</strong> pattern to the left of the "S"</li>
+                <li>White square in the center of the plus sign</li>
+                <li>Represents tokenized satoshis (similar to tBTC branding)</li>
+            </ul>
+        </div>
+
+        <div class="highlight-box">
+            <p><strong>Why the Plus Sign?</strong></p>
+            <p>The "+" symbol indicates this is a <em>tokenized</em> version, similar to how tBTC uses the "t" prefix. This is why our ticker is <strong>$tSAT</strong> (not $SAT) — the "t" stands for "token" or "threshold," matching the tBTC convention.</p>
+        </div>
+
+        <div class="links-box">
+            <p><strong>📁 Download tSatoshi Images:</strong></p>
+            <a href="https://drive.google.com/drive/folders/1aLZcwlIp7AX9n-nDgDngrTOn45hZVqhb?usp=sharing" target="_blank" rel="noopener noreferrer">
+                https://drive.google.com/drive/folders/1aLZcwlIp7AX9n-nDgDngrTOn45hZVqhb
+            </a>
+        </div>
+
+        <div class="image-gallery">
+            <h3>tSatoshi Token Image Sizes Available</h3>
+            <p style="text-align: center; color: #4a5568; margin-bottom: 20px;">Use these for tSAT token references</p>
+            <div class="image-row">
+                <div class="image-item">
+                    <img src="images/tSatoshi_1024x1024.png" alt="tSatoshi 1024x1024" width="150">
+                    <div class="label">1024×1024</div>
+                </div>
+                <div class="image-item">
+                    <img src="images/tSatoshi_512x512.png" alt="tSatoshi 512x512" width="120">
+                    <div class="label">512×512</div>
+                </div>
+                <div class="image-item">
+                    <img src="images/tSatoshi_256x256.png" alt="tSatoshi 256x256" width="90">
+                    <div class="label">256×256</div>
+                </div>
+                <div class="image-item">
+                    <img src="images/tSatoshi_64x64.png" alt="tSatoshi 64x64" width="64">
+                    <div class="label">64×64</div>
+                </div>
+            </div>
+        </div>
+
+        <h2 id="future-plans">🔮 Future Plans: The Satoshi Chain</h2>
+
+        <div class="highlight-box">
+            <p><strong>Important Note for Long-Term Coverage:</strong></p>
+            <p>We maintain separate branding (Satoshi vs. tSatoshi) because we have plans to create a <strong>Satoshi Chain</strong> — a Bitcoin second-layer solution that will be different from what we have today.</p>
+        </div>
+
+        <h3>What's Coming:</h3>
+        <ul>
+            <li><strong>Satoshi Chain:</strong> A new blockchain specifically designed for satoshi transactions</li>
+            <li><strong>$SAT Token:</strong> The native token of Satoshi Chain (using the Satoshi images without the plus sign)</li>
+            <li><strong>Wormhole Integration:</strong> Satoshi Chain will bridge to Solana and other blockchains</li>
+            <li><strong>Bitcoin Second Layer:</strong> Direct integration with Bitcoin as a second-layer solution</li>
+            <li><strong>Development Funding:</strong> All funds collected from tSAT support development of Satoshi Chain and related projects</li>
+        </ul>
+
+        <h3>Our Mission:</h3>
+        <div class="intro">
+            <p><strong>"To provide a secure, cheap, and fast method for everyone to use Bitcoin — one way or another."</strong></p>
+        </div>
+
+        <h2>📋 Quick Reference Guide</h2>
+
+        <table class="usage-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Current (tSAT)</th>
+                    <th>Future (SAT Chain)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Ticker Symbol</strong></td>
+                    <td>$tSAT (tokenized)</td>
+                    <td>$SAT (native)</td>
+                </tr>
+                <tr>
+                    <td><strong>Image Type</strong></td>
+                    <td>tSatoshi (with + sign)</td>
+                    <td>Satoshi (no + sign)</td>
+                </tr>
+                <tr>
+                    <td><strong>Platform</strong></td>
+                    <td>Solana blockchain</td>
+                    <td>Satoshi Chain (Bitcoin L2)</td>
+                </tr>
+                <tr>
+                    <td><strong>Backing</strong></td>
+                    <td>1:1 with tBTC</td>
+                    <td>Native Bitcoin integration</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="contact">📞 Media Contact</h2>
+
+        <div class="links-box">
+            <p><strong>For press inquiries and media requests:</strong></p>
+            <p style="margin: 15px 0;">
+                📧 Email: <a href="mailto:support@davincicodes.net">support@davincicodes.net</a>
+            </p>
+            <p style="margin: 15px 0;">
+                🐦 Twitter/X: <a href="https://x.com/davincij15" target="_blank" rel="noopener noreferrer">@davincij15</a>
+            </p>
+            <p style="margin: 15px 0;">
+                📱 Telegram: <a href="https://t.me/davincij15public" target="_blank" rel="noopener noreferrer">t.me/davincij15public</a>
+            </p>
+        </div>
+
+        <h2>🌐 Additional Resources</h2>
+
+        <ul>
+            <li><strong>Official Website:</strong> <a href="https://satoshi15.com" target="_blank" rel="noopener noreferrer">https://satoshi15.com</a></li>
+            <li><strong>White Paper:</strong> <a href="whitepaper.html">Read White Paper</a></li>
+            <li><strong>Token Contract:</strong> <a href="https://solscan.io/token/6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU" target="_blank" rel="noopener noreferrer">View on Solscan</a></li>
+            <li><strong>Fixed Ratio Trading:</strong> <a href="https://frt15.net" target="_blank" rel="noopener noreferrer">https://frt15.net</a></li>
+            <li><strong>Open Source Code:</strong> <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank" rel="noopener noreferrer">GitHub Repository</a></li>
+        </ul>
+
+        <div class="intro" style="margin-top: 50px;">
+            <p><strong>Thank you for accurately representing the Satoshi Token project!</strong></p>
+            <p>If you have any questions about these guidelines, please don't hesitate to reach out to our team.</p>
+        </div>
+
+            <p style="text-align: center; margin-top: 40px; color: #94a3b8;">
+                <a href="satoshi15.html" class="back-link">← Back to Satoshi Token</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('theme-icon');
+            const isDark = body.classList.contains('dark-mode');
+            
+            if (isDark) {
+                body.classList.remove('dark-mode');
+                themeIcon.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-mode');
+                themeIcon.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Load saved theme on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeIcon.textContent = '☀️';
+            } else {
+                themeIcon.textContent = '🌙';
+            }
+
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+
+            // Scroll spy - highlight active section in navigation
+            function updateActiveNavLink() {
+                const sections = document.querySelectorAll('#ticker-usage, #satoshi-images, #tsatoshi-images, #future-plans, #contact');
+                const navLinks = document.querySelectorAll('.nav-links a[href^="#"]');
+                
+                let currentSection = '';
+                
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop - 100;
+                    const sectionBottom = sectionTop + section.offsetHeight;
+                    const scrollPosition = window.scrollY;
+                    
+                    if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
+                        currentSection = section.getAttribute('id');
+                    }
+                });
+                
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    const href = link.getAttribute('href');
+                    if (href === '#' + currentSection) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+            
+            // Update on scroll
+            window.addEventListener('scroll', updateActiveNavLink);
+            // Update on load
+            updateActiveNavLink();
+        });
+    </script>
+</body>
+</html>
+

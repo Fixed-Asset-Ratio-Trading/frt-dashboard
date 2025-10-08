@@ -292,8 +292,8 @@
 
         .nav-links a.active {
             color: #f7931a;
-            border-bottom-color: #f7931a;
-            font-weight: 600;
+            border-bottom: 3px solid #f7931a;
+            font-weight: 700;
         }
 
         body.dark-mode .nav-links a {
@@ -302,7 +302,8 @@
 
         body.dark-mode .nav-links a.active {
             color: #f7931a;
-            border-bottom-color: #f7931a;
+            border-bottom: 3px solid #f7931a;
+            font-weight: 700;
         }
 
         /* Theme Toggle Button */
@@ -1275,7 +1276,7 @@
                 <div class="faq-item">
                     <div class="faq-question">How do I verify the reserves?</div>
                     <div class="faq-answer">
-                        All reserves are verifiable on-chain. You can check the Fixed Ratio Trading pool at any time to see exactly how much tBTC backs the circulating tSAT supply. The smart contract code is open source and auditable by anyone.
+                        All reserves are verifiable on-chain. You can <a href="https://solscan.io/account/AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" target="_blank" style="color: #f7931a; text-decoration: none;">check the Fixed Ratio Trading pool on Solscan</a> at any time to see exactly how much tBTC backs the circulating tSAT supply. The smart contract code is open source and auditable by anyone.
                     </div>
                 </div>
 
@@ -1300,6 +1301,22 @@
                         <p style="margin-top: 12px;">The Fixed Ratio Trading protocol uses burned LP tokens to ensure reserves cannot be withdrawn while maintaining the flexibility needed for a fully-backed, redeemable token system.</p>
                     </div>
                 </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">Why should anyone buy tSAT instead of bitcoin?</div>
+                    <div class="faq-answer">
+                        <p>tSAT isn't meant to replace Bitcoin—it's designed to make Bitcoin more accessible and useful. Here's why you might choose tSAT:</p>
+                        <ul style="margin: 10px 0 10px 20px;">
+                            <li><strong>Psychological clarity:</strong> Track your holdings in whole numbers (100,000 sats) instead of confusing decimals (0.001 BTC). This makes Bitcoin accumulation feel more tangible and motivating.</li>
+                            <li><strong>Solana speed and cost:</strong> Transfer your Bitcoin-backed value in seconds with fees under $0.01, compared to Bitcoin network fees that can exceed $5-50 during congestion. Perfect for everyday transactions.</li>
+                            <li><strong>DeFi integration:</strong> Use your Bitcoin in Solana's DeFi ecosystem—lending, borrowing, trading—while maintaining full Bitcoin exposure through the 1:1 tBTC backing.</li>
+                            <li><strong>Instant redeemability:</strong> Unlike Bitcoin bridges that require hours of confirmations, tSAT converts to tBTC (and ultimately BTC) in seconds through the Fixed Ratio Trading protocol with guaranteed 1:1 exchange.</li>
+                            <li><strong>No custody risk:</strong> Your tSAT is backed by Threshold Network's tBTC, which is secured by a decentralized network of signers—no single custodian can run away with your funds.</li>
+                            <li><strong>Same Bitcoin exposure:</strong> You get 100% Bitcoin price exposure. When Bitcoin goes up 10%, your tSAT value (in BTC terms) stays perfectly aligned through the fixed 1:100,000,000 ratio.</li>
+                        </ul>
+                        <p style="margin-top: 12px;"><strong>Best use case:</strong> Buy Bitcoin, hold the majority in cold storage for long-term savings, but keep some as tSAT for active use—payments, DeFi, or quick transfers—knowing you can always convert back to BTC instantly at the guaranteed ratio.</p>
+                    </div>
+                </div>
             </section>
         </div>
     </div>
@@ -1309,20 +1326,21 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <h4>Trade tSAT</h4>
-                    <a href="https://tsat.dj15.com">Get Satoshi Tokens</a>
-                    <a href="https://frt15.net">Fixed Ratio Trading</a>
-                    <a href="https://frt15.net/about.html">About FRT Protocol</a>
+                    <a href="https://tsat.dj15.com" target="_blank" rel="noopener noreferrer">Get Satoshi Tokens</a>
+                    <a href="https://frt15.net" target="_blank" rel="noopener noreferrer">Fixed Ratio Trading</a>
+                    <a href="https://frt15.net/about.html" target="_blank" rel="noopener noreferrer">About FRT Protocol</a>
                 </div>
                 <div class="footer-section">
                     <h4>Learn More</h4>
-                    <a href="https://github.com/Fixed-Asset-Ratio-Trading">Open Source Code</a>
-                    <a href="https://solscan.io/token/6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU">Token Contract</a>
-                    <a href="https://bitcoin.org">Bitcoin.org</a>
+                    <a href="media.html">Media Guidelines</a>
+                    <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank" rel="noopener noreferrer">Open Source Code</a>
+                    <a href="https://solscan.io/token/6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU" target="_blank" rel="noopener noreferrer">Token Contract</a>
+                    <a href="https://bitcoin.org" target="_blank" rel="noopener noreferrer">Bitcoin.org</a>
                 </div>
                 <div class="footer-section">
                     <h4>Community</h4>
-                    <a href="https://x.com/davincij15">Twitter/X</a>
-                    <a href="https://t.me/davincij15public">Telegram</a>
+                    <a href="https://x.com/davincij15" target="_blank" rel="noopener noreferrer">Twitter/X</a>
+                    <a href="https://t.me/davincij15public" target="_blank" rel="noopener noreferrer">Telegram</a>
                     <a href="mailto:support@davincicodes.net">Support</a>
                 </div>
                 <div class="footer-section">
@@ -1344,7 +1362,7 @@
                 </p>
                 <p style="margin-bottom: 10px;">All smart contracts are public and verifiable on Solana.</p>
                 <p style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                    <a href="https://solscan.io/token/6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU" target="_blank" style="color: #f7931a; text-decoration: none; transition: color 0.3s ease;">View Contract</a>
+                    <a href="https://solscan.io/token/6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU" target="_blank" rel="noopener noreferrer" style="color: #f7931a; text-decoration: none; transition: color 0.3s ease;">View Contract</a>
                     <span style="color: #94a3b8;">•</span>
                     <a href="#security-transparency" style="color: #f7931a; text-decoration: none; transition: color 0.3s ease;">Security & Transparency</a>
                 </p>
