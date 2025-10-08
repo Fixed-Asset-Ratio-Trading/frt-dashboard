@@ -106,6 +106,7 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 20px;
+            height: 40px; /* match main page nav height */
         }
 
         .logo {
@@ -117,6 +118,7 @@
             align-items: center;
             gap: 12px;
             cursor: pointer;
+            line-height: 40px; /* match nav height */
         }
 
         .logo:hover {
@@ -133,6 +135,7 @@
             display: flex;
             gap: 30px;
             list-style: none;
+            align-items: center; /* ensure anchors align within 40px nav */
         }
 
         .nav-links a {
@@ -142,6 +145,7 @@
             transition: all 0.3s ease;
             padding-bottom: 2px;
             border-bottom: 2px solid transparent;
+            line-height: 40px; /* keep anchors within 40px line height */
         }
 
         .nav-links a:hover,
@@ -452,13 +456,13 @@
 <body>
     <header>
         <nav>
-            <div style="display: flex; align-items: center;">
+            <div style="display: flex; align-items: center; height: 40px;">
                 <a href="satoshi15.html" class="logo" title="Back to Satoshi Token main page">
                     <img src="images/tSatoshi_64x64.png" alt="tSAT Logo">
                     tSAT - Media
                 </a>
             </div>
-            <div style="display: flex; align-items: center;">
+            <div style="display: flex; align-items: center; height: 40px;">
                 <ul class="nav-links">
                     <li><a href="#ticker-usage">Ticker Usage</a></li>
                     <li><a href="#satoshi-images">Satoshi Images</a></li>
