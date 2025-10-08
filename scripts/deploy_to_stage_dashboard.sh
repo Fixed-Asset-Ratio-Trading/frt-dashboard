@@ -14,7 +14,7 @@
 #   --status    Check server status
 #   (no option) Update files and start/restart server
 
-set -e
+# Note: Not using 'set -e' to handle expected rsync permission warnings gracefully
 
 # Parse command line arguments
 ACTION="update"  # Default action
@@ -430,9 +430,15 @@ sync_files() {
         --exclude='*.log' \
         --exclude='*.tmp' \
         --exclude='.DS_Store' \
+        --exclude='cache/token-images/' \
+        --exclude='cache/token-metadata/' \
+        --exclude='cache/pool_data/' \
         --exclude='config.json' \
         "$PROJECT_ROOT/html/frt/" "$REMOTE_HOST:$REMOTE_FRT_DIR/"
     
+    # Ensure Satoshi directory is writable for rsync (temporarily dev:dev with 775)
+    ssh "$REMOTE_HOST" "sudo mkdir -p $REMOTE_SAT_DIR && sudo chown -R dev:dev $REMOTE_SAT_DIR && sudo find $REMOTE_SAT_DIR -type d -exec chmod 775 {} \;"
+
     # Sync Satoshi files
     echo "   Syncing Satoshi website files..."
     rsync -avz --delete \
@@ -441,13 +447,64 @@ sync_files() {
         --exclude='.DS_Store' \
         "$PROJECT_ROOT/html/sat/" "$REMOTE_HOST:$REMOTE_SAT_DIR/"
     
+    # Set proper permissions for FRT
+    ssh "$REMOTE_HOST" "sudo chown -R www-data:www-data $REMOTE_FRT_DIR"
+    ssh "$REMOTE_HOST" "sudo find $REMOTE_FRT_DIR -type d -exec chmod 755 {} \;"
+    ssh "$REMOTE_HOST" "sudo find $REMOTE_FRT_DIR -type f -exec chmod 644 {} \;"
+    ssh "$REMOTE_HOST" "sudo find $REMOTE_FRT_DIR -name '*.php' -exec chmod 755 {} \;"
+    
+    # Set proper permissions for Satoshi (revert to www-data)
+    ssh "$REMOTE_HOST" "sudo chown -R www-data:www-data $REMOTE_SAT_DIR"
+    ssh "$REMOTE_HOST" "sudo find $REMOTE_SAT_DIR -type d -exec chmod 755 {} \;"
+    ssh "$REMOTE_HOST" "sudo find $REMOTE_SAT_DIR -type f -exec chmod 644 {} \;"
+    ssh "$REMOTE_HOST" "sudo find $REMOTE_SAT_DIR -name '*.php' -exec chmod 755 {} \;"
+    
     # Set up PHP cache directories for FRT
     echo "   Setting up PHP cache directories..."
     ssh "$REMOTE_HOST" "mkdir -p $REMOTE_FRT_DIR/cache/token-images $REMOTE_FRT_DIR/cache/token-metadata $REMOTE_FRT_DIR/cache/pool_data"
     ssh "$REMOTE_HOST" "sudo chown -R www-data:www-data $REMOTE_FRT_DIR/cache"
-    ssh "$REMOTE_HOST" "chmod -R 755 $REMOTE_FRT_DIR/cache"
+    ssh "$REMOTE_HOST" "sudo chmod -R 775 $REMOTE_FRT_DIR/cache/token-images"
+    ssh "$REMOTE_HOST" "sudo chmod -R 775 $REMOTE_FRT_DIR/cache/token-metadata"
+    ssh "$REMOTE_HOST" "sudo chmod -R 775 $REMOTE_FRT_DIR/cache/pool_data"
     
     echo -e "${GREEN}✅ Files synced successfully${NC}"
+}
+
+# Function to sync cache metadata overrides
+sync_cache_metadata() {
+    echo -e "${YELLOW}📁 Syncing cache metadata overrides...${NC}"
+    
+    # Check if FRT token-metadata cache directory exists locally
+    if [ -d "$PROJECT_ROOT/html/frt/cache/token-metadata" ]; then
+        echo "   Syncing token metadata overrides..."
+        rsync -avz \
+            "$PROJECT_ROOT/html/frt/cache/token-metadata/" \
+            "$REMOTE_HOST:$REMOTE_FRT_DIR/cache/token-metadata/"
+        
+        # Set proper permissions for metadata files
+        ssh "$REMOTE_HOST" "sudo chown -R www-data:www-data $REMOTE_FRT_DIR/cache/token-metadata"
+        ssh "$REMOTE_HOST" "sudo chmod -R 644 $REMOTE_FRT_DIR/cache/token-metadata/*"
+        
+        echo -e "${GREEN}✅ Token metadata overrides synced${NC}"
+    else
+        echo "   No token metadata overrides found locally"
+    fi
+    
+    # Check if token-image-overrides.txt exists and sync it
+    if [ -f "$PROJECT_ROOT/html/frt/token-image-overrides.txt" ]; then
+        echo "   Syncing token image overrides file..."
+        rsync -avz \
+            "$PROJECT_ROOT/html/frt/token-image-overrides.txt" \
+            "$REMOTE_HOST:$REMOTE_FRT_DIR/"
+        
+        # Set proper permissions
+        ssh "$REMOTE_HOST" "sudo chown www-data:www-data $REMOTE_FRT_DIR/token-image-overrides.txt"
+        ssh "$REMOTE_HOST" "sudo chmod 644 $REMOTE_FRT_DIR/token-image-overrides.txt"
+        
+        echo -e "${GREEN}✅ Token image overrides file synced${NC}"
+    else
+        echo "   No token image overrides file found locally"
+    fi
 }
 
 # Function to store Chainstack credentials securely on remote server
@@ -630,6 +687,7 @@ case $ACTION in
         setup_ssl_certificates
         store_chainstack_credentials
         sync_files
+        sync_cache_metadata
         update_config
         setup_nginx
         setup_satoshi_cron
@@ -648,6 +706,7 @@ case $ACTION in
     "update")
         echo -e "${BLUE}🔄 Updating and deploying dashboard...${NC}"
         sync_files
+        sync_cache_metadata
         update_config
         setup_satoshi_cron
         start_nginx

@@ -335,6 +335,17 @@
         body.dark-mode .value-card h4 { color: #e2e8f0; }
         body.dark-mode .value-card li { color: #cbd5e1; }
         
+        /* Dark mode styles for Security & Transparency section */
+        body.dark-mode #security-transparency .value-card strong {
+            color: #f7931a !important;
+        }
+        body.dark-mode #security-transparency .value-card span {
+            color: #e2e8f0 !important;
+        }
+        body.dark-mode #security-transparency .value-card a {
+            color: #fbbf24 !important;
+        }
+        
         body.dark-mode .how-it-works { background: linear-gradient(135deg, #0f172a, #1e293b); }
         body.dark-mode .step { 
             background: #334155; 
@@ -379,6 +390,24 @@
         body.dark-mode .footer-bottom { 
             color: #94a3b8;
             border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        /* Anchor offset for fixed header */
+        html { scroll-padding-top: 100px; }
+        /* Ensure sections align below fixed header when linked */
+        #how-it-works,
+        #backing,
+        #proof-reserves,
+        #security-transparency,
+        #faq { scroll-margin-top: 100px; }
+
+        @media (max-width: 768px) {
+            html { scroll-padding-top: 80px; }
+            #how-it-works,
+            #backing,
+            #proof-reserves,
+            #security-transparency,
+            #faq { scroll-margin-top: 80px; }
         }
 
         /* Hero Section - Kaspa inspired */
@@ -518,6 +547,11 @@
             text-align: center;
             margin-bottom: 20px;
             color: #1e3c72;
+        }
+
+        /* Make Security & Transparency heading bolder */
+        #security-transparency h2 {
+            font-weight: 800;
         }
 
         .section h3 {
@@ -885,10 +919,10 @@
             </div>
             <div style="display: flex; align-items: center;">
                 <ul class="nav-links">
-                    <li><a href="whitepaper.html">Whitepaper</a></li>
                     <li><a href="#how-it-works">How it Works</a></li>
                     <li><a href="#backing">Backing</a></li>
                     <li><a href="#proof-reserves">Proof of Reserves</a></li>
+                    <li><a href="#security-transparency">Security & Transparency</a></li>
                     <li><a href="#faq">FAQ</a></li>
                 </ul>
                 <button class="theme-toggle" onclick="toggleTheme()">
@@ -954,6 +988,11 @@
                 </a>
                 <div class="price-updated" id="price-updated">Last updated: Loading...</div>
             </div>
+            
+            <!-- White Paper Button -->
+            <a href="whitepaper.html" class="btn btn-secondary" style="display: block; text-align: center; margin-top: 20px; max-width: 300px; margin-left: auto; margin-right: auto;">
+                📄 Read White Paper
+            </a>
         </div>
     </section>
 
@@ -965,9 +1004,9 @@
                 <p>A "sat" (short for satoshi) is the smallest unit of Bitcoin, named after Bitcoin's pseudonymous creator, Satoshi Nakamoto.</p>
                 <div class="highlight">
                     1 Bitcoin = 100,000,000 sats<br>
-                    1 sat = 1×10⁻⁸ BTC
+                    1 sat = 0.00000001 BTC
                 </div>
-                <p>Instead of thinking in confusing scientific notation like 1×10⁻⁵ BTC, you can think in whole numbers like 1,000 sats. This makes tracking your Bitcoin growth more intuitive and motivating!</p>
+                <p>Instead of thinking in confusing decimal notation like 0.00001 BTC, you can think in whole numbers like 1,000 sats. This makes tracking your Bitcoin growth more intuitive and motivating!</p>
             </section>
 
             <!-- Value Proposition -->
@@ -978,8 +1017,8 @@
                         <h4>🔢 Big‑number clarity</h4>
                         <ul>
                             <li>Display balances in sats to make progress obvious and motivating</li>
-                            <li>See 100,000 sats instead of 1×10⁻³ BTC</li>
-                            <li>Track growth with whole numbers, not scientific notation</li>
+                            <li>See 100,000 sats instead of 0.001 BTC</li>
+                            <li>Track growth with whole numbers, not confusing decimals</li>
                             <li>Psychology of abundance drives engagement</li>
                         </ul>
                     </div>
@@ -1063,14 +1102,7 @@
                     </div>
                 </div>
 
-                <h3>Security Features</h3>
-                <p>The tSAT protocol implements multiple layers of security:</p>
-                <ul style="margin: 20px 0; padding-left: 20px;">
-                    <li><strong>Governance-controlled upgrade authority:</strong> Managed by multi-signature address with transparent upgrade process</li>
-                    <li><strong>Fixed Ratio Trading integration:</strong> Locked liquidity ensures 1:1 redeemability</li>
-                    <li><strong>Burned LP tokens:</strong> All liquidity provider tokens have been permanently destroyed, locking the reserves</li>
-                    <li><strong>Open-source verification:</strong> All code is publicly available on GitHub</li>
-                </ul>
+                
             </section>
 
             <!-- Proof of Reserves -->
@@ -1112,6 +1144,67 @@
                     </div>
 
                     <p style="margin-top: 30px;"><strong>Fixed Ratio Trading is open source:</strong> <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank" style="color: #f7931a;">https://github.com/Fixed-Asset-Ratio-Trading</a></p>
+                </div>
+            </section>
+
+            <!-- Security & Transparency -->
+            <section id="security-transparency" class="section">
+                <h2>Security & Transparency</h2>
+                <div class="value-grid" style="grid-template-columns: 1fr; max-width: 800px; margin: 30px auto;">
+                    <div class="value-card">
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">Project Managed By:</strong> 
+                                <span style="color: #4a5568;">Davinci Jeremie (DavinciJ15)</span>
+                            </li>
+                            <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">Passed GoPlus Checks:</strong> 
+                                <a href="https://gopluslabs.io/token-security/solana/tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu" target="_blank" style="color: #f7931a; font-family: monospace; text-decoration: none;">tSATjNAJorWxzSkNUSnwUEFQV1SLskfjf9EhvYhbdAX</a>
+                            </li>
+                            <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">Transfer Fee:</strong> 
+                                <span style="color: #4a5568;">No token fees to transfer tSAT (network fees only)</span>
+                            </li>
+                            <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">Authority Status:</strong> 
+                                <span style="color: #4a5568;">Mint and freeze authorities revoked</span>
+                            </li>
+                            <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">Backed By:</strong> 
+                                <span style="color: #4a5568;">Threshold Network's tBTC reserves</span>
+                            </li>
+                            <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">Liquidity Pools:</strong> 
+                                <span style="color: #4a5568;">Raydium Liquidity pools maintained</span><br>
+                                <a href="https://dexscreener.com/solana/j9zzxzmdp1n7gtscploiyxeuvguplrrmjjarucjrr48s" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tSAT/tBTC Pool</a><br>
+                                <a href="https://dexscreener.com/solana/hbyptnewrepfk2umavtfg8mfp9d8xye41ueo9wzo9ox4" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tSAT/SOL Pool</a>
+                            </li>
+                            <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">No User Custody:</strong> 
+                                <span style="color: #4a5568;">This site never holds or requests wallet keys or personal info.</span>
+                            </li>
+                            <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">Governance‑controlled upgrade authority:</strong> 
+                                <span style="color: #4a5568;">Managed by multi‑signature address with transparent upgrade process</span>
+                            </li>
+                            <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">Fixed Ratio Trading integration:</strong> 
+                                <span style="color: #4a5568;">Locked liquidity ensures 1:1 redeemability</span>
+                            </li>
+                            <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">Burned LP tokens:</strong> 
+                                <span style="color: #4a5568;">LP tokens permanently destroyed, locking reserves</span>
+                            </li>
+                            <li style="margin-bottom: 0; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">Open‑source verification:</strong> 
+                                <span style="color: #4a5568;">All code is publicly available on <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank" style="color: #f7931a; text-decoration: none;">GitHub</a></span>
+                            </li>
+                            <li style="margin-bottom: 0; padding-left: 20px; position: relative;">
+                                <strong style="color: #1e3c72;">All Interactions On-Chain:</strong> 
+                                <span style="color: #4a5568;">You always sign directly with your own wallet.</span>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </section>
 
@@ -1179,6 +1272,21 @@
                         Trading tSAT through the Fixed Ratio Trading protocol currently has 0% pool fees (governance-controlled). You only pay standard Solana network fees for transactions, which are typically fractions of a cent.
                     </div>
                 </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">Why is liquidity not locked?</div>
+                    <div class="faq-answer">
+                        <p>Locking liquidity is actually counterproductive for this type of protocol. Here's why tSAT liquidity remains accessible:</p>
+                        <ul style="margin: 10px 0 10px 20px;">
+                            <li><strong>Capital efficiency:</strong> This represents real working capital. If locked, the value becomes inaccessible forever, reducing the protocol's ability to maintain the 1:1 peg and serve users.</li>
+                            <li><strong>Fee management:</strong> In locked liquidity scenarios, trading fees accumulate but cannot be redistributed or managed. Over time, these fees would compound exponentially, eventually consuming the entire tSAT supply through inefficiency.</li>
+                            <li><strong>Redeemability guarantee:</strong> Unlike speculative tokens, tSAT must maintain instant redeemability for tBTC. Locked liquidity would prevent users from redeeming their tokens, breaking the core promise of 1:1 backing.</li>
+                            <li><strong>Protocol flexibility:</strong> Active liquidity management allows the protocol to respond to market conditions, upgrade to better liquidity solutions, and maintain optimal trading conditions for users.</li>
+                            <li><strong>Transparent reserves:</strong> All reserves are verifiable on-chain in real-time. The LP tokens are burned, permanently committing the reserves to the protocol, but the underlying assets remain functional rather than frozen.</li>
+                        </ul>
+                        <p style="margin-top: 12px;">The Fixed Ratio Trading protocol uses burned LP tokens to ensure reserves cannot be withdrawn while maintaining the flexibility needed for a fully-backed, redeemable token system.</p>
+                    </div>
+                </div>
             </section>
         </div>
     </div>
@@ -1215,8 +1323,18 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2024 Satoshi Token Project. Managed by Davinci Jeremie (DavinciJ15)</p>
-                <p>tSAT brings Bitcoin's store of value to Solana's speed and efficiency</p>
+                <p style="margin-bottom: 10px;">&copy; 2025 Satoshi Token Project.</p>
+                <p style="margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+                    Created & managed by 
+                    <img src="images/DJ15_Logo.png" alt="DJ15" style="height: 1em; width: auto; vertical-align: middle;">
+                    Davinci Jeremie (DavinciJ15).
+                </p>
+                <p style="margin-bottom: 10px;">All smart contracts are public and verifiable on Solana.</p>
+                <p style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
+                    <a href="https://solscan.io/token/6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU" target="_blank" style="color: #f7931a; text-decoration: none; transition: color 0.3s ease;">View Contract</a>
+                    <span style="color: #94a3b8;">•</span>
+                    <a href="#security-transparency" style="color: #f7931a; text-decoration: none; transition: color 0.3s ease;">Security & Transparency</a>
+                </p>
             </div>
         </div>
     </footer>
