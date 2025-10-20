@@ -42,9 +42,10 @@
         /* Header */
         header {
             padding: 20px 0;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(248, 249, 250, 0.95); /* Light gray with high opacity */
             backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); /* Subtle shadow for depth */
             position: fixed;
             top: 0;
             left: 0;
@@ -56,6 +57,7 @@
         body.dark-mode header {
             background: rgba(15, 23, 42, 0.9);
             border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
 
         nav {
@@ -65,13 +67,18 @@
         }
 
         .logo {
-            color: white;
+            color: #1e3c72; /* Dark blue for light mode */
             font-size: 24px;
             font-weight: 700;
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 12px;
+            transition: color 0.3s ease;
+        }
+
+        body.dark-mode .logo {
+            color: white;
         }
 
         .logo img {
@@ -87,21 +94,21 @@
             gap: 8px;
             margin-left: 15px;
             padding: 6px 12px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(30, 60, 114, 0.1);
+            border: 1px solid rgba(30, 60, 114, 0.2);
             border-radius: 20px;
             font-family: 'Courier New', monospace;
             font-size: 0.85rem;
-            color: #e2e8f0;
+            color: #1e3c72;
             transition: all 0.3s ease;
             position: relative;
             cursor: pointer;
         }
 
         .contract-address:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.3);
-            color: #f1f5f9;
+            background: rgba(30, 60, 114, 0.15);
+            border-color: rgba(30, 60, 114, 0.3);
+            color: #0f172a;
         }
 
         body.dark-mode .contract-address {
@@ -299,7 +306,7 @@
         }
 
         .nav-links a {
-            color: white;
+            color: #1e3c72; /* Dark blue for light mode */
             text-decoration: none;
             font-weight: 400;
             transition: all 0.3s ease;
@@ -331,9 +338,9 @@
 
         /* Scroll Arrows */
         .nav-arrow {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
+            background: rgba(30, 60, 114, 0.1); /* Dark blue tint for light mode */
+            border: 1px solid rgba(30, 60, 114, 0.2);
+            color: #1e3c72;
             width: 32px;
             height: 32px;
             border-radius: 50%;
@@ -429,7 +436,7 @@
             display: block;
             width: 25px;
             height: 3px;
-            background: white;
+            background: #1e3c72; /* Dark blue for light mode */
             margin: 5px 0;
             transition: all 0.3s ease;
             border-radius: 2px;
@@ -453,9 +460,9 @@
 
         /* Theme Toggle Button */
         .theme-toggle {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: white;
+            background: rgba(30, 60, 114, 0.1); /* Dark blue tint for light mode */
+            border: 2px solid rgba(30, 60, 114, 0.3);
+            color: #1e3c72;
             padding: 8px 12px;
             border-radius: 20px;
             cursor: pointer;
@@ -466,8 +473,8 @@
         }
 
         .theme-toggle:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(30, 60, 114, 0.2);
+            border-color: rgba(30, 60, 114, 0.5);
         }
 
         body.dark-mode .theme-toggle {
@@ -494,7 +501,7 @@
         body.dark-mode .value-card h4 { color: #e2e8f0; }
         body.dark-mode .value-card li { color: #cbd5e1; }
         
-        /* Dark mode styles for Security & Transparency section */
+        /* Dark mode styles for Transparency section */
         body.dark-mode #security-transparency .value-card strong {
             color: #f7931a !important;
         }
@@ -708,7 +715,7 @@
             color: #1e3c72;
         }
 
-        /* Make Security & Transparency heading bolder */
+        /* Make Transparency heading bolder */
         #security-transparency h2 {
             font-weight: 800;
         }
@@ -1167,7 +1174,7 @@
                             <li><a href="#how-it-works">How it Works</a></li>
                             <li><a href="#backing">Backing</a></li>
                             <li><a href="#proof-reserves">Proof of Reserves</a></li>
-                            <li><a href="#security-transparency">Security & Transparency</a></li>
+                            <li><a href="#security-transparency">Transparency</a></li>
                             <li><a href="#faq">FAQ</a></li>
                         </ul>
                     </div>
@@ -1398,9 +1405,9 @@
                 </div>
             </section>
 
-            <!-- Security & Transparency -->
+            <!-- Transparency -->
             <section id="security-transparency" class="section">
-                <h2>Security & Transparency</h2>
+                <h2>Transparency</h2>
                 <div class="value-grid" style="grid-template-columns: 1fr; max-width: 800px; margin: 30px auto;">
                     <div class="value-card">
                         <ul style="list-style: none; padding: 0;">
@@ -1427,8 +1434,11 @@
                             <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
                                 <strong style="color: #1e3c72;">Liquidity Pools:</strong> 
                                 <span style="color: #4a5568;">Raydium Liquidity pools maintained</span><br>
-                                <a href="https://dexscreener.com/solana/j9zzxzmdp1n7gtscploiyxeuvguplrrmjjarucjrr48s" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tSAT/tBTC Pool</a><br>
-                                <a href="https://dexscreener.com/solana/hbyptnewrepfk2umavtfg8mfp9d8xye41ueo9wzo9ox4" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tSAT/SOL Pool</a>
+                                <a href="https://dexscreener.com/solana/hbyptnewrepfk2umavtfg8mfp9d8xye41ueo9wzo9ox4" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tSAT/wBTC Pool</a><br>
+                                <a href="https://dexscreener.com/solana/g1x8a1ffjp5bdzwf9ecgfmqdtfsp82h7ncmzyxk8abxw" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tSAT/cbBTC Pool</a><br>
+                                <a href="https://dexscreener.com/solana/dttflsusowznfgcbyqf2xx5fvgrmn6ivbmtsahvglh4b" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tSAT/SOL Pool</a><br>
+                                <a href="https://dexscreener.com/solana/4pwbdebeg6lvagzqe2cr7tnnqvlz7zmowuve2gthczfw" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tBTC/wBTC Pool</a><br>
+                                <span style="color: #64748b; font-size: 0.85rem; font-style: italic; display: block; margin-top: 5px;">Note: Other pools were tested such as tSAT/tBTC and more but were found to be capital inefficient at this time.</span>
                             </li>
                             <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
                                 <strong style="color: #1e3c72;">No User Custody:</strong> 
@@ -1601,7 +1611,7 @@
                 <p style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
                     <a href="https://solscan.io/token/6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU" target="_blank" rel="noopener noreferrer" style="color: #f7931a; text-decoration: none; transition: color 0.3s ease;">View Contract</a>
                     <span style="color: #94a3b8;">•</span>
-                    <a href="#security-transparency" style="color: #f7931a; text-decoration: none; transition: color 0.3s ease;">Security & Transparency</a>
+                    <a href="#security-transparency" style="color: #f7931a; text-decoration: none; transition: color 0.3s ease;">Transparency</a>
                 </p>
             </div>
         </div>
