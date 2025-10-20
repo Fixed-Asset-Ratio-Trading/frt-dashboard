@@ -195,6 +195,42 @@
             border-bottom-color: #f7931a;
         }
 
+        /* Hamburger Menu Button */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            z-index: 1002;
+        }
+
+        .menu-toggle span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background: white;
+            margin: 5px 0;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        body.dark-mode .menu-toggle span {
+            background: #e2e8f0;
+        }
+
+        .menu-toggle.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .menu-toggle.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .menu-toggle.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
+        }
+
         /* Theme Toggle Button */
         .theme-toggle {
             background: rgba(255, 255, 255, 0.1);
@@ -460,8 +496,62 @@
                 max-width: 100px;
             }
 
+            /* Mobile Navigation */
+            .menu-toggle {
+                display: block;
+            }
+
+            nav > div:last-child {
+                position: relative;
+            }
+
             .nav-links {
                 display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                right: 0;
+                background: rgba(15, 23, 42, 0.98);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                padding: 15px;
+                margin-top: 10px;
+                gap: 0;
+                min-width: 200px;
+                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+                z-index: 1000;
+            }
+
+            body.dark-mode .nav-links {
+                background: rgba(15, 23, 42, 0.98);
+                border-color: rgba(148, 163, 184, 0.2);
+            }
+
+            .nav-links.active {
+                display: flex;
+            }
+
+            .nav-links li {
+                width: 100%;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .nav-links li:last-child {
+                border-bottom: none;
+            }
+
+            .nav-links a {
+                display: block;
+                padding: 12px 15px;
+                border-bottom: none !important;
+                text-align: left;
+                line-height: normal;
+            }
+
+            .nav-links a:hover {
+                background: rgba(247, 147, 26, 0.1);
+                border-radius: 6px;
             }
 
             .logo {
@@ -495,7 +585,12 @@
                 </a>
             </div>
             <div style="display: flex; align-items: center; height: 40px;">
-                <ul class="nav-links">
+                <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul class="nav-links" id="navLinks">
                     <li><a href="#ticker-usage">Ticker Usage</a></li>
                     <li><a href="#satoshi-images">Satoshi Images</a></li>
                     <li><a href="#tsatoshi-images">tSatoshi Images</a></li>
@@ -776,6 +871,40 @@
                 themeIcon.textContent = '☀️';
                 localStorage.setItem('theme', 'dark');
             }
+        }
+
+        // Hamburger menu toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const navLinks = document.getElementById('navLinks');
+        
+        if (menuToggle) {
+            menuToggle.addEventListener('click', function() {
+                this.classList.toggle('active');
+                navLinks.classList.toggle('active');
+            });
+            
+            // Close menu when clicking on a link (mobile)
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        menuToggle.classList.remove('active');
+                        navLinks.classList.remove('active');
+                    }
+                });
+            });
+            
+            // Close menu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (window.innerWidth <= 768) {
+                    const isClickInsideMenu = navLinks.contains(event.target);
+                    const isClickOnToggle = menuToggle.contains(event.target);
+                    
+                    if (!isClickInsideMenu && !isClickOnToggle && navLinks.classList.contains('active')) {
+                        menuToggle.classList.remove('active');
+                        navLinks.classList.remove('active');
+                    }
+                }
+            });
         }
 
         // Load saved theme on page load

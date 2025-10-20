@@ -46,6 +46,7 @@
             text-align: center;
             position: relative;
             overflow: hidden;
+            margin-top: 80px;
         }
 
         body.dark-mode header {
@@ -100,79 +101,168 @@
             font-weight: 600;
         }
 
-        /* Navigation */
+        /* Navigation - Satoshi15 Style */
         .nav-menu {
-            background: white;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            position: sticky;
+            padding: 20px 0;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
             z-index: 1000;
-            margin-bottom: 40px;
+            transition: all 0.3s ease;
         }
 
         body.dark-mode .nav-menu {
-            background: #1e293b;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
         }
 
-        .nav-menu ul {
+        .nav-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px;
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .logo {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
             list-style: none;
             padding: 0;
             margin: 0;
-            flex-wrap: wrap;
         }
 
-        .nav-menu li {
-            margin: 0 5px;
-        }
-
-        .nav-menu a {
-            display: block;
-            padding: 15px 20px;
-            color: #333;
+        .nav-links a {
+            color: white;
             text-decoration: none;
-            font-weight: 500;
+            font-weight: 400;
             transition: all 0.3s ease;
-            border-bottom: 3px solid transparent;
+            padding-bottom: 2px;
+            border-bottom: 2px solid transparent;
         }
 
-        body.dark-mode .nav-menu a {
-            color: #e2e8f0;
-        }
-
-        .nav-menu a:hover {
+        .nav-links a:hover {
             color: #f7931a;
             border-bottom-color: #f7931a;
-            background: rgba(247, 147, 26, 0.05);
+        }
+
+        body.dark-mode .nav-links a {
+            color: #cbd5e1;
+        }
+
+        body.dark-mode .nav-links a:hover {
+            color: #f7931a;
+        }
+
+        /* Hamburger Menu Button */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            z-index: 1002;
+        }
+
+        .menu-toggle span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background: white;
+            margin: 5px 0;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        body.dark-mode .menu-toggle span {
+            background: #e2e8f0;
+        }
+
+        .menu-toggle.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .menu-toggle.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .menu-toggle.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
         }
 
         /* Theme Toggle */
         .theme-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 2px solid rgba(0, 0, 0, 0.1);
-            color: #333;
-            padding: 10px 15px;
-            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
             cursor: pointer;
             font-size: 0.9rem;
             transition: all 0.3s ease;
             backdrop-filter: blur(10px);
-            z-index: 1001;
+            margin-left: 10px;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
         }
 
         body.dark-mode .theme-toggle {
-            background: rgba(30, 41, 59, 0.9);
+            background: rgba(148, 163, 184, 0.1);
             border-color: rgba(148, 163, 184, 0.3);
             color: #e2e8f0;
         }
 
-        .theme-toggle:hover {
-            transform: scale(1.05);
+        body.dark-mode .theme-toggle:hover {
+            background: rgba(148, 163, 184, 0.2);
+            border-color: rgba(148, 163, 184, 0.5);
+        }
+
+        .nav-controls {
+            display: flex;
+            align-items: center;
+        }
+
+        /* Anchor offset for fixed header */
+        html { 
+            scroll-padding-top: 100px; 
+        }
+        
+        /* Ensure sections align below fixed header when linked */
+        #abstract,
+        #introduction,
+        #protocol,
+        #smart-contracts,
+        #security,
+        #tokenomics,
+        #proof-reserves,
+        #redemption,
+        #risks { 
+            scroll-margin-top: 100px; 
         }
 
         /* Main Content */
@@ -435,8 +525,86 @@
             margin-top: 10px;
         }
 
-        /* Responsive design */
+        /* Responsive design - Show only hamburger menu */
+        @media (max-width: 1200px) {
+            /* Hide menu items and only show hamburger */
+            .menu-toggle {
+                display: block;
+            }
+
+            .nav-links {
+                display: none !important;
+                flex-direction: column;
+                position: absolute;
+                top: 100%;
+                right: 0;
+                background: rgba(15, 23, 42, 0.98);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                padding: 15px;
+                margin-top: 10px;
+                gap: 0;
+                min-width: 250px;
+                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+                z-index: 1000;
+            }
+
+            body.dark-mode .nav-links {
+                background: rgba(15, 23, 42, 0.98);
+                border-color: rgba(148, 163, 184, 0.2);
+            }
+
+            .nav-links.active {
+                display: flex !important;
+            }
+
+            .nav-links li {
+                width: 100%;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .nav-links li:last-child {
+                border-bottom: none;
+            }
+
+            .nav-links a {
+                display: block;
+                padding: 12px 15px;
+                border-bottom: none !important;
+                text-align: left;
+            }
+
+            .nav-links a:hover {
+                background: rgba(247, 147, 26, 0.1);
+                border-radius: 6px;
+            }
+
+            .theme-toggle {
+                margin-left: 10px;
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+        }
+
         @media (max-width: 768px) {
+            /* Adjust scroll offset for smaller fixed header */
+            html { 
+                scroll-padding-top: 70px; 
+            }
+            
+            #abstract,
+            #introduction,
+            #protocol,
+            #smart-contracts,
+            #security,
+            #tokenomics,
+            #proof-reserves,
+            #redemption,
+            #risks { 
+                scroll-margin-top: 70px; 
+            }
+
             .container {
                 padding: 0 15px;
             }
@@ -457,24 +625,17 @@
                 font-size: 1.8rem;
             }
 
-            .nav-menu ul {
-                flex-direction: column;
-                align-items: center;
+            .nav-menu {
+                padding: 15px 0;
             }
 
-            .nav-menu li {
-                margin: 0;
+            .logo {
+                font-size: 20px;
             }
 
-            .nav-menu a {
-                padding: 12px 20px;
-                border-bottom: none;
-                border-right: 3px solid transparent;
-            }
-
-            .nav-menu a:hover {
-                border-right-color: #f7931a;
-                border-bottom: none;
+            .logo img {
+                width: 32px;
+                height: 32px;
             }
 
             .logo-section {
@@ -483,10 +644,13 @@
             }
 
             .theme-toggle {
-                top: 10px;
-                right: 10px;
+                right: 60px;
                 padding: 8px 12px;
                 font-size: 0.8rem;
+            }
+
+            .theme-toggle:hover {
+                transform: translateY(-50%) scale(1.05);
             }
 
             table {
@@ -513,10 +677,36 @@
         }
     </style>
 </head>
-<body>
-    <button class="theme-toggle" onclick="toggleTheme()">
-        <span id="theme-icon">🌙</span>
-    </button>
+<body id="top">
+    <nav class="nav-menu">
+        <div class="nav-container">
+            <a href="#top" class="logo">
+                <img src="images/tSatoshi_64x64.png" alt="tSAT Logo">
+                tSAT Whitepaper
+            </a>
+            <div class="nav-controls">
+                <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <ul class="nav-links" id="navMenuList">
+                    <li><a href="#abstract">Abstract</a></li>
+                    <li><a href="#introduction">Introduction</a></li>
+                    <li><a href="#protocol">Protocol Design</a></li>
+                    <li><a href="#smart-contracts">Smart Contracts</a></li>
+                    <li><a href="#security">Security Model</a></li>
+                    <li><a href="#tokenomics">Tokenomics</a></li>
+                    <li><a href="#proof-reserves">Proof of Reserves</a></li>
+                    <li><a href="#redemption">How to Redeem</a></li>
+                    <li><a href="#risks">Risks & Disclaimers</a></li>
+                </ul>
+                <button class="theme-toggle" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span>
+                </button>
+            </div>
+        </div>
+    </nav>
 
     <header>
         <div class="container">
@@ -532,22 +722,6 @@
             </div>
         </div>
     </header>
-
-    <nav class="nav-menu">
-        <div class="container">
-            <ul>
-                <li><a href="#abstract">Abstract</a></li>
-                <li><a href="#introduction">Introduction</a></li>
-                <li><a href="#protocol">Protocol Design</a></li>
-                <li><a href="#smart-contracts">Smart Contracts</a></li>
-                <li><a href="#security">Security Model</a></li>
-                <li><a href="#tokenomics">Tokenomics</a></li>
-                <li><a href="#proof-reserves">Proof of Reserves</a></li>
-                <li><a href="#redemption">How to Redeem</a></li>
-                <li><a href="#risks">Risks & Disclaimers</a></li>
-            </ul>
-        </div>
-    </nav>
 
     <div class="container">
         <!-- Abstract -->
@@ -1308,6 +1482,38 @@ Example:
             } else {
                 themeIcon.textContent = '🌙';
             }
+
+            // Hamburger menu toggle
+            const menuToggle = document.getElementById('menuToggle');
+            const navMenuList = document.getElementById('navMenuList');
+            
+            menuToggle.addEventListener('click', function() {
+                this.classList.toggle('active');
+                navMenuList.classList.toggle('active');
+            });
+            
+            // Close menu when clicking on a link
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 1200) {
+                        menuToggle.classList.remove('active');
+                        navMenuList.classList.remove('active');
+                    }
+                });
+            });
+            
+            // Close menu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (window.innerWidth <= 1200) {
+                    const isClickInsideMenu = navMenuList.contains(event.target);
+                    const isClickOnToggle = menuToggle.contains(event.target);
+                    
+                    if (!isClickInsideMenu && !isClickOnToggle && navMenuList.classList.contains('active')) {
+                        menuToggle.classList.remove('active');
+                        navMenuList.classList.remove('active');
+                    }
+                }
+            });
 
             // Smooth scrolling for navigation links
             document.querySelectorAll('a[href^="#"]').forEach(anchor => {
