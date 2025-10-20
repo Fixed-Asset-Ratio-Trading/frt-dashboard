@@ -311,14 +311,117 @@
             border-radius: 3px;
         }
 
+        /* Navigation page links are now always visible in dropdown */
+
+        /* Dropdown menu for hamburger */
+        .nav-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 10px);
+            right: -50px; /* Adjust position to align better with hamburger button */
+            background: rgba(248, 249, 250, 0.98);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            list-style: none;
+            min-width: 220px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        body.dark-mode .nav-dropdown {
+            background: rgba(15, 23, 42, 0.98);
+            border-color: rgba(148, 163, 184, 0.2);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-dropdown.active {
+            display: flex;
+        }
+
+        .nav-dropdown li {
+            width: 100%;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode .nav-dropdown li {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-dropdown li:last-child {
+            border-bottom: none;
+        }
+
+        .nav-dropdown a {
+            display: block;
+            padding: 12px 15px;
+            text-decoration: none;
+            text-align: left;
+            color: #1e3c72 !important;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode .nav-dropdown a {
+            color: #cbd5e1 !important;
+        }
+
+        .nav-dropdown a:hover {
+            background: rgba(247, 147, 26, 0.1);
+            border-radius: 6px;
+        }
+
+        /* Special styling for navigation page links in dropdown */
+        .nav-dropdown li.nav-page-link {
+            background: linear-gradient(135deg, rgba(247, 147, 26, 0.1), rgba(255, 140, 0, 0.1));
+            border-radius: 8px;
+            margin: 8px 0;
+            border-bottom: none !important;
+        }
+
+        .nav-dropdown li.nav-page-link a {
+            font-weight: 700 !important;
+            color: #f7931a !important;
+            padding: 14px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        body.dark-mode .nav-dropdown li.nav-page-link a {
+            color: #f7931a !important;
+        }
+
+        .nav-dropdown li.nav-page-link:hover {
+            background: linear-gradient(135deg, rgba(247, 147, 26, 0.2), rgba(255, 140, 0, 0.2));
+            transform: translateX(3px);
+            transition: all 0.3s ease;
+        }
+
+        /* Separator in dropdown */
+        .nav-dropdown li.nav-separator {
+            height: 1px;
+            background: rgba(0, 0, 0, 0.1);
+            margin: 10px 0;
+            padding: 0;
+            border-bottom: none !important;
+        }
+
+        body.dark-mode .nav-dropdown li.nav-separator {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
         /* Hamburger Menu Button */
         .menu-toggle {
-            display: none;
+            display: block; /* Always visible */
             background: none;
             border: none;
             cursor: pointer;
             padding: 10px;
             z-index: 1002;
+            margin-left: 10px;
         }
 
         .menu-toggle span {
@@ -613,84 +716,13 @@
             }
 
             /* Mobile Navigation */
-            .menu-toggle {
-                display: block;
-            }
-
             nav > div:last-child {
                 position: relative;
             }
 
-            /* Hide scrolling menu on mobile, show dropdown instead */
+            /* Hide scrolling menu on mobile */
             .nav-menu-wrapper {
-                display: block !important;
-                position: static !important;
-            }
-
-            .nav-arrow {
                 display: none !important;
-            }
-
-            .nav-scroll-container {
-                width: auto !important;
-                overflow: visible !important;
-            }
-
-            .nav-position-indicator {
-                display: none !important;
-            }
-
-            .nav-links {
-                display: none;
-                flex-direction: column;
-                position: absolute;
-                top: 100%;
-                right: 0;
-                background: rgba(15, 23, 42, 0.98);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 12px;
-                padding: 15px;
-                margin-top: 10px;
-                gap: 0;
-                min-width: 200px;
-                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-                z-index: 1000;
-                transform: none !important;
-                transition: none !important;
-            }
-
-            body.dark-mode .nav-links {
-                background: rgba(15, 23, 42, 0.98);
-                border-color: rgba(148, 163, 184, 0.2);
-            }
-
-            .nav-links.active {
-                display: flex;
-            }
-
-            .nav-links li {
-                width: 100%;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                min-width: auto !important;
-            }
-
-            .nav-links li:last-child {
-                border-bottom: none;
-            }
-
-            .nav-links a {
-                display: block;
-                padding: 12px 15px;
-                border-bottom: none !important;
-                text-align: left;
-                line-height: normal;
-                white-space: normal !important;
-            }
-
-            .nav-links a:hover {
-                background: rgba(247, 147, 26, 0.1);
-                border-radius: 6px;
             }
 
             .logo {
@@ -724,11 +756,6 @@
                 </a>
             </div>
             <div style="display: flex; align-items: center; height: 40px;">
-                <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
                 <div class="nav-menu-wrapper" id="navMenuWrapper">
                     <button class="nav-arrow left" id="navArrowLeft" aria-label="Scroll left">
                         <span>‹</span>
@@ -746,6 +773,25 @@
                         <span>›</span>
                     </button>
                     <div class="nav-position-indicator" id="navIndicator"></div>
+                </div>
+                <div style="position: relative;">
+                    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <!-- Dropdown menu for hamburger -->
+                    <ul class="nav-dropdown" id="navDropdown">
+                        <li><a href="#ticker-usage">Ticker Usage</a></li>
+                        <li><a href="#satoshi-images">Satoshi Images</a></li>
+                        <li><a href="#tsatoshi-images">tSatoshi Images</a></li>
+                        <li><a href="#future-plans">Future Plans</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                        <li class="nav-separator"></li>
+                        <li class="nav-page-link"><a href="satoshi15.html">🏠 Home</a></li>
+                        <li class="nav-page-link"><a href="media.html">📰 Media</a></li>
+                        <li class="nav-page-link"><a href="whitepaper.html">📄 Whitepaper</a></li>
+                    </ul>
                 </div>
                 <button class="theme-toggle" onclick="toggleTheme()">
                     <span id="theme-icon">🌙</span>
@@ -1025,34 +1071,31 @@
 
         // Hamburger menu toggle
         const menuToggle = document.getElementById('menuToggle');
-        const navLinks = document.getElementById('navLinks');
+        const navDropdown = document.getElementById('navDropdown');
         
         if (menuToggle) {
-            menuToggle.addEventListener('click', function() {
+            menuToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
                 this.classList.toggle('active');
-                navLinks.classList.toggle('active');
+                navDropdown.classList.toggle('active');
             });
             
-            // Close menu when clicking on a link (mobile)
-            document.querySelectorAll('.nav-links a').forEach(link => {
+            // Close menu when clicking on a link
+            document.querySelectorAll('.nav-dropdown a').forEach(link => {
                 link.addEventListener('click', function() {
-                    if (window.innerWidth <= 768) {
-                        menuToggle.classList.remove('active');
-                        navLinks.classList.remove('active');
-                    }
+                    menuToggle.classList.remove('active');
+                    navDropdown.classList.remove('active');
                 });
             });
             
             // Close menu when clicking outside
             document.addEventListener('click', function(event) {
-                if (window.innerWidth <= 768) {
-                    const isClickInsideMenu = navLinks.contains(event.target);
-                    const isClickOnToggle = menuToggle.contains(event.target);
-                    
-                    if (!isClickInsideMenu && !isClickOnToggle && navLinks.classList.contains('active')) {
-                        menuToggle.classList.remove('active');
-                        navLinks.classList.remove('active');
-                    }
+                const isClickInsideMenu = navDropdown.contains(event.target);
+                const isClickOnToggle = menuToggle.contains(event.target);
+                
+                if (!isClickInsideMenu && !isClickOnToggle && navDropdown.classList.contains('active')) {
+                    menuToggle.classList.remove('active');
+                    navDropdown.classList.remove('active');
                 }
             });
         }
