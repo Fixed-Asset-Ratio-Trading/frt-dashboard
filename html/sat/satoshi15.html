@@ -168,8 +168,8 @@
         }
 
         .copy-btn:hover {
-            background: rgba(247, 147, 26, 0.2);
-            color: #f7931a;
+            background: rgba(200, 80, 0, 0.2);
+            color: #c85000;
         }
 
         .copy-btn svg {
@@ -179,7 +179,7 @@
 
         /* Copy success feedback */
         .copy-success {
-            color: #10b981 !important;
+            color: #047857 !important;
         }
 
         /* Price Display */
@@ -317,12 +317,12 @@
         }
 
         .nav-links a:hover {
-            color: #f7931a;
+            color: #c85000;
         }
 
         .nav-links a.active {
-            color: #f7931a;
-            border-bottom: 3px solid #f7931a;
+            color: #c85000;
+            border-bottom: 3px solid #c85000;
             font-weight: 700;
         }
 
@@ -363,9 +363,9 @@
         }
 
         .nav-arrow:hover {
-            background: rgba(247, 147, 26, 0.2);
-            border-color: #f7931a;
-            color: #f7931a;
+            background: rgba(200, 80, 0, 0.2);
+            border-color: #c85000;
+            color: #c85000;
             transform: scale(1.1);
         }
 
@@ -417,7 +417,7 @@
         }
 
         .nav-position-dot.active {
-            background: #f7931a;
+            background: #c85000;
             width: 16px;
             border-radius: 3px;
         }
@@ -494,7 +494,7 @@
 
         .nav-dropdown li.nav-page-link a {
             font-weight: 700 !important;
-            color: #f7931a !important;
+            color: #c85000 !important;
             padding: 14px 15px;
             display: flex;
             align-items: center;
@@ -607,6 +607,21 @@
         /* Dark mode styles for Transparency section */
         body.dark-mode #security-transparency .value-card strong {
             color: #f7931a !important;
+        }
+        
+        /* Light mode link styles */
+        .content a:not(.btn):not(footer a):not(nav a) {
+            color: #c85000;
+            text-decoration: underline;
+            transition: text-decoration 0.3s ease;
+        }
+        
+        .content a:not(.btn):not(footer a):not(nav a):hover {
+            text-decoration: none;
+        }
+        
+        body.dark-mode .content a:not(.btn):not(footer a):not(nav a) {
+            color: #f7931a;
         }
         body.dark-mode #security-transparency .value-card span {
             color: #e2e8f0 !important;
@@ -849,7 +864,7 @@
             background: linear-gradient(135deg, #dee2e6, #ced4da);
             padding: 30px;
             border-radius: 12px;
-            border-left: 4px solid #f7931a;
+            border-left: 4px solid #c85000;
             transition: all 0.3s ease;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
@@ -882,7 +897,7 @@
             content: "✓";
             position: absolute;
             left: 0;
-            color: #f7931a;
+            color: #c85000;
             font-weight: bold;
         }
 
@@ -948,6 +963,8 @@
         .sats-definition h3 {
             color: #f7931a;
             margin-bottom: 20px;
+            font-size: 2rem;
+            font-weight: 700;
         }
 
         .sats-definition .highlight {
@@ -973,7 +990,7 @@
             padding: 20px;
             margin: 15px 0;
             border-radius: 8px;
-            border-left: 4px solid #10b981;
+            border-left: 4px solid #047857;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
@@ -984,15 +1001,16 @@
         }
 
         .transaction a {
-            color: #f7931a;
-            text-decoration: none;
+            color: #c85000;
+            text-decoration: underline;
             font-family: monospace;
             font-size: 0.9rem;
             word-break: break-all;
+            transition: text-decoration 0.3s ease;
         }
 
         .transaction a:hover {
-            text-decoration: underline;
+            text-decoration: none;
         }
 
         /* FAQ */
@@ -1058,6 +1076,10 @@
         }
 
         .footer-section a:hover {
+            color: #c85000;
+        }
+        
+        body.dark-mode .footer-section a:hover {
             color: #f7931a;
         }
 
@@ -1180,7 +1202,7 @@
         <nav class="container">
             <div style="display: flex; align-items: center;">
                 <a href="#top" class="logo" onclick="scrollToTop(event)">
-                    <img src="images/tSatoshi_64x64.png" alt="tSAT Logo">
+                    <img src="images/tSatoshi.svg" alt="tSAT Logo">
                     tSAT
                 </a>
                 <div class="contract-address" data-full-address="tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu">
@@ -1225,7 +1247,7 @@
                         <li><a href="#security-transparency">Transparency</a></li>
                         <li><a href="#faq">FAQ</a></li>
                         <li class="nav-separator"></li>
-                        <li class="nav-page-link"><a href="satoshi15.html">🏠 Home</a></li>
+                        <li class="nav-page-link"><a href="buy-tsat-guide.html">🛒 How to buy</a></li>
                         <li class="nav-page-link"><a href="media.html">📰 Media</a></li>
                         <li class="nav-page-link"><a href="whitepaper.html">📄 Whitepaper</a></li>
                     </ul>
@@ -1248,11 +1270,8 @@
                 Satoshi shows your money in SATs so the numbers are big and easy to understand. Instead of seeing tiny decimals like 1×10⁻⁶ BTC, you see 100 sats. This makes every step feel real and exciting. You can quickly see your progress, and switch back to BTC anytime. With Satoshi tokens, you grow your Bitcoin stack while watching big numbers add up.
             </p>
             <div class="cta-buttons">
-                <a href="https://tsat.dj15.com" target="_blank" class="btn btn-primary">
-                    Get on <img src="images/Solana_coin.png" alt="Solana" style="height: 1.1rem; width: auto; vertical-align: middle; margin: 0 4px;"> Solana (For Pros)
-                </a>
                 <a href="buy-tsat-guide.html" class="btn btn-secondary">
-                    Help me understand how to buy <img src="images/tSatoshi_64x64.png" alt="tSAT" style="height: 1.1rem; width: auto; vertical-align: middle; margin: 0 4px;"> tSAT
+                    How to buy <img src="images/tSatoshi.svg" alt="tSAT" style="height: 1.1rem; width: auto; vertical-align: middle; margin: 0 4px;"> tSAT
                 </a>
             </div>
             
@@ -1288,7 +1307,7 @@
                 <a href="https://frt15.net/swap.html?pool=AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" target="_blank" style="text-decoration: none; display: block;">
                     <div class="price-item" style="cursor: pointer; transition: all 0.3s ease; padding: 8px; margin: -8px -8px 7px -8px; border-radius: 8px;">
                         <span class="price-label" style="color: #cbd5e1;">FRT Deviation:</span>
-                        <span class="price-value" style="color: #10b981; text-decoration: underline;">Always 0% →</span>
+                        <span class="price-value" style="color: #f7931a; text-decoration: underline;">Always 0% →</span>
                     </div>
                 </a>
                 <div class="price-updated" id="price-updated">Last updated: Loading...</div>
@@ -1448,7 +1467,7 @@
                         </a>
                     </div>
 
-                    <p style="margin-top: 30px;"><strong>Fixed Ratio Trading is open source:</strong> <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank" style="color: #f7931a;">https://github.com/Fixed-Asset-Ratio-Trading</a></p>
+                    <p style="margin-top: 30px;"><strong>Fixed Ratio Trading is open source:</strong> <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank" style="color: #c85000; text-decoration: underline;">https://github.com/Fixed-Asset-Ratio-Trading</a></p>
                 </div>
             </section>
 
@@ -1464,7 +1483,7 @@
                             </li>
                             <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
                                 <strong style="color: #1e3c72;">Passed GoPlus Checks:</strong> 
-                                <a href="https://gopluslabs.io/token-security/solana/tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu" target="_blank" style="color: #f7931a; font-family: monospace; text-decoration: none;">tSATjNAJorWxzSkNUSnwUEFQV1SLskfjf9EhvYhbdAX</a>
+                                <a href="https://gopluslabs.io/token-security/solana/tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu" target="_blank" style="color: #c85000; font-family: monospace; text-decoration: underline;">tSATjNAJorWxzSkNUSnwUEFQV1SLskfjf9EhvYhbdAX</a>
                             </li>
                             <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
                                 <strong style="color: #1e3c72;">Transfer Fee:</strong> 
@@ -1481,10 +1500,10 @@
                             <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
                                 <strong style="color: #1e3c72;">Liquidity Pools:</strong> 
                                 <span style="color: #4a5568;">Raydium Liquidity pools maintained</span><br>
-                                <a href="https://dexscreener.com/solana/hbyptnewrepfk2umavtfg8mfp9d8xye41ueo9wzo9ox4" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tSAT/wBTC Pool</a><br>
-                                <a href="https://dexscreener.com/solana/g1x8a1ffjp5bdzwf9ecgfmqdtfsp82h7ncmzyxk8abxw" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tSAT/cbBTC Pool</a><br>
-                                <a href="https://dexscreener.com/solana/dttflsusowznfgcbyqf2xx5fvgrmn6ivbmtsahvglh4b" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tSAT/SOL Pool</a><br>
-                                <a href="https://dexscreener.com/solana/4pwbdebeg6lvagzqe2cr7tnnqvlz7zmowuve2gthczfw" target="_blank" style="color: #f7931a; font-size: 0.9rem;">tBTC/wBTC Pool</a><br>
+                                <a href="https://dexscreener.com/solana/hbyptnewrepfk2umavtfg8mfp9d8xye41ueo9wzo9ox4" target="_blank" style="color: #c85000; font-size: 0.9rem; text-decoration: underline;">tSAT/wBTC Pool</a><br>
+                                <a href="https://dexscreener.com/solana/g1x8a1ffjp5bdzwf9ecgfmqdtfsp82h7ncmzyxk8abxw" target="_blank" style="color: #c85000; font-size: 0.9rem; text-decoration: underline;">tSAT/cbBTC Pool</a><br>
+                                <a href="https://dexscreener.com/solana/dttflsusowznfgcbyqf2xx5fvgrmn6ivbmtsahvglh4b" target="_blank" style="color: #c85000; font-size: 0.9rem; text-decoration: underline;">tSAT/SOL Pool</a><br>
+                                <a href="https://dexscreener.com/solana/4pwbdebeg6lvagzqe2cr7tnnqvlz7zmowuve2gthczfw" target="_blank" style="color: #c85000; font-size: 0.9rem; text-decoration: underline;">tBTC/wBTC Pool</a><br>
                                 <span style="color: #64748b; font-size: 0.85rem; font-style: italic; display: block; margin-top: 5px;">Note: Pools like tSAT/tBTC were tested but are currently capital inefficient.</span>
                             </li>
                             <li style="margin-bottom: 15px; padding-left: 20px; position: relative;">
@@ -1505,7 +1524,7 @@
                             </li>
                             <li style="margin-bottom: 0; padding-left: 20px; position: relative;">
                                 <strong style="color: #1e3c72;">Open‑source verification:</strong> 
-                                <span style="color: #4a5568;">All code is publicly available on <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank" style="color: #f7931a; text-decoration: none;">GitHub</a></span>
+                                <span style="color: #4a5568;">All code is publicly available on <a href="https://github.com/Fixed-Asset-Ratio-Trading" target="_blank" style="color: #c85000; text-decoration: underline;">GitHub</a></span>
                             </li>
                             <li style="margin-bottom: 0; padding-left: 20px; position: relative;">
                                 <strong style="color: #1e3c72;">All Interactions On-Chain:</strong> 
@@ -1528,7 +1547,7 @@
                         <p style="margin-top: 12px;"><strong>FDV vs Market Cap:</strong></p>
                         <ul style="margin: 10px 0 10px 20px;">
                             <li><strong>Fully Diluted Valuation (FDV):</strong> <span id="fdv-display">21 trillion tokens × current price = $24.6 billion</span></li>
-                            <li><strong>Actual Market Cap:</strong> <span id="market-cap-display" style="color: #10b981;">~80 million tokens × current price = ~$96,000</span></li>
+                            <li><strong>Actual Market Cap:</strong> <span id="market-cap-display" style="color: #f7931a; font-weight: 600;">~80 million tokens × current price = ~$96,000</span></li>
                         </ul>
                         
                         <p style="margin-top: 12px;"><strong>Why the difference?</strong> Only <span id="circulating-percent-display">0.0004%</span> of the total supply is currently in circulation! The vast majority (over 99.99%) remains locked in the FRT smart contract as backing reserves. tSAT only enters circulation when users deposit tBTC to mint it.</p>
@@ -1570,7 +1589,7 @@
                 <div class="faq-item">
                     <div class="faq-question">How do I verify the reserves?</div>
                     <div class="faq-answer">
-                        All reserves are verifiable on-chain. You can <a href="https://solscan.io/account/AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" target="_blank" style="color: #f7931a; text-decoration: none;">check the Fixed Ratio Trading pool on Solscan</a> at any time to see exactly how much tBTC backs the circulating tSAT supply. The smart contract code is open source and auditable by anyone.
+                        All reserves are verifiable on-chain. You can <a href="https://solscan.io/account/AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" target="_blank" style="color: #c85000; text-decoration: underline;">check the Fixed Ratio Trading pool on Solscan</a> at any time to see exactly how much tBTC backs the circulating tSAT supply. The smart contract code is open source and auditable by anyone.
                     </div>
                 </div>
 
@@ -1656,9 +1675,9 @@
                 </p>
                 <p style="margin-bottom: 10px;">All smart contracts are public and verifiable on Solana.</p>
                 <p style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap;">
-                    <a href="https://solscan.io/token/6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU" target="_blank" rel="noopener noreferrer" style="color: #f7931a; text-decoration: none; transition: color 0.3s ease;">View Contract</a>
+                    <a href="https://solscan.io/token/6DNSN2BJsaPFdFFc1zP37kkeNe4Usc1Sqkzr9C9vPWcU" target="_blank" rel="noopener noreferrer" style="color: #c85000; text-decoration: underline; transition: color 0.3s ease;">View Contract</a>
                     <span style="color: #94a3b8;">•</span>
-                    <a href="#security-transparency" style="color: #f7931a; text-decoration: none; transition: color 0.3s ease;">Transparency</a>
+                    <a href="#security-transparency" style="color: #c85000; text-decoration: underline; transition: color 0.3s ease;">Transparency</a>
                 </p>
             </div>
         </div>
