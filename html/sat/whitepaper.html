@@ -86,15 +86,15 @@
         .subtitle {
             font-size: 1.3rem;
             font-weight: 400;
-            color: #cbd5e1;
+            color: white;
             margin-bottom: 20px;
         }
 
         .version-badge {
             display: inline-block;
             background: rgba(247, 147, 26, 0.2);
-            border: 2px solid #c85000;
-            color: #f7931a;
+            border: 2px solid #f7931a;
+            color: white;
             padding: 8px 16px;
             border-radius: 25px;
             font-size: 0.9rem;
@@ -574,17 +574,24 @@
 
         /* Highlight boxes */
         .highlight-box {
-            background: linear-gradient(135deg, #f7931a, #ff8c00);
+            background: linear-gradient(135deg, #2a5298, #1e3c72);
             color: white;
             padding: 25px;
             border-radius: 12px;
             margin: 30px 0;
-            box-shadow: 0 6px 20px rgba(247, 147, 26, 0.3);
+            box-shadow: 0 6px 20px rgba(42, 82, 152, 0.3);
         }
 
         .highlight-box h3 {
             color: white;
             margin-top: 0;
+            font-size: 1.5rem;
+        }
+        
+        .highlight-box h5 {
+            color: white;
+            margin-top: 0;
+            font-size: 1.3rem;
         }
 
         .info-box {
@@ -699,14 +706,28 @@
 
         /* Links */
         a {
-            color: #f7931a;
-            text-decoration: none;
+            color: #c85000;
+            text-decoration: underline;
             font-weight: 500;
+            transition: text-decoration 0.3s ease;
         }
 
         a:hover {
-            color: #ff8c00;
+            text-decoration: none;
+        }
+        
+        body.dark-mode a {
+            color: #f7931a;
+        }
+        
+        /* Links in highlight boxes should be white */
+        .highlight-box a {
+            color: white;
             text-decoration: underline;
+        }
+        
+        .highlight-box a:hover {
+            text-decoration: none;
         }
 
         /* Transaction boxes */
@@ -851,9 +872,9 @@
 <body id="top">
     <nav class="nav-menu">
         <div class="nav-container">
-            <a href="#top" class="logo">
+            <a href="satoshi15.html" class="logo">
                 <img src="images/tSatoshi.svg" alt="tSAT Logo">
-                tSAT Whitepaper
+                <span>tSAT Whitepaper</span>
             </a>
             <div class="nav-controls">
                 <div class="nav-menu-wrapper" id="navMenuWrapper">
@@ -1642,7 +1663,7 @@ Example:
 
     <footer style="background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; padding: 40px 0; margin-top: 60px; text-align: center;">
         <div class="container">
-            <h3 style="color: #c85000; margin-bottom: 20px;">tSAT - Satoshi Token Protocol</h3>
+            <h3 style="color: #f7931a; margin-bottom: 20px; font-size: 1.8rem; font-weight: 700;">tSAT - Satoshi Token Protocol</h3>
             <p style="margin-bottom: 15px;">Built on Fixed Ratio Trading • Backed by tBTC • Secured by Smart Contracts</p>
             <p style="margin-bottom: 20px;">
                 <a href="https://frt15.net" target="_blank" style="color: #cbd5e1; margin: 0 15px;">Trade tSAT</a> |
