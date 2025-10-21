@@ -893,28 +893,6 @@
                 <span>tSAT Whitepaper</span>
             </a>
             <div class="nav-controls">
-                <div class="nav-menu-wrapper" id="navMenuWrapper">
-                    <button class="nav-arrow left" id="navArrowLeft" aria-label="Scroll left">
-                        <span>‹</span>
-                    </button>
-                    <div class="nav-scroll-container">
-                        <ul class="nav-links" id="navMenuList">
-                            <li><a href="#abstract">Abstract</a></li>
-                            <li><a href="#introduction">Introduction</a></li>
-                            <li><a href="#protocol">Protocol Design</a></li>
-                            <li><a href="#smart-contracts">Smart Contracts</a></li>
-                            <li><a href="#security">Security Model</a></li>
-                            <li><a href="#tokenomics">Tokenomics</a></li>
-                            <li><a href="#proof-reserves">Proof of Reserves</a></li>
-                            <li><a href="#redemption">How to Redeem</a></li>
-                            <li><a href="#risks">Risks & Disclaimers</a></li>
-                        </ul>
-                    </div>
-                    <button class="nav-arrow right visible" id="navArrowRight" aria-label="Scroll right">
-                        <span>›</span>
-                    </button>
-                    <div class="nav-position-indicator" id="navIndicator"></div>
-                </div>
                 <div style="position: relative;">
                     <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
                         <span></span>
@@ -934,13 +912,17 @@
                         <li><a href="#risks">Risks & Disclaimers</a></li>
                         <li class="nav-separator"></li>
                         <li class="nav-page-link"><a href="satoshi15.html">🏠 Home</a></li>
+                        <li class="nav-page-link"><a href="buy-tsat-guide.html">🛒 How to buy</a></li>
                         <li class="nav-page-link"><a href="media.html">📰 Media</a></li>
                         <li class="nav-page-link"><a href="whitepaper.html">📄 Whitepaper</a></li>
+                        <li class="nav-separator"></li>
+                        <li class="nav-page-link">
+                            <a href="#" onclick="toggleTheme(); return false;">
+                                <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
+                            </a>
+                        </li>
                     </ul>
                 </div>
-                <button class="theme-toggle" onclick="toggleTheme()">
-                    <span id="theme-icon">🌙</span>
-                </button>
             </div>
         </div>
     </nav>
@@ -1694,16 +1676,19 @@ Example:
         // Theme toggle functionality
         function toggleTheme() {
             const body = document.body;
-            const themeIcon = document.getElementById('theme-icon');
+            const themeMenuIcon = document.getElementById('theme-menu-icon');
+            const themeMenuText = document.getElementById('theme-menu-text');
             const isDark = body.classList.contains('dark-mode');
             
             if (isDark) {
                 body.classList.remove('dark-mode');
-                themeIcon.textContent = '🌙';
+                if (themeMenuIcon) themeMenuIcon.textContent = '🌙';
+                if (themeMenuText) themeMenuText.textContent = 'Dark Mode';
                 localStorage.setItem('theme', 'light');
             } else {
                 body.classList.add('dark-mode');
-                themeIcon.textContent = '☀️';
+                if (themeMenuIcon) themeMenuIcon.textContent = '☀️';
+                if (themeMenuText) themeMenuText.textContent = 'Light Mode';
                 localStorage.setItem('theme', 'dark');
             }
         }
@@ -1893,17 +1878,17 @@ Example:
         // Load saved theme on page load
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('theme');
-            const themeIcon = document.getElementById('theme-icon');
+            const themeMenuIcon = document.getElementById('theme-menu-icon');
+            const themeMenuText = document.getElementById('theme-menu-text');
             
             if (savedTheme === 'dark') {
                 document.body.classList.add('dark-mode');
-                themeIcon.textContent = '☀️';
+                if (themeMenuIcon) themeMenuIcon.textContent = '☀️';
+                if (themeMenuText) themeMenuText.textContent = 'Light Mode';
             } else {
-                themeIcon.textContent = '🌙';
+                if (themeMenuIcon) themeMenuIcon.textContent = '🌙';
+                if (themeMenuText) themeMenuText.textContent = 'Dark Mode';
             }
-
-            // Initialize scrolling menu
-            const scrollingMenu = new ScrollingMenu();
 
             // Hamburger menu toggle
             const menuToggle = document.getElementById('menuToggle');

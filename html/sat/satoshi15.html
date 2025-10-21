@@ -1214,47 +1214,30 @@
                     </button>
                 </div>
             </div>
-            <div style="display: flex; align-items: center;">
-                <div class="nav-menu-wrapper" id="navMenuWrapper">
-                    <button class="nav-arrow left" id="navArrowLeft" aria-label="Scroll left">
-                        <span>‹</span>
-                    </button>
-                    <div class="nav-scroll-container">
-                        <ul class="nav-links" id="navLinks">
-                            <li><a href="#how-it-works">How it Works</a></li>
-                            <li><a href="#backing">Backing</a></li>
-                            <li><a href="#proof-reserves">Proof of Reserves</a></li>
-                            <li><a href="#security-transparency">Transparency</a></li>
-                            <li><a href="#faq">FAQ</a></li>
-                        </ul>
-                    </div>
-                    <button class="nav-arrow right visible" id="navArrowRight" aria-label="Scroll right">
-                        <span>›</span>
-                    </button>
-                    <div class="nav-position-indicator" id="navIndicator"></div>
-                </div>
-                <div style="position: relative;">
-                    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </button>
-                    <!-- Dropdown menu for hamburger -->
-                    <ul class="nav-dropdown" id="navDropdown">
-                        <li><a href="#how-it-works">How it Works</a></li>
-                        <li><a href="#backing">Backing</a></li>
-                        <li><a href="#proof-reserves">Proof of Reserves</a></li>
-                        <li><a href="#security-transparency">Transparency</a></li>
-                        <li><a href="#faq">FAQ</a></li>
-                        <li class="nav-separator"></li>
-                        <li class="nav-page-link"><a href="buy-tsat-guide.html">🛒 How to buy</a></li>
-                        <li class="nav-page-link"><a href="media.html">📰 Media</a></li>
-                        <li class="nav-page-link"><a href="whitepaper.html">📄 Whitepaper</a></li>
-                    </ul>
-                </div>
-                <button class="theme-toggle" onclick="toggleTheme()">
-                    <span id="theme-icon">🌙</span>
+            <div style="position: relative;">
+                <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </button>
+                <!-- Dropdown menu for hamburger -->
+                <ul class="nav-dropdown" id="navDropdown">
+                    <li><a href="#how-it-works">How it Works</a></li>
+                    <li><a href="#backing">Backing</a></li>
+                    <li><a href="#proof-reserves">Proof of Reserves</a></li>
+                    <li><a href="#security-transparency">Transparency</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li class="nav-separator"></li>
+                    <li class="nav-page-link"><a href="buy-tsat-guide.html">🛒 How to buy</a></li>
+                    <li class="nav-page-link"><a href="media.html">📰 Media</a></li>
+                    <li class="nav-page-link"><a href="whitepaper.html">📄 Whitepaper</a></li>
+                    <li class="nav-separator"></li>
+                    <li class="nav-page-link">
+                        <a href="#" onclick="toggleTheme(); return false;">
+                            <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
+                        </a>
+                    </li>
+                </ul>
             </div>
         </nav>
     </header>
@@ -1719,16 +1702,19 @@
         // Theme toggle functionality
         function toggleTheme() {
             const body = document.body;
-            const themeIcon = document.getElementById('theme-icon');
+            const themeMenuIcon = document.getElementById('theme-menu-icon');
+            const themeMenuText = document.getElementById('theme-menu-text');
             const isDark = body.classList.contains('dark-mode');
             
             if (isDark) {
                 body.classList.remove('dark-mode');
-                themeIcon.textContent = '🌙';
+                if (themeMenuIcon) themeMenuIcon.textContent = '🌙';
+                if (themeMenuText) themeMenuText.textContent = 'Dark Mode';
                 localStorage.setItem('theme', 'light');
             } else {
                 body.classList.add('dark-mode');
-                themeIcon.textContent = '☀️';
+                if (themeMenuIcon) themeMenuIcon.textContent = '☀️';
+                if (themeMenuText) themeMenuText.textContent = 'Light Mode';
                 localStorage.setItem('theme', 'dark');
             }
         }
@@ -2193,17 +2179,17 @@
         // Load saved theme on page load
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('theme');
-            const themeIcon = document.getElementById('theme-icon');
+            const themeMenuIcon = document.getElementById('theme-menu-icon');
+            const themeMenuText = document.getElementById('theme-menu-text');
             
             if (savedTheme === 'dark') {
                 document.body.classList.add('dark-mode');
-                themeIcon.textContent = '☀️';
+                if (themeMenuIcon) themeMenuIcon.textContent = '☀️';
+                if (themeMenuText) themeMenuText.textContent = 'Light Mode';
             } else {
-                themeIcon.textContent = '🌙';
+                if (themeMenuIcon) themeMenuIcon.textContent = '🌙';
+                if (themeMenuText) themeMenuText.textContent = 'Dark Mode';
             }
-
-            // Initialize scrolling menu
-            const scrollingMenu = new ScrollingMenu();
 
             // Load prices on page load
             loadPrices();

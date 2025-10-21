@@ -78,56 +78,180 @@
             color: #94a3b8;
         }
 
-        /* Theme Toggle */
-        .theme-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
+
+        /* Navigation styles */
+        nav {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
             z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
-
-        .theme-toggle:hover {
-            background: rgba(255, 255, 255, 0.2);
+        
+        body.dark-mode nav {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
-
-        body.dark-mode .theme-toggle {
-            background: rgba(148, 163, 184, 0.1);
-            border-color: rgba(148, 163, 184, 0.3);
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-
-        /* Back Button */
-        .back-link {
-            position: fixed;
-            top: 20px;
-            left: 20px;
+        
+        .logo {
             color: white;
+            font-size: 24px;
+            font-weight: 700;
             text-decoration: none;
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: opacity 0.3s ease;
+        }
+        
+        .logo:hover {
+            opacity: 0.9;
+        }
+        
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        
+        /* Hamburger Menu Button */
+        .menu-toggle {
+            display: block;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            z-index: 1002;
+        }
+        
+        .menu-toggle span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background: white;
+            margin: 5px 0;
             transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+        
+        .menu-toggle.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        
+        .menu-toggle.active span:nth-child(2) {
+            opacity: 0;
+        }
+        
+        .menu-toggle.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
+        }
+        
+        /* Dropdown menu */
+        .nav-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 10px);
+            right: -50px;
+            background: rgba(248, 249, 250, 0.98);
             backdrop-filter: blur(10px);
-            font-weight: 600;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            list-style: none;
+            min-width: 220px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
             z-index: 1000;
+            flex-direction: column;
+            gap: 0;
         }
-
-        .back-link:hover {
-            background: rgba(255, 255, 255, 0.2);
+        
+        body.dark-mode .nav-dropdown {
+            background: rgba(15, 23, 42, 0.98);
+            border-color: rgba(148, 163, 184, 0.2);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
         }
-
-        body.dark-mode .back-link {
-            background: rgba(148, 163, 184, 0.1);
-            border-color: rgba(148, 163, 184, 0.3);
+        
+        .nav-dropdown.active {
+            display: flex;
+        }
+        
+        .nav-dropdown li {
+            width: 100%;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        body.dark-mode .nav-dropdown li {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .nav-dropdown li:last-child {
+            border-bottom: none;
+        }
+        
+        .nav-dropdown a {
+            display: block;
+            padding: 12px 15px;
+            text-decoration: none;
+            text-align: left;
+            color: #1e3c72 !important;
+            transition: all 0.3s ease;
+        }
+        
+        body.dark-mode .nav-dropdown a {
+            color: #cbd5e1 !important;
+        }
+        
+        .nav-dropdown a:hover {
+            background: rgba(247, 147, 26, 0.1);
+            border-radius: 6px;
+        }
+        
+        .nav-dropdown li.nav-page-link {
+            background: linear-gradient(135deg, rgba(247, 147, 26, 0.1), rgba(255, 140, 0, 0.1));
+            border-radius: 8px;
+            margin: 8px 0;
+            border-bottom: none !important;
+        }
+        
+        .nav-dropdown li.nav-page-link a {
+            font-weight: 700 !important;
+            color: #c85000 !important;
+            padding: 14px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        body.dark-mode .nav-dropdown li.nav-page-link a {
+            color: #f7931a !important;
+        }
+        
+        .nav-dropdown li.nav-page-link:hover {
+            background: linear-gradient(135deg, rgba(247, 147, 26, 0.2), rgba(255, 140, 0, 0.2));
+            transform: translateX(3px);
+            transition: all 0.3s ease;
+        }
+        
+        .nav-dropdown li.nav-separator {
+            height: 1px;
+            background: rgba(0, 0, 0, 0.1);
+            margin: 10px 0;
+            padding: 0;
+            border-bottom: none !important;
+        }
+        
+        body.dark-mode .nav-dropdown li.nav-separator {
+            background: rgba(255, 255, 255, 0.1);
         }
 
         /* Wizard Container */
@@ -469,20 +593,48 @@
                 min-width: 100%;
             }
 
-            .back-link, .theme-toggle {
-                padding: 6px 10px;
-                font-size: 0.85rem;
+            .logo {
+                font-size: 20px;
+            }
+            
+            .logo img {
+                width: 32px;
+                height: 32px;
             }
         }
     </style>
 </head>
 <body>
-    <a href="satoshi15.html" class="back-link">← Back</a>
-    <button class="theme-toggle" onclick="toggleTheme()">
-        <span id="theme-icon">🌙</span>
-    </button>
+    <nav>
+        <div class="nav-container">
+            <a href="satoshi15.html" class="logo">
+                <img src="images/tSatoshi.svg" alt="tSAT Logo">
+                <span>tSAT Guide</span>
+            </a>
+            <div style="position: relative;">
+                <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <!-- Dropdown menu for hamburger -->
+                <ul class="nav-dropdown" id="navDropdown">
+                    <li class="nav-page-link"><a href="satoshi15.html">🏠 Home</a></li>
+                    <li class="nav-page-link"><a href="buy-tsat-guide.html">🛒 How to buy</a></li>
+                    <li class="nav-page-link"><a href="media.html">📰 Media</a></li>
+                    <li class="nav-page-link"><a href="whitepaper.html">📄 Whitepaper</a></li>
+                    <li class="nav-separator"></li>
+                    <li class="nav-page-link">
+                        <a href="#" onclick="toggleTheme(); return false;">
+                            <span id="theme-menu-icon">🌙</span> <span id="theme-menu-text">Dark Mode</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-    <div class="container">
+    <div class="container" style="margin-top: 30px;">
         <header>
             <div class="logo-section">
                 <img src="images/tSatoshi_512x512.png" alt="tSAT Logo">
@@ -622,16 +774,19 @@
         // Theme toggle
         function toggleTheme() {
             const body = document.body;
-            const themeIcon = document.getElementById('theme-icon');
+            const themeMenuIcon = document.getElementById('theme-menu-icon');
+            const themeMenuText = document.getElementById('theme-menu-text');
             const isDark = body.classList.contains('dark-mode');
             
             if (isDark) {
                 body.classList.remove('dark-mode');
-                themeIcon.textContent = '🌙';
+                if (themeMenuIcon) themeMenuIcon.textContent = '🌙';
+                if (themeMenuText) themeMenuText.textContent = 'Dark Mode';
                 localStorage.setItem('theme', 'light');
             } else {
                 body.classList.add('dark-mode');
-                themeIcon.textContent = '☀️';
+                if (themeMenuIcon) themeMenuIcon.textContent = '☀️';
+                if (themeMenuText) themeMenuText.textContent = 'Light Mode';
                 localStorage.setItem('theme', 'dark');
             }
         }
@@ -639,13 +794,44 @@
         // Load saved theme
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('theme');
-            const themeIcon = document.getElementById('theme-icon');
+            const themeMenuIcon = document.getElementById('theme-menu-icon');
+            const themeMenuText = document.getElementById('theme-menu-text');
             
             if (savedTheme === 'dark') {
                 document.body.classList.add('dark-mode');
-                themeIcon.textContent = '☀️';
+                if (themeMenuIcon) themeMenuIcon.textContent = '☀️';
+                if (themeMenuText) themeMenuText.textContent = 'Light Mode';
             } else {
-                themeIcon.textContent = '🌙';
+                if (themeMenuIcon) themeMenuIcon.textContent = '🌙';
+                if (themeMenuText) themeMenuText.textContent = 'Dark Mode';
+            }
+            
+            // Hamburger menu toggle
+            const menuToggle = document.getElementById('menuToggle');
+            const navDropdown = document.getElementById('navDropdown');
+            
+            if (menuToggle && navDropdown) {
+                menuToggle.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    menuToggle.classList.toggle('active');
+                    navDropdown.classList.toggle('active');
+                });
+                
+                // Close menu when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!menuToggle.contains(e.target) && !navDropdown.contains(e.target)) {
+                        menuToggle.classList.remove('active');
+                        navDropdown.classList.remove('active');
+                    }
+                });
+                
+                // Close menu when clicking on a link
+                document.querySelectorAll('.nav-dropdown a').forEach(link => {
+                    link.addEventListener('click', function() {
+                        menuToggle.classList.remove('active');
+                        navDropdown.classList.remove('active');
+                    });
+                });
             }
 
             detectDevice();
