@@ -81,16 +81,22 @@
 
         /* Navigation styles */
         nav {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: rgba(248, 249, 250, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
             padding: 15px 0;
-            position: sticky;
+            position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
             z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
         }
         
         body.dark-mode nav {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
         
@@ -104,18 +110,18 @@
         }
         
         .logo {
-            color: white;
+            color: #1e3c72;
             font-size: 24px;
             font-weight: 700;
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 12px;
-            transition: opacity 0.3s ease;
+            transition: color 0.3s ease;
         }
         
-        .logo:hover {
-            opacity: 0.9;
+        body.dark-mode .logo {
+            color: white;
         }
         
         .logo img {
@@ -138,10 +144,14 @@
             display: block;
             width: 25px;
             height: 3px;
-            background: white;
+            background: #1e3c72;
             margin: 5px 0;
             transition: all 0.3s ease;
             border-radius: 2px;
+        }
+        
+        body.dark-mode .menu-toggle span {
+            background: #e2e8f0;
         }
         
         .menu-toggle.active span:nth-child(1) {
@@ -634,7 +644,7 @@
         </div>
     </nav>
 
-    <div class="container" style="margin-top: 30px;">
+    <div class="container" style="margin-top: 80px;">
         <header>
             <div class="logo-section">
                 <img src="images/tSatoshi_512x512.png" alt="tSAT Logo">
