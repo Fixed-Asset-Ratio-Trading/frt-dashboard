@@ -664,6 +664,16 @@
         }
         body.dark-mode .faq-question:hover { background: linear-gradient(135deg, #1e293b, #0f172a); }
         body.dark-mode .faq-answer { color: #cbd5e1; }
+        body.dark-mode .faq-answer code { color: white; font-weight: 700; }
+        
+        /* Contract address specific styling */
+        .contract-address-code {
+            color: #1e3c72;
+        }
+        
+        body.dark-mode .contract-address-code {
+            color: #e2e8f0 !important;
+        }
         
         body.dark-mode footer {
             background: linear-gradient(135deg, #0f172a, #1e293b);
@@ -1229,14 +1239,6 @@
                     <img src="images/tSatoshi.svg" alt="tSAT Logo">
                     tSAT
                 </a>
-                <div class="contract-address" data-full-address="tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu">
-                    <span id="contract-short">tSAT...ssxu</span>
-                    <button class="copy-btn" onclick="copyContractAddress()" title="Copy contract address">
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                        </svg>
-                    </button>
-                </div>
             </div>
             <div style="position: relative;">
                 <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
@@ -1246,6 +1248,9 @@
                 </button>
                 <!-- Dropdown menu for hamburger -->
                 <ul class="nav-dropdown" id="navDropdown">
+                    <li><a href="#faq">Get the CA</a></li>
+                    <li><a href="#price-display">tSAT Price</a></li>
+                    <li><a href="#why-satoshi-tokens">Why Satoshi Tokens</a></li>
                     <li><a href="#how-it-works">How it Works</a></li>
                     <li><a href="#backing">Backing</a></li>
                     <li><a href="#proof-reserves">Proof of Reserves</a></li>
@@ -1341,7 +1346,7 @@
             </section>
 
             <!-- Value Proposition -->
-            <section class="section">
+            <section class="section" id="why-satoshi-tokens">
                 <h2>Why Satoshi Tokens?</h2>
                 <div class="value-grid">
                     <div class="value-card">
@@ -1547,6 +1552,31 @@
                 <h2>Frequently Asked Questions</h2>
                 
                 <div class="faq-item">
+                    <div class="faq-question">What is the CA (Contract Address) and how do I use it?</div>
+                    <div class="faq-answer">
+                        <p><strong>The Contract Address (CA)</strong> is the unique identifier for the tSAT token on the Solana blockchain. Think of it as the token's "DNA" - it's what wallets, exchanges, and DeFi platforms use to recognize and interact with tSAT.</p>
+                        
+                        <p style="margin-top: 12px;"><strong>tSAT Contract Address:</strong></p>
+                        <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 15px; background: rgba(247, 147, 26, 0.1); border-radius: 8px; border-left: 4px solid #f7931a;">
+                            <code class="contract-address-code" style="font-family: 'Courier New', monospace; font-size: 1.05rem; font-weight: 700; word-break: break-all; flex: 1;" id="faq-contract-address">tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu</code>
+                            <button onclick="copyFaqContractAddress()" title="Copy contract address" style="background: #f7931a; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap; transition: all 0.3s ease;">
+                                <span id="faq-copy-icon">📋 Copy</span>
+                            </button>
+                        </div>
+                        
+                        <p style="margin-top: 12px;"><strong>How to use it:</strong></p>
+                        <ul style="margin: 10px 0 10px 20px;">
+                            <li><strong>Adding to your wallet:</strong> When importing tSAT to Phantom, Solflare, or other Solana wallets, paste this address to add the token to your wallet's token list.</li>
+                            <li><strong>Verifying authenticity:</strong> Always check that any tSAT token you're interacting with matches this exact address to avoid scams or fake tokens.</li>
+                            <li><strong>Trading on DEXs:</strong> Use this address when trading tSAT on decentralized exchanges like Raydium or Jupiter to ensure you're trading the real token.</li>
+                            <li><strong>Checking on explorers:</strong> View the token's full on-chain data on <a href="https://solscan.io/token/tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu" target="_blank" style="color: #c85000; text-decoration: underline;">Solscan</a> using this address.</li>
+                        </ul>
+                        
+                        <p style="margin-top: 12px;"><em><strong>Pro tip:</strong> Bookmark this page or save the contract address securely. Always verify the CA before any transaction to protect yourself from scams.</em></p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
                     <div class="faq-question">Why does tSAT show a high Fully Diluted Valuation (FDV)?</div>
                     <div class="faq-answer">
                         <p><strong>The full story:</strong> tSAT was created with a maximum supply of 21 trillion tokens (equivalent to 210,000 BTC or 1% of Bitcoin's total supply). All 21T tokens were minted at genesis and locked in the Fixed Ratio Trading smart contract.</p>
@@ -1717,6 +1747,27 @@
                 setTimeout(() => {
                     copyBtn.classList.remove('copy-success');
                     copyBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Failed to copy contract address: ', err);
+            });
+        }
+
+        // Copy contract address from FAQ section
+        function copyFaqContractAddress() {
+            const contractAddress = document.getElementById('faq-contract-address').textContent;
+            navigator.clipboard.writeText(contractAddress).then(function() {
+                const copyIcon = document.getElementById('faq-copy-icon');
+                const originalText = copyIcon.textContent;
+                
+                // Visual feedback
+                copyIcon.textContent = '✅ Copied!';
+                copyIcon.parentElement.style.background = '#10b981';
+                
+                // Reset after 2 seconds
+                setTimeout(() => {
+                    copyIcon.textContent = originalText;
+                    copyIcon.parentElement.style.background = '#f7931a';
                 }, 2000);
             }).catch(function(err) {
                 console.error('Failed to copy contract address: ', err);
