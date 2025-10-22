@@ -730,6 +730,7 @@
         
         body.dark-mode .how-it-works { background: linear-gradient(135deg, #0f172a, #1e293b); }
         body.dark-mode .how-it-works p { color: #cbd5e1; }
+        body.dark-mode .how-it-works p[style*="color: #000000"] { color: #ffffff !important; }
         body.dark-mode .how-it-works code { 
             background: rgba(247, 147, 26, 0.2); 
             color: #f7931a;
@@ -1358,17 +1359,19 @@
 <body id="top">
     <header>
         <nav class="container">
-            <div style="display: flex; align-items: center; position: relative; overflow: hidden;">
+            <div style="display: flex; align-items: center; position: relative;">
                 <a href="#top" class="logo" onclick="scrollToTop(event)">
                     <img src="images/tSatoshi.svg" alt="tSAT Logo">
                     tSAT
                 </a>
-                <a href="buy-tsat-guide.html" class="nav-tsat-info" id="nav-tsat-info" style="margin-left: 12px; font-size: 24px; color: #1e3c72; font-weight: 700; white-space: nowrap; text-decoration: underline; transition: opacity 2s ease-in-out;">
-                    <span id="nav-tsat-amount">~853</span> Per Dollar
-                </a>
-                <span class="nav-save-bitcoin" id="nav-save-bitcoin" style="position: absolute; font-size: 24px; color: #10b981; font-weight: 700; font-style: italic; white-space: nowrap; opacity: 0; transition: opacity 2s ease-in-out; pointer-events: none; left: auto; right: auto;">
-                    Save More Bitcoin
-                </span>
+                <div style="position: relative; display: inline-block;">
+                    <a href="buy-tsat-guide.html" class="nav-tsat-info" id="nav-tsat-info" style="margin-left: 12px; font-size: 24px; color: #1e3c72; font-weight: 700; white-space: nowrap; text-decoration: underline; transition: opacity 2s ease-in-out; display: inline-block;">
+                        <span id="nav-tsat-amount">~853</span> Per Dollar
+                    </a>
+                    <span class="nav-save-bitcoin" id="nav-save-bitcoin" style="position: absolute; top: 0; left: 12px; font-size: 24px; color: #10b981; font-weight: 700; font-style: italic; white-space: nowrap; opacity: 0; transition: opacity 2s ease-in-out; pointer-events: none;">
+                        Save More Bitcoin
+                    </span>
+                </div>
             </div>
             <div style="position: relative;">
                 <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
@@ -1412,12 +1415,6 @@
             <p class="hero-description">
                 Satoshi shows your money in SATs so the numbers are big and easy to understand. Instead of seeing tiny decimals like 1×10⁻⁶ BTC, you see 100 sats. This makes every step feel real and exciting. You can quickly see your progress, and switch back to BTC anytime. With Satoshi tokens, you grow your Bitcoin stack while watching big numbers add up.
             </p>
-            <div class="cta-buttons">
-                <a href="buy-tsat-guide.html" class="btn btn-secondary">
-                    How to buy <img src="images/tSatoshi.svg" alt="tSAT" style="height: 1.1rem; width: auto; vertical-align: middle; margin: 0 4px;"> tSAT
-                </a>
-            </div>
-            
             <!-- Price Display -->
             <div class="price-display" id="price-display">
                 <a href="buy-tsat-guide.html" class="dollar-excitement primary-button" id="dollar-excitement">
@@ -1489,7 +1486,7 @@
             <section id="how-it-works" class="how-it-works">
                 <div class="container">
                     <h2>How it Works</h2>
-                    <p style="text-align: center; max-width: 800px; margin: 20px auto 30px; font-size: 1rem; color: #4a5568; line-height: 1.6;">
+                    <p style="text-align: left; max-width: 800px; margin: 20px 0 30px 0; font-size: 1rem; color: #000000; line-height: 1.6;">
                         <strong>Quick Start:</strong> You can buy tSATs directly from your Solana wallet by hitting "Swap" and entering the tSAT contract address (<code style="background: rgba(247, 147, 26, 0.15); padding: 2px 6px; border-radius: 4px; font-size: 0.9rem;">tSATdGGSLYBVCrm3pXiib8NmzKcB1iUdjRRseNGssxu</code>) into the buy field. However, there can be a 1% fee using this method. <strong>To get a fair rate with 0% fees</strong>, use the Fixed Ratio Trading protocol as explained in the three steps below:
                     </p>
                     <div class="steps">
@@ -1955,26 +1952,10 @@
             
             if (!navTsatInfo || !navSaveBitcoin) return;
             
-            // Position "Save More Bitcoin" exactly where "Per Dollar" is
-            function alignElements() {
-                const rect = navTsatInfo.getBoundingClientRect();
-                const parentRect = navTsatInfo.parentElement.getBoundingClientRect();
-                
-                navSaveBitcoin.style.left = (rect.left - parentRect.left) + 'px';
-                navSaveBitcoin.style.top = (rect.top - parentRect.top) + 'px';
-            }
-            
-            // Align on load
-            alignElements();
-            
-            // Realign on window resize
-            window.addEventListener('resize', alignElements);
-            
             // Cycle: 21s show amount, 2s fade out, 5s show "Save More Bitcoin", 2s fade in
             setInterval(() => {
                 // After 21 seconds, start fade out
                 setTimeout(() => {
-                    alignElements(); // Ensure alignment before showing
                     navTsatInfo.style.opacity = '0';
                     navSaveBitcoin.style.opacity = '1';
                     navSaveBitcoin.style.pointerEvents = 'auto';
