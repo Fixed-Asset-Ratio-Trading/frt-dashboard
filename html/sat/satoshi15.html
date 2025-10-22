@@ -2399,21 +2399,55 @@
             // Refresh prices every 5 minutes (300000 ms)
             setInterval(loadPrices, 300000);
 
-            // Simple FAQ toggle functionality
+            // FAQ toggle with localStorage persistence
             const faqQuestions = document.querySelectorAll('.faq-question');
+            const FAQ_STORAGE_KEY = 'tsat-faq-states';
             
-            faqQuestions.forEach(question => {
+            // Load saved FAQ states from localStorage
+            function loadFAQStates() {
+                try {
+                    const savedStates = localStorage.getItem(FAQ_STORAGE_KEY);
+                    return savedStates ? JSON.parse(savedStates) : {};
+                } catch (e) {
+                    return {};
+                }
+            }
+            
+            // Save FAQ states to localStorage - make it globally accessible
+            window.saveFAQStates = function() {
+                const states = {};
+                faqQuestions.forEach((question, index) => {
+                    const answer = question.nextElementSibling;
+                    states[`faq-${index}`] = answer.style.display === 'block';
+                });
+                try {
+                    localStorage.setItem(FAQ_STORAGE_KEY, JSON.stringify(states));
+                } catch (e) {
+                    // Fail silently if localStorage is not available
+                }
+            }
+            
+            // Initialize FAQ items - all collapsed by default unless saved state exists
+            const savedStates = loadFAQStates();
+            faqQuestions.forEach((question, index) => {
+                const answer = question.nextElementSibling;
+                const savedState = savedStates[`faq-${index}`];
+                
+                // Set initial state: use saved state if exists, otherwise collapse
+                answer.style.display = savedState ? 'block' : 'none';
+            });
+            
+            // Add click handlers for FAQ items
+            faqQuestions.forEach((question, index) => {
                 question.addEventListener('click', function() {
                     const answer = this.nextElementSibling;
                     const isOpen = answer.style.display === 'block';
                     
-                    // Close all other answers
-                    document.querySelectorAll('.faq-answer').forEach(ans => {
-                        ans.style.display = 'none';
-                    });
-                    
                     // Toggle current answer
                     answer.style.display = isOpen ? 'none' : 'block';
+                    
+                    // Save the updated state
+                    window.saveFAQStates();
                 });
             });
             
@@ -2424,6 +2458,90 @@
                     if (href === '#' || !href) return; // Skip empty or just-hash anchors
                     
                     e.preventDefault();
+                    
+                    // Special handling for "Get the CA" link - handle everything custom
+                    if (href === '#faq' && this.textContent.includes('Get the CA')) {
+                        // Don't do the default scroll, we'll handle it ourselves
+                        // Immediately look for and open the CA FAQ
+                        setTimeout(() => {
+                                // Find the CA FAQ question (it's the first FAQ item)
+                                const allFaqItems = document.querySelectorAll('.faq-item');
+                                
+                                // Try multiple methods to find the CA FAQ
+                                let caFaqQuestion = null;
+                                let caFaqAnswer = null;
+                                
+                                // Method 1: Direct selector
+                                caFaqQuestion = document.querySelector('.faq-item:first-child .faq-question');
+                                caFaqAnswer = document.querySelector('.faq-item:first-child .faq-answer');
+                                
+                                // Method 2: If that fails, try getting first item directly
+                                if (!caFaqQuestion && allFaqItems.length > 0) {
+                                    caFaqQuestion = allFaqItems[0].querySelector('.faq-question');
+                                    caFaqAnswer = allFaqItems[0].querySelector('.faq-answer');
+                                }
+                                
+                                // Method 3: Search by text content
+                                if (!caFaqQuestion) {
+                                    const allQuestions = document.querySelectorAll('.faq-question');
+                                    for (let q of allQuestions) {
+                                        if (q.textContent.includes('Contract Address')) {
+                                            caFaqQuestion = q;
+                                            caFaqAnswer = q.nextElementSibling;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if (caFaqAnswer) {
+                                    const wasHidden = caFaqAnswer.style.display !== 'block';
+                                    
+                                    if (wasHidden) {
+                                        // Open the CA FAQ if it's not already open
+                                        caFaqAnswer.style.display = 'block';
+                                        
+                                        // Save the state to localStorage
+                                        if (window.saveFAQStates) {
+                                            window.saveFAQStates();
+                                        }
+                                        
+                                        // If FAQ was hidden, wait for it to expand then scroll
+                                        setTimeout(() => {
+                                            if (caFaqQuestion) {
+                                                // Scroll to position the FAQ nicely in view
+                                                const rect = caFaqQuestion.getBoundingClientRect();
+                                                const absoluteTop = window.pageYOffset + rect.top;
+                                                const headerHeight = 80; // Fixed header height
+                                                const padding = 20; // Extra padding
+                                                
+                                                window.scrollTo({
+                                                    top: absoluteTop - headerHeight - padding,
+                                                    behavior: 'smooth'
+                                                });
+                                            }
+                                        }, 300); // Wait for expansion animation
+                                    } else {
+                                        // If already open, just scroll to it
+                                        setTimeout(() => {
+                                            if (caFaqQuestion) {
+                                                const rect = caFaqQuestion.getBoundingClientRect();
+                                                const absoluteTop = window.pageYOffset + rect.top;
+                                                const headerHeight = 80; // Fixed header height
+                                                const padding = 20; // Extra padding
+                                                
+                                                window.scrollTo({
+                                                    top: absoluteTop - headerHeight - padding,
+                                                    behavior: 'smooth'
+                                                });
+                                            }
+                                        }, 100);
+                                    }
+                                }
+                            }, 100); // Short delay to ensure DOM is ready
+                        return; // Don't do the normal scroll for Get the CA
+                    }
+                    
+                    // Normal scroll behavior for other links
                     const target = document.querySelector(href);
                     if (target) {
                         target.scrollIntoView({
