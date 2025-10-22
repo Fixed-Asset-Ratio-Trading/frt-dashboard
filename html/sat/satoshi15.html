@@ -1393,14 +1393,6 @@
                     <span class="price-value" id="tsat-price">Loading...</span>
                 </div>
                 <div class="price-item">
-                    <span class="price-label">Raydium tSAT/BTC:</span>
-                    <span class="price-value" id="tsat-market-btc">Loading...</span>
-                </div>
-                <div class="price-item">
-                    <span class="price-label">Peg Deviation:</span>
-                    <span class="price-value" id="peg-deviation">Loading...</span>
-                </div>
-                <div class="price-item">
                     <span class="price-label">Market Cap:</span>
                     <span class="price-value" id="market-cap">Loading...</span>
                 </div>
@@ -1408,12 +1400,6 @@
                     <span class="price-label">Circulating Supply:</span>
                     <span class="price-value" id="circulating-supply">Loading...</span>
                 </div>
-                <a href="https://frt15.net/swap.html?pool=AnTuW1uDnQBnwSa2Yso8MFmknz8B3K4V1iZZNdMdEXNj" target="_blank" style="text-decoration: none; display: block;">
-                    <div class="price-item" style="cursor: pointer; transition: all 0.3s ease; padding: 8px; margin: -8px -8px 7px -8px; border-radius: 8px;">
-                        <span class="price-label" style="color: #cbd5e1;">FRT Deviation:</span>
-                        <span class="price-value" style="color: #f7931a; text-decoration: underline;">Always 0% →</span>
-                    </div>
-                </a>
                 <div class="price-updated" id="price-updated">Last updated: Loading...</div>
             </div>
             
@@ -2125,39 +2111,22 @@
             const tsatPrice = document.getElementById('tsat-price');
             tsatPrice.textContent = '$' + Number(data.tsat_price_usd).toFixed(8);
             
-            // Update Raydium tSAT/BTC market price
-            const tsatMarketBtc = document.getElementById('tsat-market-btc');
-            if (data.tsat_market_price_btc) {
-                tsatMarketBtc.textContent = Number(data.tsat_market_price_btc).toFixed(12) + ' BTC';
-            } else {
-                tsatMarketBtc.textContent = 'N/A';
-            }
-            
-            // Update peg deviation percentage
-            const pegDeviation = document.getElementById('peg-deviation');
-            if (data.tsat_peg_deviation_percent !== undefined) {
-                const deviation = Number(data.tsat_peg_deviation_percent);
-                const sign = deviation >= 0 ? '+' : '';
-                pegDeviation.textContent = sign + deviation.toFixed(2) + '%';
-                
-                // Color code the deviation: green if close to 0, red if far
-                if (Math.abs(deviation) < 0.5) {
-                    pegDeviation.style.color = '#10b981'; // Green
-                } else if (Math.abs(deviation) < 2) {
-                    pegDeviation.style.color = '#f59e0b'; // Amber
-                } else {
-                    pegDeviation.style.color = '#ef4444'; // Red
-                }
-            } else {
-                pegDeviation.textContent = 'N/A';
-                pegDeviation.style.color = '#f7931a'; // Default orange
-            }
-            
-            // Calculate and display tSATs for $1
+            // Calculate and display tSATs for $1 with fallback
             const tsatAmount = document.getElementById('tsat-amount');
             const navTsatAmount = document.getElementById('nav-tsat-amount');
-            const tsatsFor1Dollar = Math.floor(1 / Number(data.tsat_price_usd));
-            tsatAmount.textContent = tsatsFor1Dollar.toLocaleString('en-US');
+            let tsatsFor1Dollar = 853; // Fallback value
+            
+            try {
+                if (data.tsat_price_usd && Number(data.tsat_price_usd) > 0) {
+                    tsatsFor1Dollar = Math.floor(1 / Number(data.tsat_price_usd));
+                }
+            } catch (error) {
+                console.error('Error calculating tSATs for $1, using fallback:', error);
+            }
+            
+            if (tsatAmount) {
+                tsatAmount.textContent = tsatsFor1Dollar.toLocaleString('en-US');
+            }
             if (navTsatAmount) {
                 navTsatAmount.textContent = tsatsFor1Dollar.toLocaleString('en-US');
             }
