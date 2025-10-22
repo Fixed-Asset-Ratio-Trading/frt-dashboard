@@ -249,33 +249,27 @@
         }
 
         .dollar-excitement {
+            display: block;
             margin: 20px 0;
-            padding: 18px;
-            background: linear-gradient(135deg, #f7931a, #ff6b35);
-            border-radius: 12px;
+            padding: 12px 24px;
+            background: rgba(247, 147, 26, 0.2);
+            border: 2px solid #f7931a;
+            border-radius: 25px;
             text-align: center;
-            box-shadow: 0 6px 20px rgba(247, 147, 26, 0.4);
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .excitement-text {
-            font-size: 1.2rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: white;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .excitement-amount {
-            font-size: 1.4rem;
+            font-size: 1.8rem;
             font-weight: 900;
-            color: #fff;
-            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+            color: white;
         }
 
         /* Scrolling Menu Container */
@@ -429,18 +423,20 @@
             display: none;
             position: absolute;
             top: calc(100% + 10px);
-            right: -50px; /* Adjust position to align better with hamburger button */
+            right: -10px;
+            left: auto;
             background: rgba(248, 249, 250, 0.98);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(0, 0, 0, 0.1);
             border-radius: 12px;
             padding: 15px;
             list-style: none;
-            min-width: 220px;
+            min-width: 400px; /* Increased width for 2 columns */
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
             z-index: 1000;
-            flex-direction: column;
-            gap: 0;
+            grid-template-columns: 1fr 1fr; /* 2 column layout */
+            gap: 10px;
+            box-sizing: border-box;
         }
 
         body.dark-mode .nav-dropdown {
@@ -450,20 +446,75 @@
         }
 
         .nav-dropdown.active {
-            display: flex;
+            display: grid; /* Changed from flex to grid */
         }
 
         .nav-dropdown li {
             width: 100%;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            border-bottom: none; /* Removed border since we're using grid */
         }
 
         body.dark-mode .nav-dropdown li {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: none; /* Removed border */
         }
 
         .nav-dropdown li:last-child {
             border-bottom: none;
+        }
+
+        /* Separator spans full width */
+        .nav-dropdown li.nav-separator {
+            grid-column: 1 / -1; /* Span both columns */
+            height: 1px;
+            background: rgba(0, 0, 0, 0.1);
+            margin: 10px 0;
+            padding: 0;
+        }
+
+        body.dark-mode .nav-dropdown li.nav-separator {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Theme toggle spans full width */
+        .nav-dropdown li.nav-page-link:last-child {
+            grid-column: 1 / -1; /* Span both columns for theme toggle */
+        }
+        
+        /* Mobile and tablet adjustments */
+        @media (max-width: 768px) {
+            .nav-dropdown {
+                position: fixed !important;
+                width: auto;
+                min-width: auto;
+                right: 15px !important;
+                left: 15px !important;
+                transform: none;
+                box-sizing: border-box;
+            }
+            
+            .nav-dropdown a {
+                font-size: 0.9rem;
+                padding: 10px 12px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .nav-dropdown {
+                position: fixed !important;
+                width: auto;
+                min-width: auto;
+                right: 10px !important;
+                left: 10px !important;
+                transform: none;
+                gap: 8px;
+                padding: 12px;
+                box-sizing: border-box;
+            }
+            
+            .nav-dropdown a {
+                font-size: 0.85rem;
+                padding: 8px 10px;
+            }
         }
 
         .nav-dropdown a {
@@ -1207,15 +1258,15 @@
 
             .dollar-excitement {
                 margin: 15px 0;
-                padding: 15px;
+                padding: 10px 20px;
             }
 
             .excitement-text {
-                font-size: 1rem;
+                font-size: 1.1rem;
             }
 
             .excitement-amount {
-                font-size: 1.2rem;
+                font-size: 1.4rem;
             }
 
             .cta-buttons {
