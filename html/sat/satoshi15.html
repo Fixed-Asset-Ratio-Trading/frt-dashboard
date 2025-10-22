@@ -272,16 +272,20 @@
             text-align: center;
             width: 100%;
             box-sizing: border-box;
+            white-space: nowrap;
+            overflow: hidden;
         }
 
         .excitement-text {
-            font-size: 1.5rem;
+            font-size: clamp(1rem, 4vw, 1.5rem);
             font-weight: 700;
             color: white;
+            display: inline-block;
+            white-space: nowrap;
         }
 
         .excitement-amount {
-            font-size: 1.8rem;
+            font-size: clamp(1.2rem, 5vw, 1.8rem);
             font-weight: 900;
             color: white;
         }
@@ -1325,7 +1329,7 @@
                     tSAT
                 </a>
                 <a href="buy-tsat-guide.html" class="nav-tsat-info" id="nav-tsat-info" style="margin-left: 12px; font-size: 24px; color: #1e3c72; font-weight: 700; white-space: nowrap; text-decoration: underline; transition: opacity 2s ease-in-out;">
-                    <span id="nav-tsat-amount">853</span> Per Dollar
+                    <span id="nav-tsat-amount">~853</span> Per Dollar
                 </a>
                 <span class="nav-save-bitcoin" id="nav-save-bitcoin" style="position: absolute; font-size: 24px; color: #10b981; font-weight: 700; font-style: italic; white-space: nowrap; opacity: 0; transition: opacity 2s ease-in-out; pointer-events: none;">
                     Save More Bitcoin
@@ -1382,7 +1386,7 @@
             <!-- Price Display -->
             <div class="price-display" id="price-display">
                 <div class="dollar-excitement" id="dollar-excitement">
-                    <span class="excitement-text">$1 USD gets you <span class="excitement-amount" id="tsat-amount">Loading...</span> tSATs!</span>
+                    <span class="excitement-text">$1 USD gets you <span class="excitement-amount" id="tsat-amount">~853</span> tSATs!</span>
                 </div>
                 <div class="price-item">
                     <span class="price-label">BTC Price:</span>
@@ -2115,20 +2119,24 @@
             const tsatAmount = document.getElementById('tsat-amount');
             const navTsatAmount = document.getElementById('nav-tsat-amount');
             let tsatsFor1Dollar = 853; // Fallback value
+            let isUsingFallback = true;
             
             try {
                 if (data.tsat_price_usd && Number(data.tsat_price_usd) > 0) {
                     tsatsFor1Dollar = Math.floor(1 / Number(data.tsat_price_usd));
+                    isUsingFallback = false;
                 }
             } catch (error) {
                 console.error('Error calculating tSATs for $1, using fallback:', error);
             }
             
+            const formattedAmount = isUsingFallback ? '~' + tsatsFor1Dollar.toLocaleString('en-US') : tsatsFor1Dollar.toLocaleString('en-US');
+            
             if (tsatAmount) {
-                tsatAmount.textContent = tsatsFor1Dollar.toLocaleString('en-US');
+                tsatAmount.textContent = formattedAmount;
             }
             if (navTsatAmount) {
-                navTsatAmount.textContent = tsatsFor1Dollar.toLocaleString('en-US');
+                navTsatAmount.textContent = formattedAmount;
             }
             
             // Update last updated time

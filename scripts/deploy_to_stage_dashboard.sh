@@ -445,6 +445,7 @@ sync_files() {
         --exclude='*.log' \
         --exclude='*.tmp' \
         --exclude='.DS_Store' \
+        --exclude='satoshi15.json' \
         "$PROJECT_ROOT/html/sat/" "$REMOTE_HOST:$REMOTE_SAT_DIR/"
     
     # Set proper permissions for FRT
