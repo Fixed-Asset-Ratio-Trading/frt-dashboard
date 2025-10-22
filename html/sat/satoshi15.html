@@ -18,12 +18,18 @@
             box-sizing: border-box;
         }
 
+        html {
+            overflow-x: hidden;
+        }
+
         body {
             font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
             color: #333;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
+            min-width: 450px;
+            overflow-x: hidden;
             transition: all 0.3s ease;
         }
 
@@ -79,6 +85,10 @@
 
         body.dark-mode .logo {
             color: white;
+        }
+
+        body.dark-mode .nav-tsat-info {
+            color: white !important;
         }
 
         .logo img {
@@ -1241,6 +1251,10 @@
                 height: 12px;
             }
 
+            .nav-tsat-info {
+                font-size: 18px !important;
+            }
+
             .price-display {
                 margin-top: 30px;
                 padding: 20px;
@@ -1302,6 +1316,9 @@
                     <img src="images/tSatoshi.svg" alt="tSAT Logo">
                     tSAT
                 </a>
+                <span class="nav-tsat-info" id="nav-tsat-info" style="margin-left: 12px; font-size: 24px; color: #1e3c72; font-weight: 700; white-space: nowrap;">
+                    <span id="nav-tsat-amount">853</span> of them = $1
+                </span>
             </div>
             <div style="position: relative;">
                 <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
@@ -2078,8 +2095,12 @@
             
             // Calculate and display tSATs for $1
             const tsatAmount = document.getElementById('tsat-amount');
+            const navTsatAmount = document.getElementById('nav-tsat-amount');
             const tsatsFor1Dollar = Math.floor(1 / Number(data.tsat_price_usd));
             tsatAmount.textContent = tsatsFor1Dollar.toLocaleString('en-US');
+            if (navTsatAmount) {
+                navTsatAmount.textContent = tsatsFor1Dollar.toLocaleString('en-US');
+            }
             
             // Update last updated time
             const lastUpdated = document.getElementById('price-updated');
