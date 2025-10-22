@@ -517,6 +517,18 @@
         }
         
         @media (max-width: 480px) {
+            /* Prevent horizontal scroll on very small screens */
+            body {
+                min-width: unset !important;
+                width: 100vw !important;
+                overflow-x: hidden !important;
+            }
+            
+            header nav {
+                width: 100% !important;
+                overflow-x: hidden !important;
+            }
+            
             .nav-dropdown {
                 position: fixed !important;
                 width: auto;
@@ -1262,9 +1274,15 @@
             .nav-tsat-info {
                 font-size: 18px !important;
             }
-
+            
             .nav-save-bitcoin {
                 font-size: 18px !important;
+                max-width: 200px !important;
+            }
+            
+            /* Prevent horizontal scroll on mobile */
+            nav .container {
+                overflow: hidden;
             }
 
             .price-display {
@@ -1323,7 +1341,7 @@
 <body id="top">
     <header>
         <nav class="container">
-            <div style="display: flex; align-items: center; position: relative;">
+            <div style="display: flex; align-items: center; position: relative; overflow: hidden;">
                 <a href="#top" class="logo" onclick="scrollToTop(event)">
                     <img src="images/tSatoshi.svg" alt="tSAT Logo">
                     tSAT
@@ -1331,7 +1349,7 @@
                 <a href="buy-tsat-guide.html" class="nav-tsat-info" id="nav-tsat-info" style="margin-left: 12px; font-size: 24px; color: #1e3c72; font-weight: 700; white-space: nowrap; text-decoration: underline; transition: opacity 2s ease-in-out;">
                     <span id="nav-tsat-amount">~853</span> Per Dollar
                 </a>
-                <span class="nav-save-bitcoin" id="nav-save-bitcoin" style="position: absolute; font-size: 24px; color: #10b981; font-weight: 700; font-style: italic; white-space: nowrap; opacity: 0; transition: opacity 2s ease-in-out; pointer-events: none;">
+                <span class="nav-save-bitcoin" id="nav-save-bitcoin" style="position: absolute; font-size: 24px; color: #10b981; font-weight: 700; font-style: italic; white-space: nowrap; opacity: 0; transition: opacity 2s ease-in-out; pointer-events: none; left: auto; right: auto;">
                     Save More Bitcoin
                 </span>
             </div>
