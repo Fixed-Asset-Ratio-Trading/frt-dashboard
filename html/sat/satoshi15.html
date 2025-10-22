@@ -262,7 +262,9 @@
             background: rgba(16, 185, 129, 0.15) !important;
         }
 
-        .dollar-excitement {
+        /* Primary Button Style - Based on dollar-excitement design */
+        .dollar-excitement,
+        .primary-button {
             display: block;
             margin: 20px 0;
             padding: 12px 24px;
@@ -274,6 +276,21 @@
             box-sizing: border-box;
             white-space: nowrap;
             overflow: hidden;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .dollar-excitement:hover,
+        .primary-button:hover {
+            background: rgba(247, 147, 26, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(247, 147, 26, 0.2);
+        }
+        
+        .dollar-excitement:active,
+        .primary-button:active {
+            transform: translateY(0);
         }
 
         .excitement-text {
@@ -1403,9 +1420,9 @@
             
             <!-- Price Display -->
             <div class="price-display" id="price-display">
-                <div class="dollar-excitement" id="dollar-excitement">
+                <a href="buy-tsat-guide.html" class="dollar-excitement primary-button" id="dollar-excitement">
                     <span class="excitement-text">$1 USD gets you <span class="excitement-amount" id="tsat-amount">~853</span> tSATs!</span>
-                </div>
+                </a>
                 <div class="price-item">
                     <span class="price-label">BTC Price:</span>
                     <span class="price-value" id="btc-price">Loading...</span>
