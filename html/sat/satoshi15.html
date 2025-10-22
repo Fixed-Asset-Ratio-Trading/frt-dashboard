@@ -91,6 +91,10 @@
             color: white !important;
         }
 
+        body.dark-mode .nav-save-bitcoin {
+            color: #10b981 !important;
+        }
+
         .logo img {
             width: 40px;
             height: 40px;
@@ -1255,6 +1259,10 @@
                 font-size: 18px !important;
             }
 
+            .nav-save-bitcoin {
+                font-size: 18px !important;
+            }
+
             .price-display {
                 margin-top: 30px;
                 padding: 20px;
@@ -1311,13 +1319,16 @@
 <body id="top">
     <header>
         <nav class="container">
-            <div style="display: flex; align-items: center;">
+            <div style="display: flex; align-items: center; position: relative;">
                 <a href="#top" class="logo" onclick="scrollToTop(event)">
                     <img src="images/tSatoshi.svg" alt="tSAT Logo">
                     tSAT
                 </a>
-                <span class="nav-tsat-info" id="nav-tsat-info" style="margin-left: 12px; font-size: 24px; color: #1e3c72; font-weight: 700; white-space: nowrap;">
-                    <span id="nav-tsat-amount">853</span> of them = $1
+                <a href="buy-tsat-guide.html" class="nav-tsat-info" id="nav-tsat-info" style="margin-left: 12px; font-size: 24px; color: #1e3c72; font-weight: 700; white-space: nowrap; text-decoration: underline; transition: opacity 2s ease-in-out;">
+                    <span id="nav-tsat-amount">853</span> Per Dollar
+                </a>
+                <span class="nav-save-bitcoin" id="nav-save-bitcoin" style="position: absolute; font-size: 24px; color: #10b981; font-weight: 700; font-style: italic; white-space: nowrap; opacity: 0; transition: opacity 2s ease-in-out; pointer-events: none;">
+                    Save More Bitcoin
                 </span>
             </div>
             <div style="position: relative;">
@@ -1911,6 +1922,54 @@
             });
         }
 
+        // Animate nav text between tSAT amount and "Save More Bitcoin"
+        function animateNavText() {
+            const navTsatInfo = document.getElementById('nav-tsat-info');
+            const navSaveBitcoin = document.getElementById('nav-save-bitcoin');
+            
+            if (!navTsatInfo || !navSaveBitcoin) return;
+            
+            // Position "Save More Bitcoin" exactly where "Per Dollar" is
+            function alignElements() {
+                const rect = navTsatInfo.getBoundingClientRect();
+                const parentRect = navTsatInfo.parentElement.getBoundingClientRect();
+                
+                navSaveBitcoin.style.left = (rect.left - parentRect.left) + 'px';
+                navSaveBitcoin.style.top = (rect.top - parentRect.top) + 'px';
+            }
+            
+            // Align on load
+            alignElements();
+            
+            // Realign on window resize
+            window.addEventListener('resize', alignElements);
+            
+            // Cycle: 21s show amount, 2s fade out, 5s show "Save More Bitcoin", 2s fade in
+            setInterval(() => {
+                // After 21 seconds, start fade out
+                setTimeout(() => {
+                    alignElements(); // Ensure alignment before showing
+                    navTsatInfo.style.opacity = '0';
+                    navSaveBitcoin.style.opacity = '1';
+                    navSaveBitcoin.style.pointerEvents = 'auto';
+                }, 21000);
+                
+                // After 2s fade + 5s display = 7s, fade back in
+                setTimeout(() => {
+                    navTsatInfo.style.opacity = '1';
+                    navSaveBitcoin.style.opacity = '0';
+                    navSaveBitcoin.style.pointerEvents = 'none';
+                }, 28000); // 21s + 2s fade + 5s display
+            }, 30000); // Total cycle: 30 seconds (21 + 2 + 5 + 2)
+        }
+
+        // Start animation when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', animateNavText);
+        } else {
+            animateNavText();
+        }
+
         // Fetch and display prices
         function loadPrices() {
             console.log('Attempting to load prices from satoshi15.json...');
@@ -2383,8 +2442,11 @@
             // Smooth scrolling for navigation links
             document.querySelectorAll('a[href^="#"]').forEach(anchor => {
                 anchor.addEventListener('click', function (e) {
+                    const href = this.getAttribute('href');
+                    if (href === '#' || !href) return; // Skip empty or just-hash anchors
+                    
                     e.preventDefault();
-                    const target = document.querySelector(this.getAttribute('href'));
+                    const target = document.querySelector(href);
                     if (target) {
                         target.scrollIntoView({
                             behavior: 'smooth',
