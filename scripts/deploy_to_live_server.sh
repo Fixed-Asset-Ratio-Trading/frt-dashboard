@@ -64,17 +64,18 @@ NC='\033[0m' # No Color
 # Configuration
 REMOTE_HOST="root@frt15.net"
 FRT_DOMAIN="frt15.net"
-REMOTE_BASE_DIR="/var/www"
-REMOTE_HTML_DIR="$REMOTE_BASE_DIR/html"
-REMOTE_FRT_DIR="$REMOTE_HTML_DIR/frt"
+REMOTE_BASE_DIR="/var/www/html"
+REMOTE_FRT_DIR="$REMOTE_BASE_DIR/frt15"
 NGINX_SITE_NAME="default"
+# Legacy directory for migration
+LEGACY_DIR="/var/www/html/frt"
 
 echo "🚀 Fixed Ratio Trading Dashboard - Live Server Deployment"
 echo "========================================================="
 echo "📂 Local Project Root: $PROJECT_ROOT"
 echo "🌐 Remote Host: $REMOTE_HOST"
 echo "🔐 FRT Domain: https://$FRT_DOMAIN"
-echo "📁 Remote Directory: $REMOTE_BASE_DIR"
+echo "📁 Remote Directory: $REMOTE_FRT_DIR"
 echo "🌐 Network: Solana Mainnet Beta"
 echo "📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD"
 echo ""
@@ -103,6 +104,51 @@ if ! ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE_HOST" 'echo "SSH connect
     exit 1
 fi
 echo -e "${GREEN}✅ SSH connection successful${NC}"
+
+# Function to migrate from legacy directory
+migrate_legacy_directory() {
+    echo -e "${YELLOW}🔄 Checking for legacy directory...${NC}"
+    
+    # Check if legacy directory exists
+    if ssh "$REMOTE_HOST" "test -d $LEGACY_DIR"; then
+        echo "   Legacy directory found at $LEGACY_DIR"
+        
+        # Backup config.json from legacy location
+        if ssh "$REMOTE_HOST" "test -f $LEGACY_DIR/config.json"; then
+            echo "   Migrating config.json from legacy location..."
+            ssh "$REMOTE_HOST" "mkdir -p $REMOTE_FRT_DIR && cp -p $LEGACY_DIR/config.json $REMOTE_FRT_DIR/config.json"
+        fi
+        
+        # Migrate cache directories
+        echo "   Migrating cache directories..."
+        ssh "$REMOTE_HOST" "mkdir -p $REMOTE_FRT_DIR/cache"
+        ssh "$REMOTE_HOST" "test -d $LEGACY_DIR/cache && cp -rp $LEGACY_DIR/cache/* $REMOTE_FRT_DIR/cache/ 2>/dev/null || true"
+        
+        echo -e "${GREEN}✅ Legacy files migrated${NC}"
+    else
+        echo "   No legacy directory found, proceeding with fresh installation"
+    fi
+}
+
+# Function to update cron jobs
+update_cron_jobs() {
+    echo -e "${YELLOW}📅 Checking for cron jobs...${NC}"
+    
+    # Check if any cron jobs reference the old path
+    if ssh "$REMOTE_HOST" "crontab -l 2>/dev/null | grep -q '$LEGACY_DIR'"; then
+        echo "   Found cron jobs with legacy paths, updating..."
+        
+        # Backup current crontab
+        ssh "$REMOTE_HOST" "crontab -l > /tmp/crontab.backup 2>/dev/null || true"
+        
+        # Update paths in crontab
+        ssh "$REMOTE_HOST" "crontab -l 2>/dev/null | sed 's|$LEGACY_DIR|$REMOTE_FRT_DIR|g' | crontab -"
+        
+        echo -e "${GREEN}✅ Cron jobs updated to new directory${NC}"
+    else
+        echo "   No cron jobs found with legacy paths"
+    fi
+}
 
 # Function to setup PHP cache directories and permissions
 setup_php_cache() {
@@ -313,9 +359,11 @@ test_php_services() {
 case $ACTION in
     "setup")
         echo -e "${BLUE}🔧 Initial live server setup...${NC}"
+        migrate_legacy_directory
         sync_files
         setup_php_cache
         sync_cache_metadata
+        update_cron_jobs
         check_config
         restart_services
         test_php_services
@@ -333,9 +381,11 @@ case $ACTION in
         ;;
     "update")
         echo -e "${BLUE}🔄 Updating and deploying dashboard...${NC}"
+        migrate_legacy_directory
         sync_files
         setup_php_cache
         sync_cache_metadata
+        update_cron_jobs
         check_config
         restart_services
         test_php_services
@@ -350,7 +400,7 @@ echo -e "${BLUE}📊 Your Fixed Ratio Trading Dashboard is live:${NC}"
 echo ""
 echo "  🔐 FRT Dashboard: https://$FRT_DOMAIN"
 echo "  🖥️ Remote Host: $REMOTE_HOST"
-echo "  📁 Remote Directory: $REMOTE_BASE_DIR"
+echo "  📁 Remote Directory: $REMOTE_FRT_DIR"
 echo "  🔌 Server Port: 443 (HTTPS)"
 echo "  🖼️ Token Images: https://$FRT_DOMAIN/token-image.php"
 echo "  📊 Pool Data: https://$FRT_DOMAIN/pool-data.php"

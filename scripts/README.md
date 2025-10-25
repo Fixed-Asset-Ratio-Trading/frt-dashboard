@@ -6,87 +6,18 @@ This directory contains deployment and development scripts for the Fixed Ratio T
 
 | Script | Purpose | Environment | Protocol |
 |--------|---------|-------------|----------|
-| [`dev_workflow.sh`](#dev_workflowsh) | Development workflow helper | Local/Remote | HTTP/HTTPS |
-| [`start_dashboard.sh`](#start_dashboardsh) | Local development server | Local | HTTP |
-| [`deploy_to_stage_dashboard.sh`](#deploy_to_stage_dashboardsh) | Stage server deployment | Stage (vmdevbox1) | HTTPS |
+| [`deploy_to_stage_server.sh`](#deploy_to_stage_serversh) | Stage server deployment | Stage (vmdevbox1) | HTTPS |
 | [`deploy_to_live_server.sh`](#deploy_to_live_serversh) | Live server deployment | Production (frt15.net) | HTTPS |
 
 ---
 
-## 🚀 dev_workflow.sh
-
-**Main development workflow helper script that provides easy commands for local development and remote deployment.**
-
-### Usage
-```bash
-./scripts/dev_workflow.sh [command]
-```
-
-### Commands
-
-| Command | Description | Action |
-|---------|-------------|--------|
-| `local` | Start local development server | Launches HTTP server on port 3000 |
-| `remote` | Deploy to remote server (HTTP) | Syncs files to vmdevbox1:9090 |
-| `https` | Deploy with HTTPS to stage | Secure deployment to frtstage.davincij15.com |
-| `deploy` | Same as `https` | Alias for secure deployment |
-| `status` | Check deployment status | Shows remote server status |
-| `help` | Show help message | Displays usage information |
-
-### Examples
-```bash
-# Start local development server
-./scripts/dev_workflow.sh local
-
-# Deploy with HTTPS to stage
-./scripts/dev_workflow.sh https
-
-# Check deployment status
-./scripts/dev_workflow.sh status
-```
-
-### Development Workflow
-1. Make changes to files in `html/` directory
-2. Test locally: `./scripts/dev_workflow.sh local`
-3. When ready: `./scripts/dev_workflow.sh https`
-4. Check status: `./scripts/dev_workflow.sh status`
-
----
-
-## 🌐 start_dashboard.sh
-
-**Local development server for testing the dashboard on your machine.**
-
-### Usage
-```bash
-./scripts/start_dashboard.sh
-```
-
-### Features
-- ✅ Serves dashboard on `http://localhost:3000`
-- ✅ Auto-detects Python 3 or Python
-- ✅ Validates project structure
-- ✅ Checks for required dashboard files
-- ✅ Provides clear startup information
-
-### Prerequisites
-- Python 3 or Python installed
-- Dashboard files present in `html/` directory
-
-### Output
-- **URL:** http://localhost:3000
-- **Directory:** Serves from `html/` folder
-- **Stop:** Press `Ctrl+C`
-
----
-
-## 🏗️ deploy_to_stage_dashboard.sh
+## 🏗️ deploy_to_stage_server.sh
 
 **Deployment script for the staging environment with HTTPS support.**
 
 ### Usage
 ```bash
-./scripts/deploy_to_stage_dashboard.sh [option]
+./scripts/deploy_to_stage_server.sh [option]
 ```
 
 ### Options
@@ -103,6 +34,7 @@ This directory contains deployment and development scripts for the Fixed Ratio T
 - **Host:** `dev@vmdevbox1`
 - **Domain:** `frtstage.davincij15.com`
 - **IP:** `192.168.2.88`
+- **Remote Directory:** `/var/www/html/frt15`
 - **Port:** `443 (HTTPS)`
 - **SSL:** Custom certificate (expires 03-05-2026)
 - **Network:** Solana Mainnet Beta
@@ -115,17 +47,20 @@ This directory contains deployment and development scripts for the Fixed Ratio T
 - ✅ Chainstack credentials storage
 - ✅ Health checks
 - ✅ Service management
+- ✅ Automatic cache directory setup
+- ✅ Token image and pool data caching
+- ✅ Legacy directory migration
 
 ### Examples
 ```bash
 # Initial setup (first time)
-./scripts/deploy_to_stage_dashboard.sh --setup
+./scripts/deploy_to_stage_server.sh --setup
 
 # Update files (regular use)
-./scripts/deploy_to_stage_dashboard.sh --update
+./scripts/deploy_to_stage_server.sh --update
 
 # Check status
-./scripts/deploy_to_stage_dashboard.sh --status
+./scripts/deploy_to_stage_server.sh --status
 ```
 
 ---
@@ -152,6 +87,7 @@ This directory contains deployment and development scripts for the Fixed Ratio T
 ### Configuration
 - **Host:** `root@frt15.net`
 - **Domain:** `frt15.net`
+- **Remote Directory:** `/var/www/html/frt15`
 - **Port:** `443 (HTTPS)`
 - **SSL:** Let's Encrypt (auto-renewed)
 - **Network:** Solana Mainnet Beta
@@ -164,6 +100,8 @@ This directory contains deployment and development scripts for the Fixed Ratio T
 - ✅ Service management (Nginx + PHP-FPM)
 - ✅ File synchronization
 - ✅ Comprehensive health checks
+- ✅ Legacy directory migration
+- ✅ Automatic cron job updates
 
 ### Token Image Service
 The live server includes a fully functional token image service at:
@@ -194,9 +132,11 @@ curl "https://frt15.net/token-image.php?mint=So111111111111111111111111111111111
 
 ### File Synchronization
 All deployment scripts use `rsync` for efficient file synchronization:
-- Excludes: `*.log`, `*.tmp`, `.DS_Store`, `cache/`
+- Excludes: `*.log`, `*.tmp`, `.DS_Store`, `cache/`, `config.json`
 - Preserves permissions and timestamps
 - Only transfers changed files
+- Automatically migrates from legacy directories
+- Preserves existing `config.json` on remote server
 
 ### Health Checks
 Standard health checks include:
@@ -255,13 +195,13 @@ Standard health checks include:
 ### Regular Commands
 ```bash
 # Check stage status
-./scripts/deploy_to_stage_dashboard.sh --status
+./scripts/deploy_to_stage_server.sh --status
 
 # Check live status
 ./scripts/deploy_to_live_server.sh --status
 
 # Update stage
-./scripts/deploy_to_stage_dashboard.sh --update
+./scripts/deploy_to_stage_server.sh --update
 
 # Update live
 ./scripts/deploy_to_live_server.sh --update
@@ -271,6 +211,11 @@ Standard health checks include:
 - **Nginx Logs:** `/var/log/nginx/access.log`, `/var/log/nginx/error.log`
 - **PHP Logs:** `/var/log/php8.3-fpm.log`
 - **SSL Logs:** `/var/log/letsencrypt/letsencrypt.log` (live server)
+- **Cache Logs:**
+  - Stage: `/var/www/html/frt15/cache/pool_data/debug.log`
+  - Stage: `/var/www/html/frt15/cache/pool_data/metrics.log`
+  - Live: `/var/www/html/frt15/cache/pool_data/debug.log`
+  - Live: `/var/www/html/frt15/cache/pool_data/metrics.log`
 
 ---
 
@@ -311,22 +256,51 @@ systemctl status nginx php8.3-fpm
 
 ---
 
+## 🔄 Optional Cron Jobs
+
+The FRT dashboard uses on-demand caching for token images and pool data. No cron jobs are required for basic operation. However, you may optionally set up the following maintenance tasks:
+
+### Cache Cleanup (Optional)
+
+Clean up old cache files periodically to prevent disk space issues:
+
+```bash
+# Clean token image cache older than 60 days (stage server)
+0 3 * * 0 find /var/www/html/frt15/cache/token-images -type f -mtime +60 -delete
+
+# Clean token image cache older than 60 days (live server)
+0 3 * * 0 find /var/www/html/frt15/cache/token-images -type f -mtime +60 -delete
+
+# Clean pool data cache older than 1 day (both servers)
+0 4 * * * find /var/www/html/frt15/cache/pool_data -type f -name "*.json" -mtime +1 -delete
+```
+
+### Cache Warm-up (Optional)
+
+Pre-fetch commonly used pool data to improve response times:
+
+```bash
+# Warm up main pool cache every hour (example)
+0 * * * * curl -s "https://frtstage.davincij15.com/pool-data.php?poolAddress=YOUR_POOL_ADDRESS" > /dev/null
+```
+
+**Note:** The deployment scripts automatically check for and update any existing cron jobs that reference old directory paths.
+
+---
+
 ## 📝 Development Notes
 
 ### Making Changes
 1. Edit files in the `html/` directory
-2. Test locally with `./scripts/dev_workflow.sh local`
-3. Deploy to stage with `./scripts/deploy_to_stage_dashboard.sh --update`
-4. Deploy to live with `./scripts/deploy_to_live_server.sh --update`
+2. Deploy to stage with `./scripts/deploy_to_stage_server.sh --update`
+3. Deploy to live with `./scripts/deploy_to_live_server.sh --update`
 
 ### File Structure
 ```
 scripts/
-├── README.md                    # This documentation
-├── dev_workflow.sh             # Development workflow helper
-├── start_dashboard.sh          # Local development server
-├── deploy_to_stage_dashboard.sh # Stage deployment
-└── deploy_to_live_server.sh    # Live deployment
+├── README.md                      # This documentation
+├── deploy_to_stage_server.sh     # Stage deployment (HTTPS)
+└── deploy_to_live_server.sh      # Live deployment (HTTPS)
 ```
 
 ### Prerequisites
@@ -334,6 +308,15 @@ scripts/
 - **Remote:** SSH access with key authentication
 - **Stage:** Custom SSL certificate file
 - **Live:** Ubuntu server with Nginx + PHP configured
+
+### Directory Structure (Remote Servers)
+Both stage and live servers use the same standard directory structure:
+- **Application Root:** `/var/www/html/frt15`
+- **Cache Directories:**
+  - `/var/www/html/frt15/cache/token-images` (60-day cache)
+  - `/var/www/html/frt15/cache/token-metadata` (60-day cache)
+  - `/var/www/html/frt15/cache/pool_data` (20-minute cache)
+- **Configuration:** `/var/www/html/frt15/config.json` (server-managed, not synced)
 
 ---
 

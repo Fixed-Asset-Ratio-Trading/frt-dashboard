@@ -65,19 +65,20 @@ NC='\033[0m' # No Color
 REMOTE_HOST="dev@vmdevbox1"
 FRT_DOMAIN="frtstage.davincij15.com"
 REMOTE_IP="192.168.2.88"
-REMOTE_BASE_DIR="/home/dev/dashboard"
-REMOTE_HTML_DIR="$REMOTE_BASE_DIR/html"
-REMOTE_FRT_DIR="$REMOTE_HTML_DIR/frt"
+REMOTE_BASE_DIR="/var/www/html"
+REMOTE_FRT_DIR="$REMOTE_BASE_DIR/frt15"
 REMOTE_SSL_DIR="/home/dev/ssl"
 NGINX_SITE_NAME="frt-dashboard"
 CERT_FILE="$PROJECT_ROOT/davincij15_cert.txt"
+# Legacy directory for migration
+LEGACY_DIR="/home/dev/dashboard/html/frt"
 
 echo "🚀 Fixed Ratio Trading Dashboard - HTTPS Stage Deployment"
 echo "=========================================================="
 echo "📂 Local Project Root: $PROJECT_ROOT"
 echo "🌐 Remote Host: $REMOTE_HOST"
 echo "🔐 FRT Domain: https://$FRT_DOMAIN"
-echo "📁 Remote Directory: $REMOTE_BASE_DIR"
+echo "📁 Remote Directory: $REMOTE_FRT_DIR"
 echo "🌐 Network: Solana Mainnet Beta"
 echo "📋 Program ID: quXSYkeZ8ByTCtYY1J1uxQmE36UZ3LmNGgE3CYMFixD"
 echo ""
@@ -328,12 +329,57 @@ stop_nginx() {
     echo -e "${GREEN}✅ Nginx stopped${NC}"
 }
 
+# Function to migrate from legacy directory
+migrate_legacy_directory() {
+    echo -e "${YELLOW}🔄 Checking for legacy directory...${NC}"
+    
+    # Check if legacy directory exists
+    if ssh "$REMOTE_HOST" "test -d $LEGACY_DIR"; then
+        echo "   Legacy directory found at $LEGACY_DIR"
+        
+        # Backup config.json from legacy location
+        if ssh "$REMOTE_HOST" "test -f $LEGACY_DIR/config.json"; then
+            echo "   Migrating config.json from legacy location..."
+            ssh "$REMOTE_HOST" "sudo mkdir -p $REMOTE_FRT_DIR && sudo cp -p $LEGACY_DIR/config.json $REMOTE_FRT_DIR/config.json"
+        fi
+        
+        # Migrate cache directories
+        echo "   Migrating cache directories..."
+        ssh "$REMOTE_HOST" "sudo mkdir -p $REMOTE_FRT_DIR/cache"
+        ssh "$REMOTE_HOST" "test -d $LEGACY_DIR/cache && sudo cp -rp $LEGACY_DIR/cache/* $REMOTE_FRT_DIR/cache/ 2>/dev/null || true"
+        
+        echo -e "${GREEN}✅ Legacy files migrated${NC}"
+    else
+        echo "   No legacy directory found, proceeding with fresh installation"
+    fi
+}
+
+# Function to update cron jobs
+update_cron_jobs() {
+    echo -e "${YELLOW}📅 Checking for cron jobs...${NC}"
+    
+    # Check if any cron jobs reference the old path
+    if ssh "$REMOTE_HOST" "crontab -l 2>/dev/null | grep -q '$LEGACY_DIR'"; then
+        echo "   Found cron jobs with legacy paths, updating..."
+        
+        # Backup current crontab
+        ssh "$REMOTE_HOST" "crontab -l > /tmp/crontab.backup 2>/dev/null || true"
+        
+        # Update paths in crontab
+        ssh "$REMOTE_HOST" "crontab -l 2>/dev/null | sed 's|$LEGACY_DIR|$REMOTE_FRT_DIR|g' | crontab -"
+        
+        echo -e "${GREEN}✅ Cron jobs updated to new directory${NC}"
+    else
+        echo "   No cron jobs found with legacy paths"
+    fi
+}
+
 # Function to sync files to remote
 sync_files() {
     echo -e "${YELLOW}📁 Syncing dashboard files to remote server...${NC}"
     
     # Create remote directories
-    ssh "$REMOTE_HOST" "mkdir -p $REMOTE_BASE_DIR $REMOTE_HTML_DIR $REMOTE_FRT_DIR"
+    ssh "$REMOTE_HOST" "sudo mkdir -p $REMOTE_FRT_DIR"
     
     # Temporarily change ownership to dev user for syncing
     echo "   Preparing remote directory for sync..."
@@ -464,8 +510,10 @@ case $ACTION in
         echo -e "${BLUE}🔧 Initial HTTPS setup...${NC}"
         setup_ssl_certificates
         store_chainstack_credentials
+        migrate_legacy_directory
         sync_files
         sync_cache_metadata
+        update_cron_jobs
         check_config
         setup_nginx
         start_nginx
@@ -483,8 +531,10 @@ case $ACTION in
         ;;
     "update")
         echo -e "${BLUE}🔄 Updating and deploying dashboard...${NC}"
+        migrate_legacy_directory
         sync_files
         sync_cache_metadata
+        update_cron_jobs
         check_config
         start_nginx
         ;;
@@ -499,7 +549,7 @@ echo ""
 echo "  🔐 FRT Dashboard: https://$FRT_DOMAIN"
 echo "  🌐 IP Access: https://$REMOTE_IP (redirects to FRT)"
 echo "  🖥️ Remote Host: $REMOTE_HOST"
-echo "  📁 Remote Directory: $REMOTE_BASE_DIR"
+echo "  📁 Remote Directory: $REMOTE_FRT_DIR"
 echo "  🔌 Server Port: 443 (HTTPS)"
 echo ""
 echo -e "${BLUE}🌐 Solana Network Configuration:${NC}"
