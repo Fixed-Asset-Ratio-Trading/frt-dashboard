@@ -130,10 +130,10 @@ sync_cache_metadata() {
     echo -e "${YELLOW}📁 Syncing cache metadata overrides...${NC}"
     
     # Check if FRT token-metadata cache directory exists locally
-    if [ -d "$PROJECT_ROOT/html/frt/cache/token-metadata" ]; then
+    if [ -d "$PROJECT_ROOT/html/cache/token-metadata" ]; then
         echo "   Syncing token metadata overrides..."
         rsync -avz \
-            "$PROJECT_ROOT/html/frt/cache/token-metadata/" \
+            "$PROJECT_ROOT/html/cache/token-metadata/" \
             "$REMOTE_HOST:$REMOTE_FRT_DIR/cache/token-metadata/"
         
         # Set proper permissions for metadata files
@@ -146,10 +146,10 @@ sync_cache_metadata() {
     fi
     
     # Check if token-image-overrides.txt exists and sync it
-    if [ -f "$PROJECT_ROOT/html/frt/token-image-overrides.txt" ]; then
+    if [ -f "$PROJECT_ROOT/html/token-image-overrides.txt" ]; then
         echo "   Syncing token image overrides file..."
         rsync -avz \
-            "$PROJECT_ROOT/html/frt/token-image-overrides.txt" \
+            "$PROJECT_ROOT/html/token-image-overrides.txt" \
             "$REMOTE_HOST:$REMOTE_FRT_DIR/"
         
         # Set proper permissions
@@ -238,7 +238,7 @@ sync_files() {
         --exclude='cache/token-metadata/' \
         --exclude='cache/pool_data/' \
         --exclude='config.json' \
-        "$PROJECT_ROOT/html/frt/" "$REMOTE_HOST:$REMOTE_FRT_DIR/"
+        "$PROJECT_ROOT/html/" "$REMOTE_HOST:$REMOTE_FRT_DIR/"
     
     # Set proper permissions for FRT
     ssh "$REMOTE_HOST" "chown -R www-data:www-data $REMOTE_FRT_DIR"
@@ -256,11 +256,11 @@ check_config() {
     if ssh "$REMOTE_HOST" "test -f $REMOTE_FRT_DIR/config.json"; then
         echo -e "${GREEN}✅ Server config.json exists${NC}"
         echo "   📝 Note: config.json is managed on the server and preserved during deployments"
-        echo "   📄 Reference: html/frt/sample-config.json for configuration structure"
+        echo "   📄 Reference: html/sample-config.json for configuration structure"
     else
         echo -e "${YELLOW}⚠️  Server config.json not found${NC}"
         echo "   Please manually create $REMOTE_FRT_DIR/config.json on the server"
-        echo "   Use html/frt/sample-config.json as a template"
+        echo "   Use html/sample-config.json as a template"
     fi
 }
 
