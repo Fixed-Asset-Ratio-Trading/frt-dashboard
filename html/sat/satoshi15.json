@@ -1,9 +1,0 @@
-{
-    "btc_price_usd": 117200,
-    "tsat_price_usd": 0.001172,
-    "tsat_market_price_btc": 0.000000009998,
-    "tsat_market_price_usd": 0.001172,
-    "tsat_peg_deviation_percent": -0.02,
-    "last_updated_utc": "2025-10-01T12:30:00Z",
-    "timestamp": 1727786400
-}
